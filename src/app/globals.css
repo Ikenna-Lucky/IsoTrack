@@ -172,6 +172,11 @@ body {
   }
 }
 
+/* ─── Anchor scroll offset (accounts for fixed navbar) ───────────────────── */
+[id] {
+  scroll-margin-top: 80px;
+}
+
 /* ─── MapLibre GL container ───────────────────────────────────────────────── */
 .maplibregl-map {
   border-radius: var(--radius-lg);
