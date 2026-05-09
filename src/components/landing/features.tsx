@@ -1,11 +1,4 @@
-import {
-  MapPin,
-  Bell,
-  BarChart3,
-  Zap,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { MapPin, Bell, BarChart3, Zap, ShieldCheck, Users } from "lucide-react";
 
 const FEATURES = [
   {
@@ -66,10 +59,10 @@ const FEATURES = [
 
 export function Features() {
   return (
-    <section id="features" className="py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+    <section id="features" className="py-16 sm:py-20 lg:py-32">
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="max-w-xl mb-16">
+        <div className="max-w-xl mb-10 lg:mb-16">
           <p className="text-xs uppercase tracking-widest text-sky-400 font-medium mb-3">
             Platform features
           </p>
@@ -77,13 +70,13 @@ export function Features() {
             Everything your logistics operation needs
           </h2>
           <p className="text-zinc-400 leading-relaxed">
-            Built for the pace of modern African commerce — fast, reliable, and designed around
-            the workflows your team already uses.
+            Built for the pace of modern African commerce — fast, reliable, and designed around the
+            workflows your team already uses.
           </p>
         </div>
 
         {/* Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {FEATURES.map(({ icon: Icon, title, description, color, bg, border }) => (
             <div
               key={title}
@@ -100,8 +93,12 @@ export function Features() {
               <p className="text-sm text-zinc-500 leading-relaxed">{description}</p>
 
               {/* Subtle glow on hover */}
-              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: "radial-gradient(circle at 50% 0%, rgba(14,165,233,0.04), transparent 70%)" }}
+              <div
+                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(circle at 50% 0%, rgba(14,165,233,0.04), transparent 70%)",
+                }}
               />
             </div>
           ))}

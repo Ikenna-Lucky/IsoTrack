@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Package2, Menu, X, ArrowRight } from "lucide-react";
+import type { Route } from "next";
+import { Menu, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/shared/logo";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -24,7 +26,9 @@ export function Navbar() {
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   return (
@@ -32,21 +36,12 @@ export function Navbar() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-500",
-          scrolled
-            ? "border-b border-white/[0.06] bg-black/80 backdrop-blur-xl py-3"
-            : "py-5",
+          scrolled ? "border-b border-white/[0.06] bg-black/80 backdrop-blur-xl py-3" : "py-5",
         )}
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 border border-sky-500/20 group-hover:bg-sky-500/20 transition-colors">
-              <Package2 className="h-4 w-4 text-sky-400" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-white">
-              Iso<span className="text-sky-400">Track</span>
-            </span>
-          </Link>
+          <Logo href="/" size={45} />
 
           {/* Desktop links */}
           <ul className="hidden md:flex items-center gap-8">
@@ -65,13 +60,13 @@ export function Navbar() {
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
             <Link
-              href="/login"
+              href={"/login" as Route}
               className="text-sm text-zinc-400 hover:text-white transition-colors px-4 py-2"
             >
               Log in
             </Link>
             <Link
-              href="/register"
+              href={"/register" as Route}
               className="flex items-center gap-1.5 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-400 transition-colors"
             >
               Get started
@@ -114,14 +109,14 @@ export function Navbar() {
           </ul>
           <div className="mt-8 flex flex-col gap-3">
             <Link
-              href="/login"
+              href={"/login" as Route}
               onClick={() => setMobileOpen(false)}
               className="w-full rounded-lg border border-white/10 py-3 text-center text-sm font-medium text-white hover:bg-white/5 transition-colors"
             >
               Log in
             </Link>
             <Link
-              href="/register"
+              href={"/register" as Route}
               onClick={() => setMobileOpen(false)}
               className="w-full rounded-lg bg-sky-500 py-3 text-center text-sm font-medium text-white hover:bg-sky-400 transition-colors"
             >

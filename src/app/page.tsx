@@ -4,7 +4,7 @@ import { Hero } from "@/components/landing/hero";
 import { StatsStrip } from "@/components/landing/stats-strip";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
-import { Testimonials } from "@/components/landing/testimonials";
+import { AboutProject } from "@/components/landing/testimonials";
 import { CtaBanner } from "@/components/landing/cta-banner";
 
 export default function LandingPage() {
@@ -16,7 +16,7 @@ export default function LandingPage() {
         <StatsStrip />
         <Features />
         <HowItWorks />
-        <Testimonials />
+        <AboutProject />
         <CtaBanner />
       </main>
       <Footer />
