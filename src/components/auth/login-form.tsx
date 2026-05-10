@@ -7,8 +7,9 @@ import type { Route } from "next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, MoveRight, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
+import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/types";
 
@@ -21,13 +22,43 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// ─── Role → dashboard route map ───────────────────────────────────────────────
+// ─── Role → dashboard route ───────────────────────────────────────────────────
 
 const ROLE_ROUTES: Record<UserRole, string> = {
   business: "/business",
   driver: "/driver",
   customer: "/customer",
 };
+
+// ─── Reusable field wrapper ───────────────────────────────────────────────────
+
+function Field({
+  label,
+  error,
+  action,
+  children,
+}: {
+  label: string;
+  error?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[13px] font-medium text-zinc-400">{label}</label>
+        {action}
+      </div>
+      {children}
+      {error && (
+        <p className="flex items-center gap-1.5 text-[11px] text-red-400">
+          <AlertCircle className="h-3 w-3 shrink-0" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -50,161 +81,190 @@ export function LoginForm() {
     setServerError(null);
     try {
       await login(values.email, values.password);
-      // After login the store has the user — redirect based on role
       const role = useAuthStore.getState().user?.role ?? "customer";
       router.push(ROLE_ROUTES[role] as Route);
     } catch (err: unknown) {
       const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Something went wrong. Please try again.";
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Something went wrong. Please try again.";
       setServerError(message);
     }
   };
 
+  // Stagger helper
+  const slide = (delay: string) => ({
+    animation: `authSlideUp 0.55s cubic-bezier(0.22,1,0.36,1) ${delay} both`,
+  });
+
   return (
-    <div className="w-full max-w-md">
-      {/* Card */}
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 sm:p-10 backdrop-blur-sm">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
-          <p className="text-sm text-zinc-500">
-            Sign in to your IsoTrack account
+    <>
+      <style>{`
+        @keyframes authSlideUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <div className="w-full max-w-[420px]">
+        {/* Mobile-only logo */}
+        <div className="lg:hidden mb-10 flex justify-center" style={slide("0s")}>
+          <Logo size={30} />
+        </div>
+
+        {/* Heading */}
+        <div className="mb-9" style={slide("0s")}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-500 mb-3">
+            Sign in
+          </p>
+          <h1 className="text-[2.1rem] font-bold leading-tight tracking-tight text-white">
+            Back on the map.
+          </h1>
+          <p className="mt-3 text-[13.5px] text-zinc-500 leading-relaxed">
+            Your dashboard is waiting. Enter your credentials to continue.
           </p>
         </div>
 
         {/* Server error */}
         {serverError && (
-          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400">
-            {serverError}
+          <div
+            className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3.5 text-sm text-red-400"
+            style={slide("0.05s")}
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{serverError}</span>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           {/* Email */}
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-zinc-300 mb-1.5"
-            >
-              Email address
-            </label>
-            <input
-              {...register("email")}
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              className={cn(
-                "w-full rounded-xl bg-white/[0.04] border px-4 py-3 text-sm text-white placeholder:text-zinc-600",
-                "focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition-colors",
-                errors.email
-                  ? "border-red-500/50"
-                  : "border-white/[0.08] hover:border-white/[0.14]",
-              )}
-            />
-            {errors.email && (
-              <p className="mt-1.5 text-xs text-red-400">
-                {errors.email.message}
-              </p>
-            )}
+          <div style={slide("0.1s")}>
+            <Field label="Email address" error={errors.email?.message}>
+              <input
+                {...register("email")}
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@company.com"
+                className={cn(
+                  "w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-zinc-700",
+                  "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
+                  "transition-all duration-200",
+                  errors.email
+                    ? "border-red-500/40 bg-red-500/[0.02]"
+                    : "border-white/[0.07] hover:border-white/[0.12]",
+                )}
+              />
+            </Field>
           </div>
 
           {/* Password */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-zinc-300"
-              >
-                Password
-              </label>
-              <Link
-                href={"#" as Route}
-                className="text-xs text-sky-500 hover:text-sky-400 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <input
-                {...register("password")}
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className={cn(
-                  "w-full rounded-xl bg-white/[0.04] border px-4 py-3 pr-11 text-sm text-white placeholder:text-zinc-600",
-                  "focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition-colors",
-                  errors.password
-                    ? "border-red-500/50"
-                    : "border-white/[0.08] hover:border-white/[0.14]",
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="mt-1.5 text-xs text-red-400">
-                {errors.password.message}
-              </p>
-            )}
+          <div className="mt-5" style={slide("0.18s")}>
+            <Field
+              label="Password"
+              error={errors.password?.message}
+              action={
+                <Link
+                  href={"#" as Route}
+                  className="text-[11px] text-zinc-600 hover:text-sky-400 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              }
+            >
+              <div className="relative">
+                <input
+                  {...register("password")}
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  className={cn(
+                    "w-full rounded-xl border bg-white/[0.03] px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-700",
+                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
+                    "transition-all duration-200",
+                    errors.password
+                      ? "border-red-500/40 bg-red-500/[0.02]"
+                      : "border-white/[0.07] hover:border-white/[0.12]",
+                  )}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </Field>
           </div>
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold",
-              "bg-sky-500 text-white hover:bg-sky-400 active:scale-[0.98]",
-              "focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
-              "transition-all duration-150 disabled:opacity-60 disabled:pointer-events-none",
-            )}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Signing in…
-              </>
-            ) : (
-              <>
-                Sign in
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </button>
+          <div className="mt-7" style={slide("0.26s")}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={cn(
+                "group relative w-full overflow-hidden rounded-xl px-5 py-3.5 text-sm font-semibold text-white",
+                "transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none",
+                "focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
+              )}
+              style={{
+                background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%)",
+                boxShadow: "0 0 0 1px rgba(14,165,233,0.25), 0 6px 24px rgba(14,165,233,0.18)",
+              }}
+            >
+              {/* Hover shimmer layer */}
+              <span
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{
+                  background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 60%, #0284c7 100%)",
+                }}
+              />
+              <span className="relative flex items-center justify-center gap-2">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing in…
+                  </>
+                ) : (
+                  <>
+                    Sign in to IsoTrack
+                    <MoveRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </>
+                )}
+              </span>
+            </button>
+          </div>
         </form>
 
-        {/* Divider */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/[0.06]" />
-          <span className="text-xs text-zinc-700">or</span>
-          <div className="flex-1 h-px bg-white/[0.06]" />
-        </div>
-
-        {/* Register link */}
-        <p className="text-center text-sm text-zinc-500">
-          Don&apos;t have an account?{" "}
+        {/* Switch to register */}
+        <div className="mt-8" style={slide("0.34s")}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-white/[0.05]" />
+            <span className="text-[11px] text-zinc-700">New here?</span>
+            <div className="flex-1 h-px bg-white/[0.05]" />
+          </div>
           <Link
             href={"/register" as Route}
-            className="text-sky-500 hover:text-sky-400 font-medium transition-colors"
+            className={cn(
+              "flex items-center justify-center gap-2 w-full rounded-xl border border-white/[0.07] px-5 py-3 text-sm font-medium text-zinc-400",
+              "hover:border-white/[0.12] hover:text-white hover:bg-white/[0.03]",
+              "transition-all duration-200",
+            )}
           >
-            Create one free
+            Create a free account
+            <MoveRight className="h-3.5 w-3.5 opacity-60" />
           </Link>
+        </div>
+
+        {/* Legal */}
+        <p className="mt-8 text-center text-[11px] text-zinc-700" style={slide("0.4s")}>
+          © {new Date().getFullYear()} IsoTrack · Personal portfolio project
         </p>
       </div>
-    </div>
+    </>
   );
 }
