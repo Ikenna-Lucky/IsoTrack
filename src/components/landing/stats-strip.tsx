@@ -1,3 +1,7 @@
+"use client";
+
+// ─── Tech stack data ──────────────────────────────────────────────────────────
+
 const STACK = [
   { name: "Next.js 15", category: "Frontend" },
   { name: "Hono", category: "API" },
@@ -13,32 +17,66 @@ const STACK = [
   { name: "Twilio", category: "SMS" },
 ];
 
+// Duplicate so the loop is perfectly seamless — animate to -50% = one full set
+const DOUBLED = [...STACK, ...STACK];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function StatsStrip() {
   return (
-    <section className="border-y border-white/[0.05] bg-white/[0.015]">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="relative flex items-center gap-4 sm:gap-6 overflow-x-auto scrollbar-none pb-1 [mask-image:linear-gradient(to_right,transparent_0,black_16px,black_calc(100%-48px),transparent_100%)] sm:[mask-image:none]">
-          <p className="text-[10px] uppercase tracking-widest text-zinc-700 font-medium shrink-0">
-            Stack
-          </p>
-          <div className="h-4 w-px bg-white/[0.07] shrink-0" />
-          <div className="flex items-center gap-3 flex-nowrap">
-            {STACK.map(({ name, category }, i) => (
-              <div key={name} className="flex items-center gap-3 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-zinc-400 whitespace-nowrap">
-                    {name}
-                  </span>
-                  <span className="text-[10px] text-zinc-700 whitespace-nowrap hidden sm:block">
-                    {category}
-                  </span>
-                </div>
-                {i < STACK.length - 1 && (
-                  <span className="text-zinc-800 text-xs">·</span>
-                )}
-              </div>
-            ))}
-          </div>
+    <section
+      className="border-y border-white/[0.05] bg-white/[0.015] overflow-hidden"
+      aria-label="Technology stack"
+    >
+      <style>{`
+        @keyframes marquee {
+          from { transform: translateX(0);    }
+          to   { transform: translateX(-50%); }
+        }
+        .marquee-track {
+          animation: marquee 34s linear infinite;
+          will-change: transform;
+        }
+        .marquee-track:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      <div className="relative py-5 sm:py-6">
+        {/* Left fade mask */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-20 sm:w-28 z-10"
+          style={{ background: "linear-gradient(to right, #09090b 0%, transparent 100%)" }}
+        />
+        {/* Right fade mask */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 z-10"
+          style={{ background: "linear-gradient(to left, #09090b 0%, transparent 100%)" }}
+        />
+
+        {/* Scrolling track */}
+        <div
+          className="marquee-track flex items-center"
+          style={{ width: "max-content" }}
+        >
+          {DOUBLED.map(({ name, category }, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2.5 px-6 sm:px-8 shrink-0"
+            >
+              <span className="text-sm font-medium text-zinc-400 whitespace-nowrap">
+                {name}
+              </span>
+              <span className="text-[10px] text-zinc-700 whitespace-nowrap">
+                {category}
+              </span>
+              <span className="ml-2 text-zinc-800 text-xs" aria-hidden="true">
+                ·
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -261,7 +261,7 @@ function RouteMap() {
           </circle>
         </g>
 
-        {/* Live badge — top right */}
+        {/* Live badge — top right (108px wide, text centred with dominantBaseline) */}
         <g transform="translate(254, 22)">
           <rect
             width="108"

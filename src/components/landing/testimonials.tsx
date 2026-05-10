@@ -1,4 +1,9 @@
+"use client";
+
 import { Github, Globe, Zap, ShieldCheck, MapPin, Bell, BarChart3, CreditCard } from "lucide-react";
+import { useInView } from "@/hooks/use-in-view";
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const WHAT_IT_DEMONSTRATES = [
   {
@@ -57,13 +62,33 @@ const WHAT_IT_DEMONSTRATES = [
   },
 ];
 
+// ─── Easing ───────────────────────────────────────────────────────────────────
+
+const SPRING = "cubic-bezier(0.22,1,0.36,1)";
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function AboutProject() {
+  const { ref, inView } = useInView({ threshold: 0.06 });
+
   return (
-    <section id="about" className="py-16 sm:py-20 lg:py-32 border-t border-white/[0.06]">
+    <section
+      id="about"
+      className="py-16 sm:py-20 lg:py-32 border-t border-white/[0.06]"
+      ref={ref as unknown as React.RefObject<HTMLElement>}
+    >
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
 
         {/* Header + builder card */}
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start mb-10 lg:mb-16">
+        <div
+          className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start mb-10 lg:mb-16"
+          style={{
+            opacity: inView ? 1 : 0,
+            transform: inView ? "translateY(0)" : "translateY(22px)",
+            transition: `opacity 0.65s ${SPRING}, transform 0.65s ${SPRING}`,
+          }}
+        >
+          {/* Left — copy */}
           <div>
             <p className="text-xs uppercase tracking-widest text-sky-400 font-medium mb-3">
               About this project
@@ -88,10 +113,12 @@ export function AboutProject() {
           </div>
 
           {/* Builder card */}
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-8">
+          <div className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-8 hover:border-white/[0.11] hover:bg-white/[0.03] transition-all duration-300">
             <div className="flex items-start gap-5 mb-6">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-teal-500/20 border border-sky-500/20 text-lg font-bold text-sky-300">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-teal-500/20 border border-sky-500/20 text-lg font-bold text-sky-300">
                 IK
+                {/* Subtle pulse ring */}
+                <div className="absolute inset-0 rounded-2xl border border-sky-500/15 animate-ping" style={{ animationDuration: "2.5s" }} />
               </div>
               <div>
                 <p className="text-base font-semibold text-white mb-0.5">Ikenna</p>
@@ -113,9 +140,9 @@ export function AboutProject() {
                 href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200"
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200 group/link"
               >
-                <Github className="h-4 w-4 text-zinc-400" />
+                <Github className="h-4 w-4 text-zinc-400 group-hover/link:text-white transition-colors" />
                 <span>View source on GitHub</span>
                 <span className="ml-auto text-zinc-600 text-xs">Frontend + Backend</span>
               </a>
@@ -123,9 +150,9 @@ export function AboutProject() {
                 href="#"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200"
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200 group/link"
               >
-                <Globe className="h-4 w-4 text-zinc-400" />
+                <Globe className="h-4 w-4 text-zinc-400 group-hover/link:text-white transition-colors" />
                 <span>Live demo</span>
                 <span className="ml-auto text-zinc-600 text-xs">isotrack.vercel.app</span>
               </a>
@@ -135,22 +162,54 @@ export function AboutProject() {
 
         {/* Demonstrates grid */}
         <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-600 font-medium mb-6">
+          <p
+            className="text-xs uppercase tracking-widest text-zinc-600 font-medium mb-6"
+            style={{
+              opacity: inView ? 1 : 0,
+              transform: inView ? "translateY(0)" : "translateY(12px)",
+              transition: `opacity 0.5s ${SPRING} 0.1s, transform 0.5s ${SPRING} 0.1s`,
+            }}
+          >
             What this demonstrates
           </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {WHAT_IT_DEMONSTRATES.map(({ icon: Icon, title, description, color, bg, border }) => (
+            {WHAT_IT_DEMONSTRATES.map(({ icon: Icon, title, description, color, bg, border }, i) => (
               <div
                 key={title}
-                className="group rounded-2xl border border-white/[0.05] bg-white/[0.02] p-5 hover:border-white/[0.09] hover:bg-white/[0.035] transition-all duration-300"
+                className="group relative rounded-2xl border border-white/[0.05] bg-white/[0.02] p-5 hover:border-white/[0.09] hover:bg-white/[0.035] transition-all duration-300 overflow-hidden"
+                style={{
+                  opacity: inView ? 1 : 0,
+                  transform: inView ? "translateY(0)" : "translateY(24px)",
+                  transition: [
+                    `opacity 0.5s ${SPRING} ${i * 70 + 180}ms`,
+                    `transform 0.5s ${SPRING} ${i * 70 + 180}ms`,
+                    "border-color 0.3s ease",
+                    "background-color 0.3s ease",
+                  ].join(", "),
+                }}
               >
+                {/* Icon */}
                 <div
                   className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${bg} border ${border} mb-4`}
+                  style={{ transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
                 >
-                  <Icon className={`h-4 w-4 ${color}`} />
+                  <Icon className={`h-4 w-4 ${color} group-hover:scale-110 transition-transform duration-300`} />
                 </div>
+
                 <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">{description}</p>
+
+                {/* Shimmer sweep */}
+                <div
+                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%)",
+                    transition: "transform 0.7s ease",
+                  }}
+                  aria-hidden="true"
+                />
               </div>
             ))}
           </div>
