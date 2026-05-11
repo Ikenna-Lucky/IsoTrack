@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { Route } from "next";
 import {
   Package,
@@ -11,7 +12,10 @@ import {
   ArrowRight,
   Truck,
   Clock,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+import { useState } from "react";
 import {
   MOCK_SHIPMENTS,
   MOCK_DRIVERS,
@@ -20,6 +24,12 @@ import {
   formatNaira,
   formatDate,
 } from "@/lib/mock/business";
+import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
+
+const LiveMap = dynamic(
+  () => import("@/components/map/live-map").then((m) => m.LiveMap),
+  { ssr: false, loading: () => <div className="h-52 w-full animate-pulse rounded-xl bg-zinc-800/60" /> }
+);
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -92,6 +102,17 @@ function MiniBarChart() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BusinessOverviewPage() {
+  const [liveLocation, setLiveLocation] = useState<LocationUpdate | null>(null);
+
+  const activeShipment = MOCK_SHIPMENTS.find(
+    (s) => s.status === "in_transit" || s.status === "out_for_delivery",
+  );
+
+  const { connected } = useSocket({
+    trackingId: activeShipment?.trackingId ?? null,
+    onLocation: (update) => setLiveLocation(update),
+  });
+
   const recent = MOCK_SHIPMENTS.slice(0, 5);
   const activeDrivers = MOCK_DRIVERS.filter((d) => d.status === "active").length;
   const totalRevenue = MOCK_SHIPMENTS.reduce((sum, s) => sum + s.amount, 0);
@@ -160,6 +181,30 @@ export default function BusinessOverviewPage() {
           border="border-emerald-500/20"
         />
       </div>
+
+      {/* ── Live tracking panel ── */}
+      {activeShipment && (
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-violet-400" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">
+                Live Driver — {activeShipment.trackingId}
+              </span>
+            </div>
+            <span className={`flex items-center gap-1 text-[10px] font-medium ${connected ? "text-emerald-400" : "text-zinc-600"}`}>
+              {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
+              {connected ? "Connected" : "Connecting…"}
+            </span>
+          </div>
+          <LiveMap location={liveLocation} className="h-52 border border-white/[0.06]" />
+          {!liveLocation && connected && (
+            <p className="mt-2 text-center text-[10px] text-zinc-600">
+              Waiting for driver to broadcast location…
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Content row ── */}
       <div className="grid lg:grid-cols-3 gap-4">
