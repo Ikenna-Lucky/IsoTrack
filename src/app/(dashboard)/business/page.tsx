@@ -651,26 +651,28 @@ export default function BusinessOverviewPage() {
     <div className="max-w-7xl mx-auto space-y-5">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-white tracking-tight whitespace-nowrap">
             Good morning 👋
           </h2>
-          <p className="text-sm text-zinc-500 mt-0.5">
+          <p className="text-sm text-zinc-500 mt-0.5 truncate">
             {new Date().toLocaleDateString("en-NG", {
               weekday: "long",
               day: "numeric",
               month: "long",
-            })}{" "}
-            · Here&apos;s your fleet at a glance.
+            })}
+            <span className="hidden sm:inline">
+              {" "}· Here&apos;s your fleet at a glance.
+            </span>
           </p>
         </div>
         <Link
           href={"/business/shipments/new" as Route}
-          className="flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 active:scale-[0.98] transition-all shadow-lg shadow-sky-500/20 shrink-0"
+          className="flex items-center gap-2 rounded-xl bg-sky-500 px-3 sm:px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 active:scale-[0.98] transition-all shadow-lg shadow-sky-500/20 shrink-0"
         >
           <Plus className="h-4 w-4" />
-          New Shipment
+          <span className="hidden sm:inline">New Shipment</span>
         </Link>
       </div>
 

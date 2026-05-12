@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Package, Clock, Phone, Navigation } from "lucide-react";
+import { Search, MapPin, Package, Clock, Phone, Navigation, ChevronDown } from "lucide-react";
 import {
   MOCK_DELIVERIES,
   STATUS_META,
@@ -10,20 +10,32 @@ import {
 } from "@/lib/mock/driver";
 import { cn } from "@/lib/utils";
 
-// ─── Filter tabs ──────────────────────────────────────────────────────────────
+// ─── Filter config ────────────────────────────────────────────────────────────
 
 const FILTERS: { label: string; value: DeliveryStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Active", value: "out_for_delivery" },
-  { label: "Delivered", value: "delivered" },
-  { label: "Failed", value: "failed" },
+  { label: "All",        value: "all"              },
+  { label: "Active",     value: "out_for_delivery" },
+  { label: "Delivered",  value: "delivered"        },
+  { label: "Failed",     value: "failed"           },
 ];
+
+// ─── Package type badge colours ───────────────────────────────────────────────
+
+const PKG_COLORS: Record<string, string> = {
+  Document:    "text-sky-400    bg-sky-500/10    border-sky-500/20",
+  Electronics: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+  Parcel:      "text-teal-400   bg-teal-500/10   border-teal-500/20",
+  Clothing:    "text-pink-400   bg-pink-500/10   border-pink-500/20",
+  Food:        "text-amber-400  bg-amber-500/10  border-amber-500/20",
+};
+const pkgColor = (type: string) =>
+  PKG_COLORS[type] ?? "text-zinc-400 bg-zinc-500/10 border-zinc-500/20";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriverDeliveriesPage() {
-  const [filter, setFilter] = useState<DeliveryStatus | "all">("all");
-  const [search, setSearch] = useState("");
+  const [filter,   setFilter]   = useState<DeliveryStatus | "all">("all");
+  const [search,   setSearch]   = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const filtered = MOCK_DELIVERIES.filter((d) => {
@@ -39,43 +51,54 @@ export default function DriverDeliveriesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="max-w-3xl mx-auto space-y-5">
+
+      {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-100">Deliveries</h2>
-          <p className="text-xs text-zinc-500">{MOCK_DELIVERIES.length} total assignments</p>
+          <h2 className="text-xl font-bold text-white tracking-tight">Deliveries</h2>
+          <p className="text-sm text-zinc-500 mt-0.5">{MOCK_DELIVERIES.length} total assignments</p>
         </div>
 
         {/* Search */}
-        <input
-          type="text"
-          placeholder="Search by ID, customer, city…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-teal-500/40 focus:ring-0 sm:w-64"
-        />
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search ID, customer, city…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] pl-9 pr-3.5 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/[0.12] transition-all"
+          />
+        </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+      {/* ── Filter tabs — horizontally scrollable on mobile ── */}
+      <div className="flex items-center gap-0 overflow-x-auto scrollbar-none border-b border-white/[0.05] pb-px">
         {FILTERS.map(({ label, value }) => {
           const count =
             value === "all"
               ? MOCK_DELIVERIES.length
               : MOCK_DELIVERIES.filter((d) => d.status === value).length;
+          const active = filter === value;
           return (
             <button
               key={value}
               onClick={() => setFilter(value)}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                filter === value
-                  ? "bg-teal-500/15 text-teal-400"
-                  : "text-zinc-500 hover:text-zinc-300",
+                "flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-all whitespace-nowrap",
+                active
+                  ? "border-teal-400 text-teal-400"
+                  : "border-transparent text-zinc-500 hover:text-zinc-200 hover:border-white/[0.15]",
               )}
             >
               {label}
-              <span className="rounded-full bg-zinc-800 px-1.5 text-[10px] text-zinc-400">
+              <span className={cn(
+                "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold transition-all",
+                active
+                  ? "bg-teal-500/20 text-teal-400"
+                  : "bg-white/[0.06] text-zinc-500",
+              )}>
                 {count}
               </span>
             </button>
@@ -83,128 +106,176 @@ export default function DriverDeliveriesPage() {
         })}
       </div>
 
-      {/* Delivery cards */}
-      <ul className="space-y-3">
-        {filtered.length === 0 && (
-          <li className="py-12 text-center text-sm text-zinc-600">No deliveries found.</li>
-        )}
-        {filtered.map((d) => {
-          const meta = STATUS_META[d.status];
-          const isExpanded = expanded === d.id;
-          const isActive = d.status === "out_for_delivery";
+      {/* ── Delivery cards ── */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+            <Package className="h-5 w-5 text-zinc-700" />
+          </div>
+          <p className="text-sm font-medium text-zinc-400">No deliveries found</p>
+          <p className="text-xs text-zinc-600">
+            {search ? "Try a different search term" : "No deliveries match this filter"}
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2.5">
+          {filtered.map((d) => {
+            const meta       = STATUS_META[d.status];
+            const isExpanded = expanded === d.id;
+            const isActive   = d.status === "out_for_delivery";
 
-          return (
-            <li
-              key={d.id}
-              className={cn(
-                "overflow-hidden rounded-xl border transition-all",
-                isActive
-                  ? "border-violet-500/25 bg-violet-500/[0.04]"
-                  : "border-white/[0.06] bg-white/[0.02]",
-              )}
-            >
-              {/* Card header */}
-              <button
-                onClick={() => setExpanded(isExpanded ? null : d.id)}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+            return (
+              <li
+                key={d.id}
+                className={cn(
+                  "overflow-hidden rounded-2xl border transition-all duration-200",
+                  isActive
+                    ? "border-violet-500/[0.22] bg-[#0d0d11]"
+                    : "border-white/[0.06] bg-[#0d0d11]",
+                )}
               >
-                {/* Status dot */}
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: meta.dot }}
-                />
+                {/* ── Card header ── */}
+                <button
+                  onClick={() => setExpanded(isExpanded ? null : d.id)}
+                  className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-white/[0.015] transition-colors"
+                >
+                  {/* Status dot */}
+                  <div
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}80` }}
+                  />
 
-                {/* Route summary */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-semibold text-zinc-300">
-                      {d.trackingId}
-                    </span>
-                    {isActive && (
-                      <span className="animate-pulse rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-400">
-                        Active
+                  {/* Route + tracking ID */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono text-xs font-bold text-zinc-200">
+                        {d.trackingId}
                       </span>
+                      {isActive && (
+                        <span className="animate-pulse rounded-full bg-violet-500/20 border border-violet-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-400">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-zinc-500 truncate">
+                      {d.pickup.city}
+                      <span className="text-zinc-700"> → </span>
+                      {d.delivery.city}
+                      {" · "}{d.customer.name}
+                    </p>
+                  </div>
+
+                  {/* Distance — desktop only */}
+                  <div className="hidden sm:flex items-center gap-1 shrink-0 text-zinc-600">
+                    <Navigation className="h-3 w-3" />
+                    <span className="text-[11px]">{d.distance}</span>
+                  </div>
+
+                  {/* Earning + status label */}
+                  <div className="shrink-0 text-right">
+                    <p className={cn(
+                      "text-sm font-bold tabular-nums",
+                      d.driverEarning > 0 ? "text-emerald-400" : "text-zinc-600",
+                    )}>
+                      {d.driverEarning > 0 ? `+${formatNaira(d.driverEarning)}` : "₦0"}
+                    </p>
+                    <span className={cn("text-[10px] font-semibold", meta.color)}>
+                      {meta.label}
+                    </span>
+                  </div>
+
+                  {/* Expand chevron */}
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-zinc-600 transition-transform duration-200",
+                      isExpanded && "rotate-180",
+                    )}
+                  />
+                </button>
+
+                {/* ── Expanded details ── */}
+                {isExpanded && (
+                  <div className="border-t border-white/[0.05] px-4 py-4 space-y-4 bg-white/[0.01]">
+
+                    {/* Route visual */}
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center pt-1 shrink-0">
+                        <div className="h-2.5 w-2.5 rounded-full border-2 border-teal-400 bg-transparent" />
+                        <div className="my-1.5 h-7 w-px bg-gradient-to-b from-teal-500/40 to-rose-500/40" />
+                        <MapPin className="h-3 w-3 text-rose-400" />
+                      </div>
+                      <div className="space-y-3 flex-1 min-w-0">
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Pickup</p>
+                          <p className="text-xs text-zinc-300">{d.pickup.address}, {d.pickup.city}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Delivery</p>
+                          <p className="text-xs text-zinc-300">{d.delivery.address}, {d.delivery.city}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Meta strip */}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { icon: Package,    label: "Type",     value: d.packageType },
+                        { icon: Navigation, label: "Distance", value: d.distance    },
+                        { icon: Clock,      label: d.completedAt ? "Completed" : "Assigned", value: d.completedAt
+                            ? new Date(d.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : new Date(d.assignedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })
+                        },
+                        { icon: Navigation, label: "Weight",   value: d.weight     },
+                      ].map(({ icon: Icon, label, value }) => (
+                        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <Icon className="h-2.5 w-2.5 text-zinc-600" />
+                            <p className="text-[9px] uppercase tracking-wider text-zinc-600">{label}</p>
+                          </div>
+                          <p className="text-xs font-semibold text-zinc-300">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Package type badge */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn(
+                        "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold",
+                        pkgColor(d.packageType),
+                      )}>
+                        {d.packageType}
+                      </span>
+                      {d.notes && (
+                        <span className="text-[11px] text-zinc-500 italic">
+                          · Note: {d.notes}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Delivery note banner */}
+                    {d.notes && (
+                      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-3 py-2.5 text-xs text-rose-300">
+                        <span className="font-bold">⚠ Note: </span>{d.notes}
+                      </div>
+                    )}
+
+                    {/* Call CTA — full-width, thumb-friendly */}
+                    {isActive && (
+                      <a
+                        href={`tel:${d.customer.phone}`}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-teal-500/25 bg-teal-500/10 py-3 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.18] hover:border-teal-500/40 transition-all active:scale-[0.98]"
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call {d.customer.name}
+                      </a>
                     )}
                   </div>
-                  <p className="truncate text-[10px] text-zinc-500">
-                    {d.pickup.city} → {d.delivery.city} · {d.customer.name}
-                  </p>
-                </div>
-
-                {/* Earning + status */}
-                <div className="shrink-0 text-right">
-                  <p className={cn("text-sm font-semibold", d.driverEarning > 0 ? "text-emerald-400" : "text-zinc-600")}>
-                    {d.driverEarning > 0 ? `+${formatNaira(d.driverEarning)}` : "₦0"}
-                  </p>
-                  <span className={cn("text-[10px] font-medium", meta.color)}>
-                    {meta.label}
-                  </span>
-                </div>
-              </button>
-
-              {/* Expanded details */}
-              {isExpanded && (
-                <div className="border-t border-white/[0.05] px-4 py-4 space-y-4">
-                  {/* Route details */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center pt-1">
-                      <div className="h-2 w-2 rounded-full border-2 border-teal-400 bg-transparent" />
-                      <div className="my-1 h-6 w-px bg-zinc-700" />
-                      <MapPin size={10} className="text-rose-400" />
-                    </div>
-                    <div className="space-y-2.5">
-                      <div>
-                        <p className="text-[10px] text-zinc-600">Pickup</p>
-                        <p className="text-xs text-zinc-300">{d.pickup.address}, {d.pickup.city}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-zinc-600">Delivery</p>
-                        <p className="text-xs text-zinc-300">{d.delivery.address}, {d.delivery.city}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Meta strip */}
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[
-                      { icon: Package, label: "Type", value: d.packageType },
-                      { icon: Navigation, label: "Distance", value: d.distance },
-                      { icon: Clock, label: d.completedAt ? "Completed" : "Assigned", value: d.completedAt ? new Date(d.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : new Date(d.assignedAt).toLocaleDateString() },
-                      { icon: Navigation, label: "Weight", value: d.weight },
-                    ].map(({ icon: Icon, label, value }) => (
-                      <div key={label} className="rounded-lg bg-black/20 px-2.5 py-2">
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <Icon size={10} className="text-zinc-600" />
-                          <p className="text-[9px] uppercase tracking-wider text-zinc-600">{label}</p>
-                        </div>
-                        <p className="text-xs font-medium text-zinc-300">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Notes */}
-                  {d.notes && (
-                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/[0.05] px-3 py-2 text-xs text-rose-300">
-                      <span className="font-semibold">Note: </span>{d.notes}
-                    </div>
-                  )}
-
-                  {/* Call button for active */}
-                  {isActive && (
-                    <a
-                      href={`tel:${d.customer.phone}`}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-teal-500/25 bg-teal-500/10 py-2 text-xs font-semibold text-teal-400 transition-colors hover:bg-teal-500/20"
-                    >
-                      <Phone size={13} />
-                      Call {d.customer.name}
-                    </a>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

@@ -13,48 +13,101 @@ interface LogoProps {
   className?: string;
 }
 
-// ─── Mark ────
+// ─── Brand mark ───────────────────────────────────────────────────────────────
+//
+//  Concept: "The Trace"
+//  A rounded square with a violet→sky gradient holds three diagonal waypoint
+//  dots (origin · transit · destination) connected by a soft route line.
+//  Reads as a shipment route at a glance and stays crisp at 14 px.
+//
 function IsoMark({ size }: { size: number }) {
-  const innerSize = Math.round(size * 0.58); // pin SVG is 58 % of the square
-
   return (
-    <div>
-      <svg
-        width={innerSize}
-        height={innerSize}
-        viewBox="0 0 24 24"
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        {/* Diagonal gradient: deep violet (bottom-left) → sky (top-right) */}
+        <linearGradient id="iso-bg-g" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#6d28d9" />
+          <stop offset="55%" stopColor="#7c3aed" />
+          <stop offset="100%" stopColor="#0284c7" />
+        </linearGradient>
+
+        {/* Subtle radial shine on the dots */}
+        <radialGradient id="iso-dot-g" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="100%" stopColor="#c4b5fd" stopOpacity="0.85" />
+        </radialGradient>
+      </defs>
+
+      {/* ── Background: rounded square ── */}
+      <rect x="1" y="1" width="22" height="22" rx="6.5" fill="url(#iso-bg-g)" />
+
+      {/* Subtle inner highlight edge — top-left catch-light */}
+      <rect
+        x="1" y="1" width="22" height="22" rx="6.5"
+        stroke="rgba(255,255,255,0.14)" strokeWidth="0.6" fill="none"
+      />
+
+      {/* ── Route line connecting the three waypoints ── */}
+      <path
+        d="M7.5 16.5 Q12 12 16.5 7.5"
+        stroke="rgba(255,255,255,0.28)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
         fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Pin body — white teardrop */}
-        <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" fill="white" />
-        {/*
-          Inner circle — semi-transparent dark overlay creates the "eye" of
-          the pin and gives it depth without needing a second gradient.
-        */}
-        <circle cx="12" cy="10" r="3" fill="rgba(0,0,0,0.22)" />
-      </svg>
-    </div>
+      />
+
+      {/* ── Origin dot (bottom-left) ── */}
+      <circle cx="7.5" cy="16.5" r="2.4" fill="url(#iso-dot-g)" />
+
+      {/* ── Transit dot (center) — slightly smaller, more transparent ── */}
+      <circle cx="12" cy="12" r="1.55" fill="rgba(255,255,255,0.52)" />
+
+      {/* ── Destination dot (top-right) ── */}
+      <circle cx="16.5" cy="7.5" r="2.4" fill="url(#iso-dot-g)" />
+    </svg>
   );
 }
 
 // ─── Wordmark ─────────────────────────────────────────────────────────────────
 
 function IsoWordmark({ size }: { size: number }) {
-  // Font size scales with the icon: at size=32 → ~14px, size=28 → ~12px, etc.
-  const fontSize = Math.round(size * 0.44);
+  const fontSize = Math.round(size * 0.46);
 
   return (
-    <span className="font-semibold tracking-tight leading-none select-none" style={{ fontSize }}>
+    <span
+      className="font-bold tracking-tight leading-none select-none"
+      style={{ fontSize }}
+    >
       <span className="text-white">Iso</span>
-      <span className="text-sky-400">Track</span>
+      <span
+        style={{
+          background: "linear-gradient(90deg, #a78bfa 0%, #38bdf8 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}
+      >
+        Track
+      </span>
     </span>
   );
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-export function Logo({ size = 32, showWordmark = true, href, className }: LogoProps) {
+export function Logo({
+  size = 32,
+  showWordmark = true,
+  href,
+  className,
+}: LogoProps) {
   const inner = (
     <span className={cn("flex items-center gap-2.5", className)}>
       <IsoMark size={size} />

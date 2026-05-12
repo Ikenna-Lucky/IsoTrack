@@ -1,30 +1,80 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Search, MapPin, Phone, Star, Clock, AlertCircle, CheckCircle2, Package, Wifi, WifiOff } from "lucide-react";
 import {
-  CUSTOMER_SHIPMENTS,
-  STATUS_META,
-  formatNaira,
-} from "@/lib/mock/customer";
+  Search,
+  MapPin,
+  Phone,
+  Star,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Package,
+  Wifi,
+  WifiOff,
+  Navigation,
+  ChevronRight,
+} from "lucide-react";
+import { CUSTOMER_SHIPMENTS, STATUS_META, formatNaira } from "@/lib/mock/customer";
 import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
 import { cn } from "@/lib/utils";
 
 const LiveMap = dynamic(
   () => import("@/components/map/live-map").then((m) => m.LiveMap),
-  { ssr: false, loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-zinc-800/60" /> }
+  {
+    ssr: false,
+    loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-zinc-800/60" />,
+  },
 );
 
+function TimelineStep({
+  label, sub, time, state, isLast,
+}: {
+  label: string; sub: string; time: string;
+  state: "done" | "current" | "pending"; isLast?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex flex-col items-center shrink-0 pt-0.5">
+        <div className={cn(
+          "relative z-10 flex h-4 w-4 items-center justify-center rounded-full border text-[7px] font-bold",
+          state === "done"
+            ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
+            : state === "current"
+            ? "border-violet-500 bg-violet-500/20 text-violet-400 animate-pulse"
+            : "border-zinc-800 bg-zinc-900 text-zinc-700",
+        )}>
+          {state === "done" ? "✓" : state === "current" ? "●" : ""}
+        </div>
+        {!isLast && (
+          <div className={cn("w-px flex-1 mt-1", state === "done" ? "bg-emerald-500/25" : "bg-zinc-800")} style={{ minHeight: 26 }} />
+        )}
+      </div>
+      <div className="pb-3.5 min-w-0">
+        <p className={cn(
+          "text-sm font-semibold leading-tight",
+          state === "done" ? "text-zinc-200" : state === "current" ? "text-violet-300" : "text-zinc-600",
+        )}>{label}</p>
+        <p className="mt-0.5 text-[11px] text-zinc-600">{sub}</p>
+        <p className={cn(
+          "mt-0.5 text-[10px] font-medium",
+          state === "done" ? "text-emerald-500/60" : state === "current" ? "text-violet-400/70" : "text-zinc-800",
+        )}>{time}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function CustomerTrackPage() {
-  const [query, setQuery] = useState("");
-  const [searched, setSearched] = useState(false);
+  const [query,        setQuery]        = useState("");
+  const [searched,     setSearched]     = useState(false);
   const [liveLocation, setLiveLocation] = useState<LocationUpdate | null>(null);
 
   const result = CUSTOMER_SHIPMENTS.find(
     (s) => s.trackingId.toLowerCase() === query.trim().toLowerCase(),
   ) ?? null;
-
   const isActive = result?.status === "out_for_delivery";
 
   const { connected } = useSocket({
@@ -39,208 +89,250 @@ export default function CustomerTrackPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto space-y-5">
+
+      {/* Header */}
       <div>
-        <h2 className="text-base font-semibold text-zinc-100">Track a Package</h2>
-        <p className="text-xs text-zinc-500">Enter a tracking ID to see live status</p>
+        <h2 className="text-xl font-bold text-white tracking-tight">Track a Package</h2>
+        <p className="mt-0.5 text-sm text-zinc-500">Enter a tracking ID to see real-time status</p>
       </div>
 
+      {/* Search */}
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 pointer-events-none" />
           <input
             type="text"
             placeholder="e.g. IST-K7X2M9PQ"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSearched(false); setLiveLocation(null); }}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] py-3 pl-9 pr-4 font-mono text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-teal-500/40 focus:ring-0"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-3 pl-10 pr-4 font-mono text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/[0.1] transition-all"
           />
         </div>
         <button
           type="submit"
-          className="rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-500"
+          className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-500 active:scale-[0.98] transition-all shrink-0 shadow-lg shadow-violet-500/20"
         >
+          <Navigation className="h-4 w-4" />
           Track
         </button>
       </form>
 
+      {/* Quick chips */}
       <div>
-        <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-600">Your shipments</p>
-        <div className="flex flex-wrap gap-2">
+        <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-widest text-zinc-600">Your Shipments</p>
+        <div className="flex flex-wrap gap-1.5">
           {CUSTOMER_SHIPMENTS.map((s) => {
             const meta = STATUS_META[s.status];
+            const isSelected = query === s.trackingId;
             return (
               <button
                 key={s.id}
                 onClick={() => { setQuery(s.trackingId); setSearched(false); setLiveLocation(null); }}
-                className="flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-xs text-zinc-400 hover:border-teal-500/30 hover:text-zinc-200 transition-all"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-medium transition-all",
+                  isSelected
+                    ? "border-violet-500/30 bg-violet-500/10 text-violet-400"
+                    : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300",
+                )}
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} />
+                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: meta.dot }} />
                 <span className="font-mono">{s.trackingId}</span>
+                <span className={cn("text-[9px] font-semibold hidden sm:inline", meta.color)}>{meta.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      {/* Not found */}
       {searched && !result && (
-        <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3">
-          <AlertCircle size={15} className="text-rose-400 shrink-0" />
-          <p className="text-sm text-rose-300">
-            No shipment found for <span className="font-mono font-semibold">"{query}"</span>. Check the ID and try again.
-          </p>
+        <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3.5">
+          <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-rose-300">Tracking ID not found</p>
+            <p className="text-xs text-zinc-600 mt-0.5">
+              No shipment matching <span className="font-mono font-bold text-zinc-500">&quot;{query}&quot;</span> — check the ID and try again.
+            </p>
+          </div>
         </div>
       )}
 
-      {searched && result && (
-        <div className="space-y-4">
-          {(() => {
-            const meta = STATUS_META[result.status];
-            return (
-              <div
-                className={cn(
-                  "relative overflow-hidden rounded-2xl border p-5",
-                  isActive ? "border-violet-500/25 bg-violet-500/[0.04]" : "border-white/[0.08] bg-white/[0.02]",
-                )}
-              >
-                {isActive && (
-                  <div className="pointer-events-none absolute -top-8 right-1/3 h-28 w-52 rounded-full bg-violet-500/10 blur-3xl" />
-                )}
+      {/* Result */}
+      {searched && result && (() => {
+        const meta = STATUS_META[result.status];
+        return (
+          <div className="space-y-3">
 
-                <div className="mb-4 flex items-center justify-between">
+            {/* Status card */}
+            <div className={cn(
+              "relative overflow-hidden rounded-2xl border bg-[#0d0d11]",
+              isActive ? "border-violet-500/[0.22]" : "border-white/[0.07]",
+            )}>
+              {isActive && (
+                <div className="pointer-events-none absolute -top-10 right-1/3 h-32 w-52 rounded-full bg-violet-500/[0.07] blur-3xl" />
+              )}
+              <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/[0.05] flex-wrap">
+                <div className="flex items-center gap-2.5">
                   <span className="font-mono text-sm font-bold text-zinc-200">{result.trackingId}</span>
-                  <div className="flex items-center gap-2">
-                    {isActive && (
-                      <span className={cn("flex items-center gap-1 text-[10px] font-semibold", connected ? "text-emerald-400" : "text-zinc-500")}>
-                        {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
+                  {isActive && (
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.03] px-2.5 py-1">
+                      {connected
+                        ? <Wifi className="h-3 w-3 text-emerald-400" />
+                        : <WifiOff className="h-3 w-3 text-zinc-600" />}
+                      <span className={cn("text-[10px] font-semibold", connected ? "text-emerald-400" : "text-zinc-600")}>
                         {connected ? "Live" : "Connecting…"}
                       </span>
-                    )}
-                    <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", meta.bg, meta.border, meta.color)}>
-                      {meta.label}
-                    </span>
-                  </div>
+                    </div>
+                  )}
                 </div>
+                <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", meta.bg, meta.border, meta.color)}>
+                  {meta.label}
+                </span>
+              </div>
 
-                <div className="mb-4 flex items-start gap-3">
-                  <div className="flex flex-col items-center pt-0.5">
-                    <div className="h-2.5 w-2.5 rounded-full border-2 border-teal-400 bg-transparent" />
-                    <div className="my-1 h-8 w-px bg-zinc-700" />
-                    <MapPin size={11} className="text-rose-400" />
+              <div className="p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col items-center pt-1 shrink-0">
+                    <div className="h-2.5 w-2.5 rounded-full border-2 border-violet-400" />
+                    <div className="my-1 h-8 w-px bg-gradient-to-b from-violet-500/30 to-rose-500/30" />
+                    <MapPin className="h-3 w-3 text-rose-400" />
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 min-w-0 flex-1">
                     <div>
-                      <p className="text-[10px] text-zinc-600">From</p>
-                      <p className="text-sm font-medium text-zinc-100">{result.pickup.address}, {result.pickup.city}</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">From</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">{result.pickup.address}, {result.pickup.city}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-zinc-600">To</p>
-                      <p className="text-sm font-medium text-zinc-100">{result.delivery.address}, {result.delivery.city}</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">To</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">{result.delivery.address}, {result.delivery.city}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <span className="flex items-center gap-1 rounded-lg bg-black/25 px-2.5 py-1 text-xs text-zinc-400">
-                    <Package size={10} /> {result.packageType}
+                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
+                    <Package className="h-3 w-3" />{result.packageType}
                   </span>
-                  <span className="flex items-center gap-1 rounded-lg bg-black/25 px-2.5 py-1 text-xs text-zinc-400">
+                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
                     {formatNaira(result.amount)}
                   </span>
                   {result.driver?.eta && (
-                    <span className="flex items-center gap-1 rounded-lg bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-400">
-                      <Clock size={10} /> ETA {result.driver.eta}
+                    <span className="flex items-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 px-2.5 py-1.5 text-xs font-semibold text-violet-400">
+                      <Clock className="h-3 w-3" />ETA {result.driver.eta}
                     </span>
                   )}
                 </div>
               </div>
-            );
-          })()}
+            </div>
 
-          {isActive && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-zinc-400">Live Driver Location</p>
-                {liveLocation && (
+            {/* Live map */}
+            {isActive && (
+              <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0d0d11]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
+                    </span>
+                    <p className="text-xs font-semibold text-zinc-300">Live Driver Location</p>
+                  </div>
                   <span className="text-[10px] text-zinc-600">
-                    Updated {new Date(liveLocation.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    {liveLocation
+                      ? `Updated ${new Date(liveLocation.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+                      : connected ? "Waiting for signal…" : ""}
                   </span>
-                )}
+                </div>
+                <div className="p-3">
+                  <LiveMap location={liveLocation} className="h-64 rounded-xl border border-white/[0.04]" />
+                </div>
               </div>
-              <LiveMap location={liveLocation} className="h-64 border border-white/[0.06]" />
-              {!liveLocation && connected && (
-                <p className="text-center text-[10px] text-zinc-600">Waiting for driver location…</p>
-              )}
-            </div>
-          )}
+            )}
 
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
-            <h3 className="mb-4 text-sm font-semibold text-zinc-200">Delivery Timeline</h3>
-            <ol className="relative space-y-4 pl-5">
-              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-zinc-800" />
+            {/* Timeline */}
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d11] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-zinc-200">Delivery Timeline</h3>
+                <span className="text-[10px] text-zinc-600">
+                  {result.timeline.filter((e) => e.state === "done").length}/{result.timeline.length} complete
+                </span>
+              </div>
               {result.timeline.map((ev, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span
-                    className={cn(
-                      "absolute left-0 mt-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[8px] font-bold",
-                      ev.state === "done"
-                        ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-                        : ev.state === "current"
-                        ? "border-violet-500 bg-violet-500/20 text-violet-400 animate-pulse"
-                        : "border-zinc-700 bg-transparent text-zinc-700",
-                    )}
-                  >
-                    {ev.state === "done" ? "✓" : ev.state === "current" ? "•" : "○"}
-                  </span>
-                  <div className="ml-2">
-                    <p className={cn("text-sm font-medium", ev.state === "done" ? "text-zinc-200" : ev.state === "current" ? "text-violet-300" : "text-zinc-600")}>
-                      {ev.label}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-zinc-600">{ev.sub} · {ev.time}</p>
-                  </div>
-                </li>
+                <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
+                  isLast={i === result.timeline.length - 1} />
               ))}
-            </ol>
-          </div>
+            </div>
 
-          {result.driver && (
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
-              <h3 className="mb-3 text-sm font-semibold text-zinc-200">Your Driver</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-500/20 text-base font-bold text-teal-400">
-                  {result.driver.name.split(" ").map((n) => n[0]).join("")}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-zinc-100">{result.driver.name}</p>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                    <Star size={11} className="text-amber-400" />
-                    {result.driver.rating} · {result.driver.vehicle} · {result.driver.plate}
+            {/* Driver */}
+            {result.driver && (
+              <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d11] p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-4">Driver</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/25 to-sky-500/25 border border-teal-500/20 text-sm font-bold text-teal-300 ring-2 ring-teal-500/10 ring-offset-2 ring-offset-[#0d0d11]">
+                    {result.driver.name.split(" ").map((n) => n[0]).join("")}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-zinc-100 truncate">{result.driver.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
+                      <Star className="h-3 w-3 text-amber-400" />
+                      {result.driver.rating}
+                      <span className="text-zinc-700">·</span>
+                      {result.driver.vehicle}
+                      <span className="text-zinc-700">·</span>
+                      <span className="font-mono">{result.driver.plate}</span>
+                    </div>
+                  </div>
+                  <a
+                    href={`tel:${result.driver.phone}`}
+                    className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-4 py-2 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    Call
+                  </a>
                 </div>
-                <a
-                  href={`tel:${result.driver.phone}`}
-                  className="flex items-center gap-1.5 rounded-xl border border-teal-500/25 bg-teal-500/10 px-4 py-2 text-sm font-semibold text-teal-400 hover:bg-teal-500/20 transition-colors"
-                >
-                  <Phone size={13} />
-                  Call Driver
-                </a>
               </div>
-            </div>
-          )}
+            )}
 
-          {result.status === "delivered" && (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-emerald-300">Package Delivered!</p>
-                <p className="text-xs text-zinc-500">
-                  Delivered on {result.deliveredAt ? new Date(result.deliveredAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "—"}
-                </p>
+            {/* Delivered */}
+            {result.status === "delivered" && (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-emerald-300">Delivered Successfully</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {result.deliveredAt
+                      ? new Date(result.deliveredAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
+                      : "Delivery confirmed"}
+                  </p>
+                </div>
+                <Link
+                  href="/customer/shipments"
+                  className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-emerald-400 transition-colors shrink-0"
+                >
+                  History <ChevronRight className="h-3 w-3" />
+                </Link>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {/* Failed */}
+            {result.status === "failed" && (
+              <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/10">
+                  <AlertCircle className="h-4 w-4 text-rose-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-rose-300">Delivery Failed</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Driver was unable to complete this delivery. Please contact support.</p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

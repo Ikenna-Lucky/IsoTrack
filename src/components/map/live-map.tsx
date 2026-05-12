@@ -33,9 +33,7 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
       const maplibregl = (await import("maplibre-gl")).default;
       await import("maplibre-gl/dist/maplibre-gl.css");
 
-      const center: [number, number] = location
-        ? [location.lng, location.lat]
-        : DEFAULT_CENTER;
+      const center: [number, number] = location ? [location.lng, location.lat] : DEFAULT_CENTER;
 
       map = new maplibregl.Map({
         container: containerRef.current!,

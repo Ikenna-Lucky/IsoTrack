@@ -24,15 +24,15 @@ import { MOCK_SHIPMENTS, MOCK_DRIVERS, formatNaira } from "@/lib/mock/business";
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { href: "/business",           label: "Overview",   icon: LayoutDashboard, exact: true },
-  { href: "/business/shipments", label: "Shipments",  icon: Package,         badge: true },
-  { href: "/business/drivers",   label: "Drivers",    icon: Truck                       },
-  { href: "/business/analytics", label: "Analytics",  icon: BarChart3                   },
+  { href: "/business", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/business/shipments", label: "Shipments", icon: Package, badge: true },
+  { href: "/business/drivers", label: "Drivers", icon: Truck },
+  { href: "/business/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 const BOTTOM_ITEMS = [
-  { href: "/business/settings", label: "Settings",  icon: Settings  },
-  { href: "/business/help",     label: "Help",       icon: HelpCircle },
+  { href: "/business/settings", label: "Settings", icon: Settings },
+  { href: "/business/help", label: "Help", icon: HelpCircle },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -129,9 +129,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
                 <Icon
                   className={cn(
                     "h-4 w-4 shrink-0 transition-colors duration-150",
-                    active
-                      ? "text-sky-400"
-                      : "text-zinc-700 group-hover:text-zinc-300",
+                    active ? "text-sky-400" : "text-zinc-700 group-hover:text-zinc-300",
                   )}
                 />
 
@@ -144,9 +142,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
                   </span>
                 )}
 
-                {active && (
-                  <ChevronRight className="h-3 w-3 text-sky-400/60" />
-                )}
+                {active && <ChevronRight className="h-3 w-3 text-sky-400/60" />}
               </Link>
             );
           })}
@@ -156,17 +152,33 @@ export function BusinessSidebar({ open, onClose }: Props) {
             Support
           </p>
 
-          {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href as Route}
-              onClick={onClose}
-              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-zinc-600 border border-transparent hover:text-zinc-300 hover:bg-white/[0.04] hover:border-white/[0.04] transition-all duration-150"
-            >
-              <Icon className="h-4 w-4 shrink-0 text-zinc-700 group-hover:text-zinc-400 transition-colors" />
-              {label}
-            </Link>
-          ))}
+          {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active = isActive(href);
+            return (
+              <Link
+                key={href}
+                href={href as Route}
+                onClick={onClose}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium border transition-all duration-150",
+                  active
+                    ? "bg-gradient-to-r from-sky-500/[0.14] to-sky-500/[0.06] text-sky-400 border-sky-500/[0.2]"
+                    : "text-zinc-600 border-transparent hover:text-zinc-300 hover:bg-white/[0.04] hover:border-white/[0.04]",
+                )}
+              >
+                {active && (
+                  <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-sky-400" />
+                )}
+                <Icon
+                  className={cn(
+                    "h-4 w-4 shrink-0 transition-colors",
+                    active ? "text-sky-400" : "text-zinc-700 group-hover:text-zinc-400",
+                  )}
+                />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* ── Fleet snapshot ── */}
@@ -193,7 +205,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-zinc-600">In transit</span>
               <span className="text-[10px] font-semibold text-violet-400">
-                {MOCK_SHIPMENTS.filter(s => s.status === "in_transit").length} shipments
+                {MOCK_SHIPMENTS.filter((s) => s.status === "in_transit").length} shipments
               </span>
             </div>
           </div>
@@ -209,9 +221,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
               <p className="text-xs font-semibold text-zinc-200 truncate">
                 {user?.name ?? "Business"}
               </p>
-              <p className="text-[10px] text-zinc-600 truncate">
-                {user?.email ?? ""}
-              </p>
+              <p className="text-[10px] text-zinc-600 truncate">{user?.email ?? ""}</p>
             </div>
           </div>
 
@@ -227,4 +237,3 @@ export function BusinessSidebar({ open, onClose }: Props) {
     </>
   );
 }
-

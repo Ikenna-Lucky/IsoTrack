@@ -13,6 +13,7 @@ function usePageTitle(): string {
   if (pathname.startsWith("/driver/deliveries")) return "Deliveries";
   if (pathname.startsWith("/driver/earnings")) return "Earnings";
   if (pathname.startsWith("/driver/settings")) return "Settings";
+  if (pathname.startsWith("/driver/help"))     return "Help & Docs";
   return "Driver";
 }
 
@@ -27,7 +28,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <DriverSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="lg:ml-[230px] flex flex-col min-h-screen">
         <DriverTopbar title={title} onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
