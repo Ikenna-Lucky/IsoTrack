@@ -1,52 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { Search, MapPin, Package, Clock, Phone, Navigation, ChevronDown } from "lucide-react";
-import {
-  MOCK_DELIVERIES,
-  STATUS_META,
-  formatNaira,
-  type DeliveryStatus,
-} from "@/lib/mock/driver";
+import { Search, MapPin, Package, Clock, Phone, Navigation, ChevronDown, Loader2 } from "lucide-react";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { formatKobo } from "@/types";
+import type { ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
+
+// ─── Status meta ──────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<ShipmentStatus, { label: string; color: string; dot: string }> = {
+  pending:          { label: "Pending",          color: "text-amber-400",   dot: "#f59e0b" },
+  assigned:         { label: "Assigned",         color: "text-sky-400",     dot: "#0ea5e9" },
+  picked_up:        { label: "Picked Up",        color: "text-violet-400",  dot: "#8b5cf6" },
+  in_transit:       { label: "In Transit",       color: "text-blue-400",    dot: "#60a5fa" },
+  out_for_delivery: { label: "Out for Delivery", color: "text-violet-400",  dot: "#8b5cf6" },
+  delivered:        { label: "Delivered",        color: "text-emerald-400", dot: "#10b981" },
+  failed:           { label: "Failed",           color: "text-rose-400",    dot: "#f43f5e" },
+  cancelled:        { label: "Cancelled",        color: "text-zinc-500",    dot: "#71717a" },
+};
 
 // ─── Filter config ────────────────────────────────────────────────────────────
 
-const FILTERS: { label: string; value: DeliveryStatus | "all" }[] = [
-  { label: "All",        value: "all"              },
-  { label: "Active",     value: "out_for_delivery" },
-  { label: "Delivered",  value: "delivered"        },
-  { label: "Failed",     value: "failed"           },
+const FILTER_VALUES = ["all", "out_for_delivery", "delivered", "failed"] as const;
+type FilterValue = (typeof FILTER_VALUES)[number];
+
+const FILTERS: { label: string; value: FilterValue }[] = [
+  { label: "All",       value: "all"              },
+  { label: "Active",    value: "out_for_delivery" },
+  { label: "Delivered", value: "delivered"        },
+  { label: "Failed",    value: "failed"           },
 ];
-
-// ─── Package type badge colours ───────────────────────────────────────────────
-
-const PKG_COLORS: Record<string, string> = {
-  Document:    "text-sky-400    bg-sky-500/10    border-sky-500/20",
-  Electronics: "text-violet-400 bg-violet-500/10 border-violet-500/20",
-  Parcel:      "text-teal-400   bg-teal-500/10   border-teal-500/20",
-  Clothing:    "text-pink-400   bg-pink-500/10   border-pink-500/20",
-  Food:        "text-amber-400  bg-amber-500/10  border-amber-500/20",
-};
-const pkgColor = (type: string) =>
-  PKG_COLORS[type] ?? "text-zinc-400 bg-zinc-500/10 border-zinc-500/20";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriverDeliveriesPage() {
-  const [filter,   setFilter]   = useState<DeliveryStatus | "all">("all");
+  const [filter,   setFilter]   = useState<FilterValue>("all");
   const [search,   setSearch]   = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const filtered = MOCK_DELIVERIES.filter((d) => {
+  const { data: shipmentsData, isLoading } = useShipments({ pageSize: 100 });
+  const deliveries = getShipmentList(shipmentsData);
+
+  const filtered = deliveries.filter((d) => {
     const matchFilter = filter === "all" || d.status === filter;
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
       d.trackingId.toLowerCase().includes(q) ||
-      d.customer.name.toLowerCase().includes(q) ||
-      d.pickup.city.toLowerCase().includes(q) ||
-      d.delivery.city.toLowerCase().includes(q);
+      (d.customer?.name ?? "").toLowerCase().includes(q) ||
+      d.pickupAddress.city.toLowerCase().includes(q) ||
+      d.deliveryAddress.city.toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
@@ -57,7 +61,7 @@ export default function DriverDeliveriesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Deliveries</h2>
-          <p className="text-sm text-zinc-500 mt-0.5">{MOCK_DELIVERIES.length} total assignments</p>
+          <p className="text-sm text-zinc-500 mt-0.5">{deliveries.length} total assignments</p>
         </div>
 
         {/* Search */}
@@ -73,13 +77,13 @@ export default function DriverDeliveriesPage() {
         </div>
       </div>
 
-      {/* ── Filter tabs — horizontally scrollable on mobile ── */}
+      {/* ── Filter tabs ── */}
       <div className="flex items-center gap-0 overflow-x-auto scrollbar-none border-b border-white/[0.05] pb-px">
         {FILTERS.map(({ label, value }) => {
           const count =
             value === "all"
-              ? MOCK_DELIVERIES.length
-              : MOCK_DELIVERIES.filter((d) => d.status === value).length;
+              ? deliveries.length
+              : deliveries.filter((d) => d.status === value).length;
           const active = filter === value;
           return (
             <button
@@ -95,9 +99,7 @@ export default function DriverDeliveriesPage() {
               {label}
               <span className={cn(
                 "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold transition-all",
-                active
-                  ? "bg-teal-500/20 text-teal-400"
-                  : "bg-white/[0.06] text-zinc-500",
+                active ? "bg-teal-500/20 text-teal-400" : "bg-white/[0.06] text-zinc-500",
               )}>
                 {count}
               </span>
@@ -106,8 +108,15 @@ export default function DriverDeliveriesPage() {
         })}
       </div>
 
-      {/* ── Delivery cards ── */}
-      {filtered.length === 0 ? (
+      {/* ── Loading ── */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
+        </div>
+      )}
+
+      {/* ── Empty ── */}
+      {!isLoading && filtered.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
             <Package className="h-5 w-5 text-zinc-700" />
@@ -117,21 +126,23 @@ export default function DriverDeliveriesPage() {
             {search ? "Try a different search term" : "No deliveries match this filter"}
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* ── Delivery cards ── */}
+      {!isLoading && filtered.length > 0 && (
         <ul className="space-y-2.5">
           {filtered.map((d) => {
-            const meta       = STATUS_META[d.status];
-            const isExpanded = expanded === d.id;
-            const isActive   = d.status === "out_for_delivery";
+            const meta          = STATUS_META[d.status];
+            const isExpanded    = expanded === d.id;
+            const isActive      = d.status === "out_for_delivery" || d.status === "in_transit";
+            const driverEarning = Math.round(d.priceKobo * 0.4);
 
             return (
               <li
                 key={d.id}
                 className={cn(
                   "overflow-hidden rounded-2xl border transition-all duration-200",
-                  isActive
-                    ? "border-violet-500/[0.22] bg-[#0d0d11]"
-                    : "border-white/[0.06] bg-[#0d0d11]",
+                  isActive ? "border-violet-500/[0.22] bg-[#0d0d11]" : "border-white/[0.06] bg-[#0d0d11]",
                 )}
               >
                 {/* ── Card header ── */}
@@ -139,18 +150,13 @@ export default function DriverDeliveriesPage() {
                   onClick={() => setExpanded(isExpanded ? null : d.id)}
                   className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-white/[0.015] transition-colors"
                 >
-                  {/* Status dot */}
                   <div
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}80` }}
                   />
-
-                  {/* Route + tracking ID */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-mono text-xs font-bold text-zinc-200">
-                        {d.trackingId}
-                      </span>
+                      <span className="font-mono text-xs font-bold text-zinc-200">{d.trackingId}</span>
                       {isActive && (
                         <span className="animate-pulse rounded-full bg-violet-500/20 border border-violet-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-400">
                           Active
@@ -158,39 +164,29 @@ export default function DriverDeliveriesPage() {
                       )}
                     </div>
                     <p className="text-[11px] text-zinc-500 truncate">
-                      {d.pickup.city}
+                      {d.pickupAddress.city}
                       <span className="text-zinc-700"> → </span>
-                      {d.delivery.city}
-                      {" · "}{d.customer.name}
+                      {d.deliveryAddress.city}
+                      {d.customer?.name ? `  · ${d.customer.name}` : ""}
                     </p>
                   </div>
-
-                  {/* Distance — desktop only */}
                   <div className="hidden sm:flex items-center gap-1 shrink-0 text-zinc-600">
                     <Navigation className="h-3 w-3" />
-                    <span className="text-[11px]">{d.distance}</span>
+                    <span className="text-[11px]">{d.weightKg} kg</span>
                   </div>
-
-                  {/* Earning + status label */}
                   <div className="shrink-0 text-right">
                     <p className={cn(
                       "text-sm font-bold tabular-nums",
-                      d.driverEarning > 0 ? "text-emerald-400" : "text-zinc-600",
+                      driverEarning > 0 ? "text-emerald-400" : "text-zinc-600",
                     )}>
-                      {d.driverEarning > 0 ? `+${formatNaira(d.driverEarning)}` : "₦0"}
+                      {driverEarning > 0 ? `+${formatKobo(driverEarning)}` : "₦0"}
                     </p>
-                    <span className={cn("text-[10px] font-semibold", meta.color)}>
-                      {meta.label}
-                    </span>
+                    <span className={cn("text-[10px] font-semibold", meta.color)}>{meta.label}</span>
                   </div>
-
-                  {/* Expand chevron */}
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 shrink-0 text-zinc-600 transition-transform duration-200",
-                      isExpanded && "rotate-180",
-                    )}
-                  />
+                  <ChevronDown className={cn(
+                    "h-4 w-4 shrink-0 text-zinc-600 transition-transform duration-200",
+                    isExpanded && "rotate-180",
+                  )} />
                 </button>
 
                 {/* ── Expanded details ── */}
@@ -207,60 +203,46 @@ export default function DriverDeliveriesPage() {
                       <div className="space-y-3 flex-1 min-w-0">
                         <div>
                           <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Pickup</p>
-                          <p className="text-xs text-zinc-300">{d.pickup.address}, {d.pickup.city}</p>
+                          <p className="text-xs text-zinc-300">{d.pickupAddress.street}, {d.pickupAddress.city}</p>
                         </div>
                         <div>
                           <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Delivery</p>
-                          <p className="text-xs text-zinc-300">{d.delivery.address}, {d.delivery.city}</p>
+                          <p className="text-xs text-zinc-300">{d.deliveryAddress.street}, {d.deliveryAddress.city}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Meta strip */}
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {[
-                        { icon: Package,    label: "Type",     value: d.packageType },
-                        { icon: Navigation, label: "Distance", value: d.distance    },
-                        { icon: Clock,      label: d.completedAt ? "Completed" : "Assigned", value: d.completedAt
-                            ? new Date(d.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                            : new Date(d.assignedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })
+                        { icon: Package,    label: "Description", value: d.description || "—" },
+                        { icon: Navigation, label: "Weight",      value: `${d.weightKg} kg`   },
+                        {
+                          icon: Clock,
+                          label: d.actualDelivery ? "Completed" : "Created",
+                          value: new Date(d.actualDelivery ?? d.createdAt).toLocaleDateString("en-NG", {
+                            day: "numeric", month: "short",
+                          }),
                         },
-                        { icon: Navigation, label: "Weight",   value: d.weight     },
                       ].map(({ icon: Icon, label, value }) => (
                         <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
                           <div className="flex items-center gap-1 mb-0.5">
                             <Icon className="h-2.5 w-2.5 text-zinc-600" />
                             <p className="text-[9px] uppercase tracking-wider text-zinc-600">{label}</p>
                           </div>
-                          <p className="text-xs font-semibold text-zinc-300">{value}</p>
+                          <p className="text-xs font-semibold text-zinc-300 truncate">{value}</p>
                         </div>
                       ))}
                     </div>
 
-                    {/* Package type badge */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold",
-                        pkgColor(d.packageType),
-                      )}>
-                        {d.packageType}
-                      </span>
-                      {d.notes && (
-                        <span className="text-[11px] text-zinc-500 italic">
-                          · Note: {d.notes}
-                        </span>
-                      )}
+                    {/* Earnings chip */}
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Your Earning</p>
+                      <p className="text-sm font-bold text-emerald-400">{formatKobo(driverEarning)}</p>
                     </div>
 
-                    {/* Delivery note banner */}
-                    {d.notes && (
-                      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-3 py-2.5 text-xs text-rose-300">
-                        <span className="font-bold">⚠ Note: </span>{d.notes}
-                      </div>
-                    )}
-
-                    {/* Call CTA — full-width, thumb-friendly */}
-                    {isActive && (
+                    {/* Call CTA */}
+                    {isActive && d.customer?.phone && (
                       <a
                         href={`tel:${d.customer.phone}`}
                         className="flex items-center justify-center gap-2 rounded-xl border border-teal-500/25 bg-teal-500/10 py-3 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.18] hover:border-teal-500/40 transition-all active:scale-[0.98]"

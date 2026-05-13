@@ -12,30 +12,45 @@ import {
   ArrowDown,
   Package,
   Phone,
-  MapPin,
   CheckCircle2,
-  Clock,
-  Truck,
-  Circle,
-  Eye,
+  Loader2,
 } from "lucide-react";
-import {
-  MOCK_SHIPMENTS,
-  STATUS_META,
-  formatNaira,
-  type ShipmentStatus,
-} from "@/lib/mock/business";
+import { useShipments, getShipmentList, getPagination } from "@/hooks/use-shipments";
+import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
+// ─── Status meta ──────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<ShipmentStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  pending:          { label: "Pending",          color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/20",   dot: "#f59e0b" },
+  assigned:         { label: "Assigned",         color: "text-sky-400",     bg: "bg-sky-400/10",     border: "border-sky-400/20",     dot: "#38bdf8" },
+  picked_up:        { label: "Picked Up",        color: "text-violet-400",  bg: "bg-violet-400/10",  border: "border-violet-400/20",  dot: "#a78bfa" },
+  in_transit:       { label: "In Transit",       color: "text-blue-400",    bg: "bg-blue-400/10",    border: "border-blue-400/20",    dot: "#60a5fa" },
+  out_for_delivery: { label: "Out for Delivery", color: "text-cyan-400",    bg: "bg-cyan-400/10",    border: "border-cyan-400/20",    dot: "#22d3ee" },
+  delivered:        { label: "Delivered",        color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", dot: "#34d399" },
+  failed:           { label: "Failed",           color: "text-rose-400",    bg: "bg-rose-400/10",    border: "border-rose-400/20",    dot: "#f87171" },
+  cancelled:        { label: "Cancelled",        color: "text-zinc-500",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20",    dot: "#71717a" },
+};
 
 // ─── Status filter config ──────────────────────────────────────────────────────
 
 const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "In Transit", value: "in_transit" },
-  { label: "Out for Delivery", value: "out_for_delivery" },
-  { label: "Delivered", value: "delivered" },
-  { label: "Failed", value: "failed" },
+  { label: "All",             value: "all" },
+  { label: "Pending",         value: "pending" },
+  { label: "In Transit",      value: "in_transit" },
+  { label: "Out for Delivery",value: "out_for_delivery" },
+  { label: "Delivered",       value: "delivered" },
+  { label: "Failed",          value: "failed" },
 ];
 
 // ─── Timeline steps ────────────────────────────────────────────────────────────
@@ -47,7 +62,7 @@ const TIMELINE = [
   { key: "delivered",        label: "Delivered" },
 ] as const;
 
-function ShipmentTimeline({ status }: { status: string }) {
+function ShipmentTimeline({ status }: { status: ShipmentStatus }) {
   const currentIdx = TIMELINE.findIndex((t) => t.key === status);
   const isFailed = status === "failed" || status === "cancelled";
 
@@ -117,7 +132,7 @@ function ShipmentTimeline({ status }: { status: string }) {
 
 // ─── Expanded row detail ───────────────────────────────────────────────────────
 
-function ExpandedDetail({ s }: { s: (typeof MOCK_SHIPMENTS)[0] }) {
+function ExpandedDetail({ s }: { s: Shipment }) {
   return (
     <div className="border-t border-white/[0.05] bg-[#0b0b0f] px-5 py-5 animate-in fade-in slide-in-from-top-1 duration-200">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -132,15 +147,14 @@ function ExpandedDetail({ s }: { s: (typeof MOCK_SHIPMENTS)[0] }) {
           </p>
           <div className="space-y-2">
             {[
-              { label: "Type", value: s.packageType },
-              { label: "Weight", value: s.weight },
-              { label: "Amount", value: formatNaira(s.amount) },
-              { label: "Created", value: new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) },
-              ...(s.deliveredAt ? [{ label: "Delivered", value: new Date(s.deliveredAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" }) }] : []),
-              ...(s.notes ? [{ label: "Notes", value: s.notes }] : []),
+              { label: "Description", value: s.description },
+              { label: "Weight",      value: `${s.weightKg} kg` },
+              { label: "Amount",      value: formatNaira(s.priceKobo) },
+              { label: "Created",     value: new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) },
+              ...(s.actualDelivery ? [{ label: "Delivered", value: new Date(s.actualDelivery).toLocaleDateString("en-NG", { day: "numeric", month: "short" }) }] : []),
             ].map(({ label, value }) => (
               <div key={label} className="flex items-start gap-2">
-                <span className="text-[10px] text-zinc-600 w-16 shrink-0 mt-0.5">{label}</span>
+                <span className="text-[10px] text-zinc-600 w-20 shrink-0 mt-0.5">{label}</span>
                 <span className="text-[11px] font-medium text-zinc-300">{value}</span>
               </div>
             ))}
@@ -156,11 +170,11 @@ function ExpandedDetail({ s }: { s: (typeof MOCK_SHIPMENTS)[0] }) {
               </p>
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-sky-500/20 border border-teal-500/20 text-[11px] font-bold text-teal-300 uppercase">
-                  {s.driver.name.slice(0, 2)}
+                  {(s.driver.user?.name ?? "DR").slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-zinc-200">{s.driver.name}</p>
-                  <p className="text-[10px] text-amber-400">★ {s.driver.rating}</p>
+                  <p className="text-xs font-semibold text-zinc-200">{s.driver.user?.name ?? "Driver"}</p>
+                  <p className="text-[10px] text-amber-400">★ {s.driver.rating.toFixed(1)}</p>
                 </div>
               </div>
             </div>
@@ -175,25 +189,31 @@ function ExpandedDetail({ s }: { s: (typeof MOCK_SHIPMENTS)[0] }) {
             </div>
           )}
 
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600 mb-2">
-              Customer
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-zinc-200">{s.customer.name}</p>
-                <p className="text-[10px] text-zinc-600">{s.customer.phone}</p>
+          {s.customer && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600 mb-2">
+                Customer
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-zinc-200">{s.customer.name}</p>
+                  {s.customer.phone && (
+                    <p className="text-[10px] text-zinc-600">{s.customer.phone}</p>
+                  )}
+                </div>
+                {s.customer.phone && (
+                  <a
+                    href={`tel:${s.customer.phone}`}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Phone className="h-3 w-3" />
+                    Call
+                  </a>
+                )}
               </div>
-              <a
-                href={`tel:${s.customer.phone}`}
-                className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Phone className="h-3 w-3" />
-                Call
-              </a>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -213,41 +233,42 @@ function SortIcon({ col, sortBy, sortDir }: { col: SortKey; sortBy: SortKey; sor
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 20;
 
 export default function ShipmentsPage() {
-  const [filter, setFilter]       = useState<ShipmentStatus | "all">("all");
-  const [search, setSearch]       = useState("");
-  const [page, setPage]           = useState(1);
+  const [filter, setFilter]         = useState<ShipmentStatus | "all">("all");
+  const [search, setSearch]         = useState("");
+  const [page, setPage]             = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [sortBy, setSortBy]       = useState<SortKey>(null);
-  const [sortDir, setSortDir]     = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy]         = useState<SortKey>(null);
+  const [sortDir, setSortDir]       = useState<"asc" | "desc">("desc");
+
+  const { data: rawData, isLoading, isError } = useShipments({ page, pageSize: PAGE_SIZE });
+  const allShipments = getShipmentList(rawData);
+  const pagination   = getPagination(rawData);
 
   const handleSort = (col: SortKey) => {
-    if (sortBy === col) {
-      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    } else {
-      setSortBy(col);
-      setSortDir("desc");
-    }
+    if (sortBy === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortBy(col); setSortDir("desc"); }
     setPage(1);
   };
 
-  let filtered = MOCK_SHIPMENTS.filter((s) => {
+  // Client-side filter + search on the fetched page
+  let filtered = allShipments.filter((s) => {
     const matchFilter = filter === "all" || s.status === filter;
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
       s.trackingId.toLowerCase().includes(q) ||
-      s.customer.name.toLowerCase().includes(q) ||
-      s.pickup.city.toLowerCase().includes(q) ||
-      s.delivery.city.toLowerCase().includes(q);
+      s.customer?.name.toLowerCase().includes(q) ||
+      s.pickupAddress.city.toLowerCase().includes(q) ||
+      s.deliveryAddress.city.toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
   if (sortBy === "amount") {
     filtered = [...filtered].sort((a, b) =>
-      sortDir === "desc" ? b.amount - a.amount : a.amount - b.amount,
+      sortDir === "desc" ? b.priceKobo - a.priceKobo : a.priceKobo - b.priceKobo,
     );
   } else if (sortBy === "date") {
     filtered = [...filtered].sort((a, b) =>
@@ -257,8 +278,7 @@ export default function ShipmentsPage() {
     );
   }
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = pagination?.totalPages ?? 1;
 
   const handleFilterChange = (v: ShipmentStatus | "all") => {
     setFilter(v);
@@ -274,7 +294,7 @@ export default function ShipmentsPage() {
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Shipments</h2>
           <p className="text-sm text-zinc-500 mt-0.5">
-            {MOCK_SHIPMENTS.length} total &middot; {filtered.length} shown
+            {pagination ? `${pagination.total} total` : "Loading…"}
           </p>
         </div>
         <Link
@@ -291,8 +311,8 @@ export default function ShipmentsPage() {
         {FILTERS.map(({ label, value }) => {
           const count =
             value === "all"
-              ? MOCK_SHIPMENTS.length
-              : MOCK_SHIPMENTS.filter((s) => s.status === value).length;
+              ? allShipments.length
+              : allShipments.filter((s) => s.status === value).length;
           const meta = value !== "all" ? STATUS_META[value] : null;
           const active = filter === value;
           return (
@@ -331,10 +351,7 @@ export default function ShipmentsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600" />
         <input
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search ID, customer, city…"
           className="w-full rounded-xl border border-white/[0.07] bg-[#0d0d11] pl-9 pr-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-sky-500/40 focus:ring-2 focus:ring-sky-500/[0.15] transition-all"
         />
@@ -364,154 +381,156 @@ export default function ShipmentsPage() {
           })}
         </div>
 
-        {/* Rows */}
-        {paginated.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-zinc-700">
-            <Package className="h-10 w-10 mb-4 opacity-20" />
-            <p className="text-sm font-medium text-zinc-600">No shipments found</p>
-            <p className="text-xs text-zinc-700 mt-1">Try adjusting your filters</p>
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20 gap-2 text-zinc-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading shipments…</span>
           </div>
-        ) : (
-          <>
-            {/* ── Mobile cards (< sm) ── */}
-            <div className="sm:hidden divide-y divide-white/[0.04]">
-              {paginated.map((s) => {
-                const meta = STATUS_META[s.status];
-                const isExpanded = expandedId === s.id;
-                return (
-                  <div key={s.id}>
-                    <div
-                      className={cn(
-                        "px-4 py-3.5 cursor-pointer transition-colors",
-                        isExpanded ? "bg-white/[0.025]" : "hover:bg-white/[0.015]",
-                      )}
-                      onClick={() => setExpandedId(isExpanded ? null : s.id)}
-                    >
-                      {/* Top row: tracking ID + status badge + chevron */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }}
-                        />
-                        <span className="text-xs font-mono font-semibold text-zinc-200 flex-1 truncate">
-                          {s.trackingId}
-                        </span>
-                        <span
-                          className={cn(
-                            "rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap",
-                            meta.color, meta.bg, meta.border,
-                          )}
-                        >
-                          {meta.label}
-                        </span>
-                        <ChevronDown
-                          className={cn(
-                            "h-3.5 w-3.5 shrink-0 text-zinc-600 transition-transform duration-200",
-                            isExpanded && "rotate-180 text-sky-400",
-                          )}
-                        />
+        )}
+
+        {/* Error state */}
+        {isError && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-20 text-zinc-700">
+            <p className="text-sm font-medium text-rose-400">Failed to load shipments</p>
+            <p className="text-xs text-zinc-700 mt-1">Check your connection and try again</p>
+          </div>
+        )}
+
+        {/* Rows */}
+        {!isLoading && !isError && (
+          filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-zinc-700">
+              <Package className="h-10 w-10 mb-4 opacity-20" />
+              <p className="text-sm font-medium text-zinc-600">No shipments found</p>
+              <p className="text-xs text-zinc-700 mt-1">Try adjusting your filters or create a new shipment</p>
+            </div>
+          ) : (
+            <>
+              {/* ── Mobile cards (< sm) ── */}
+              <div className="sm:hidden divide-y divide-white/[0.04]">
+                {filtered.map((s) => {
+                  const meta = STATUS_META[s.status];
+                  const isExpanded = expandedId === s.id;
+                  return (
+                    <div key={s.id}>
+                      <div
+                        className={cn(
+                          "px-4 py-3.5 cursor-pointer transition-colors",
+                          isExpanded ? "bg-white/[0.025]" : "hover:bg-white/[0.015]",
+                        )}
+                        onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }}
+                          />
+                          <span className="text-xs font-mono font-semibold text-zinc-200 flex-1 truncate">
+                            {s.trackingId}
+                          </span>
+                          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap", meta.color, meta.bg, meta.border)}>
+                            {meta.label}
+                          </span>
+                          <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-zinc-600 transition-transform duration-200", isExpanded && "rotate-180 text-sky-400")} />
+                        </div>
+                        <div className="flex items-end justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-medium text-zinc-400 truncate">{s.customer?.name ?? "—"}</p>
+                            <p className="text-[10px] text-zinc-600 truncate">
+                              {s.pickupAddress.city} <span className="text-zinc-700">→</span> {s.deliveryAddress.city}
+                            </p>
+                          </div>
+                          <p className="text-xs font-semibold text-zinc-200 tabular-nums shrink-0">{formatNaira(s.priceKobo)}</p>
+                        </div>
                       </div>
-                      {/* Bottom row: customer + route + amount */}
-                      <div className="flex items-end justify-between gap-2">
+                      {isExpanded && <ExpandedDetail s={s} />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Desktop table rows (sm+) ── */}
+              <div className="hidden sm:block divide-y divide-white/[0.04]">
+                {filtered.map((s) => {
+                  const meta = STATUS_META[s.status];
+                  const isExpanded = expandedId === s.id;
+                  return (
+                    <div key={s.id}>
+                      <div
+                        className={cn(
+                          "group grid grid-cols-[auto_1fr_1.2fr_1.2fr_auto_auto_auto_auto] gap-3 px-5 py-3.5 cursor-pointer transition-all duration-150",
+                          isExpanded ? "bg-white/[0.025]" : "hover:bg-white/[0.015]",
+                        )}
+                        onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }}
+                          />
+                          <span className="text-xs font-mono font-semibold text-zinc-200 group-hover:text-white transition-colors whitespace-nowrap">
+                            {s.trackingId}
+                          </span>
+                        </div>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-medium text-zinc-400 truncate">
-                            {s.customer.name}
-                          </p>
-                          <p className="text-[10px] text-zinc-600 truncate">
-                            {s.pickup.city} <span className="text-zinc-700">→</span> {s.delivery.city}
+                          <p className="text-xs font-medium text-zinc-300 truncate">{s.customer?.name ?? "—"}</p>
+                          {s.customer?.phone && <p className="text-[10px] text-zinc-600">{s.customer.phone}</p>}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-zinc-400 truncate">{s.pickupAddress.city}</p>
+                          <p className="text-[11px] text-zinc-600 truncate flex items-center gap-1">
+                            <span className="text-zinc-700">→</span> {s.deliveryAddress.city}
                           </p>
                         </div>
-                        <p className="text-xs font-semibold text-zinc-200 tabular-nums shrink-0">
-                          {formatNaira(s.amount)}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {s.driver ? (
+                            <>
+                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/20 text-[8px] font-bold text-teal-300 uppercase">
+                                {(s.driver.user?.name ?? "DR").slice(0, 2)}
+                              </div>
+                              <p className="text-[11px] text-zinc-500 truncate max-w-[70px]">
+                                {(s.driver.user?.name ?? "Driver").split(" ")[0]}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-zinc-700 italic">Unassigned</p>
+                          )}
+                        </div>
+                        <div className="flex items-center">
+                          <span className={cn("flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium whitespace-nowrap", meta.color, meta.bg, meta.border)}>
+                            {meta.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-xs font-semibold text-zinc-200 tabular-nums whitespace-nowrap">
+                            {formatNaira(s.priceKobo)}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-[10px] text-zinc-600 whitespace-nowrap">
+                            {new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <ChevronDown className={cn("h-3.5 w-3.5 text-zinc-600 transition-transform duration-200", isExpanded && "rotate-180 text-sky-400")} />
+                        </div>
                       </div>
+                      {isExpanded && <ExpandedDetail s={s} />}
                     </div>
-                    {isExpanded && <ExpandedDetail s={s} />}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── Desktop table rows (sm+) ── */}
-            <div className="hidden sm:block divide-y divide-white/[0.04]">
-              {paginated.map((s) => {
-                const meta = STATUS_META[s.status];
-                const isExpanded = expandedId === s.id;
-                return (
-                  <div key={s.id}>
-                    <div
-                      className={cn(
-                        "group grid grid-cols-[auto_1fr_1.2fr_1.2fr_auto_auto_auto_auto] gap-3 px-5 py-3.5 cursor-pointer transition-all duration-150",
-                        isExpanded ? "bg-white/[0.025]" : "hover:bg-white/[0.015]",
-                      )}
-                      onClick={() => setExpandedId(isExpanded ? null : s.id)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }}
-                        />
-                        <span className="text-xs font-mono font-semibold text-zinc-200 group-hover:text-white transition-colors whitespace-nowrap">
-                          {s.trackingId}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-zinc-300 truncate">{s.customer.name}</p>
-                        <p className="text-[10px] text-zinc-600">{s.customer.phone}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] text-zinc-400 truncate">{s.pickup.city}</p>
-                        <p className="text-[11px] text-zinc-600 truncate flex items-center gap-1">
-                          <span className="text-zinc-700">→</span> {s.delivery.city}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {s.driver ? (
-                          <>
-                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/20 text-[8px] font-bold text-teal-300 uppercase">
-                              {s.driver.name.slice(0, 2)}
-                            </div>
-                            <p className="text-[11px] text-zinc-500 truncate max-w-[70px]">
-                              {s.driver.name.split(" ")[0]}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-[10px] text-zinc-700 italic">Unassigned</p>
-                        )}
-                      </div>
-                      <div className="flex items-center">
-                        <span className={cn("flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium whitespace-nowrap", meta.color, meta.bg, meta.border)}>
-                          {meta.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs font-semibold text-zinc-200 tabular-nums whitespace-nowrap">
-                          {formatNaira(s.amount)}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-[10px] text-zinc-600 whitespace-nowrap">
-                          {new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-end">
-                        <ChevronDown className={cn("h-3.5 w-3.5 text-zinc-600 transition-transform duration-200", isExpanded && "rotate-180 text-sky-400")} />
-                      </div>
-                    </div>
-                    {isExpanded && <ExpandedDetail s={s} />}
-                  </div>
-                );
-              })}
-            </div>
-          </>
+                  );
+                })}
+              </div>
+            </>
+          )
         )}
 
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-white/[0.05]">
             <p className="text-[11px] text-zinc-600">
-              Showing {(page - 1) * PAGE_SIZE + 1}–
-              {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+              Page {page} of {totalPages}
+              {pagination && ` · ${pagination.total} shipments`}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -521,7 +540,7 @@ export default function ShipmentsPage() {
               >
                 Prev
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPage(p)}

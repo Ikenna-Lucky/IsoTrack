@@ -7,8 +7,10 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  phone?: string;
-  avatar?: string;
+  phone?: string | null;
+  avatar?: string | null;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,13 +44,13 @@ export interface Coordinates {
   lng: number;
 }
 
+// Matches the jsonb shape stored in the backend
 export interface Address {
   street: string;
   city: string;
   state: string;
-  country: string;
+  country?: string;
   postalCode?: string;
-  coordinates?: Coordinates;
 }
 
 export interface Shipment {
@@ -58,39 +60,40 @@ export interface Shipment {
 
   // Parties
   businessId: string;
-  driverId?: string;
-  customerId?: string;
+  driverId?: string | null;
+  customerId?: string | null;
 
   // Package info
   description: string;
-  weight: number; // kg
+  weightKg: number;
   dimensions?: {
     length: number;
     width: number;
     height: number;
-  };
+  } | null;
 
   // Locations
   pickupAddress: Address;
   deliveryAddress: Address;
+  currentLocation?: Coordinates | null;
 
   // Timestamps
-  scheduledPickup?: string;
-  actualPickup?: string;
-  estimatedDelivery?: string;
-  actualDelivery?: string;
+  scheduledPickup?: string | null;
+  actualPickup?: string | null;
+  estimatedDelivery?: string | null;
+  actualDelivery?: string | null;
   createdAt: string;
   updatedAt: string;
 
-  // Financials
-  price: number; // in kobo (NGN smallest unit)
+  // Financials — stored in kobo (1 NGN = 100 kobo)
+  priceKobo: number;
   isPaid: boolean;
-  paymentReference?: string;
 
-  // Relations
-  driver?: Driver;
+  // Populated relations (present when backend joins them)
+  driver?: Driver | null;
+  customer?: User | null;
+  business?: Business | null;
   events?: ShipmentEvent[];
-  currentLocation?: Coordinates;
 }
 
 export interface ShipmentEvent {
@@ -98,24 +101,27 @@ export interface ShipmentEvent {
   shipmentId: string;
   status: ShipmentStatus;
   message: string;
-  location?: Coordinates;
-  timestamp: string;
+  location?: Coordinates | null;
+  createdAt: string;
 }
 
 // ─── Driver ───────────────────────────────────────────────────────────────────
 
 export type DriverStatus = "available" | "on_delivery" | "offline";
+export type VehicleType = "bike" | "car" | "van" | "truck";
 
 export interface Driver {
   id: string;
   userId: string;
   user: User;
-  vehicleType: "bike" | "car" | "van" | "truck";
+  vehicleType: VehicleType;
   vehiclePlate: string;
   status: DriverStatus;
-  currentLocation?: Coordinates;
+  currentLocation?: Coordinates | null;
   rating: number;
   totalDeliveries: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Business ─────────────────────────────────────────────────────────────────
@@ -125,9 +131,19 @@ export interface Business {
   userId: string;
   user: User;
   businessName: string;
-  logo?: string;
-  address: Address;
+  logo?: string | null;
+  address?: Address | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Business analytics (returned by GET /business/analytics) ─────────────────
+
+export interface BusinessAnalytics {
+  statusBreakdown: Partial<Record<ShipmentStatus, number>>;
   totalShipments: number;
+  totalRevenueKobo: number;
+  recentShipments: Shipment[];
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -161,6 +177,7 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+  message?: string;
 }
 
 export interface ApiError {
@@ -173,10 +190,12 @@ export interface ApiError {
 // ─── WebSocket events ─────────────────────────────────────────────────────────
 
 export interface WsLocationUpdate {
-  shipmentId: string;
-  driverId: string;
-  coordinates: Coordinates;
-  timestamp: string;
+  trackingId: string;
+  lat: number;
+  lng: number;
+  heading?: number;
+  speed?: number;
+  timestamp: number;
 }
 
 export interface WsStatusUpdate {
@@ -191,3 +210,13 @@ export type WsEvent =
   | { event: "status:update"; data: WsStatusUpdate }
   | { event: "driver:connected"; data: { driverId: string } }
   | { event: "driver:disconnected"; data: { driverId: string } };
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+
+/** Convert kobo to naira string e.g. 150000 → "₦1,500.00" */
+export function formatKobo(kobo: number): string {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+  }).format(kobo / 100);
+}

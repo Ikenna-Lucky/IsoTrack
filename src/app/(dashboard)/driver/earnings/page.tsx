@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   TrendingUp,
   Package,
@@ -11,29 +11,10 @@ import {
   CreditCard,
   Calendar,
 } from "lucide-react";
-import {
-  CURRENT_DRIVER,
-  DAILY_EARNINGS,
-  MOCK_DELIVERIES,
-  formatNaira,
-} from "@/lib/mock/driver";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { useDriverProfile } from "@/hooks/use-driver";
+import { formatKobo } from "@/types";
 import { cn } from "@/lib/utils";
-
-// ─── Computed totals ──────────────────────────────────────────────────────────
-
-const totalWeekEarnings   = DAILY_EARNINGS.reduce((s, d) => s + d.earning, 0);
-const totalWeekDeliveries = DAILY_EARNINGS.reduce((s, d) => s + d.deliveries, 0);
-const totalAllTime        = MOCK_DELIVERIES.reduce((s, d) => s + d.driverEarning, 0);
-const avgPerTrip          = Math.round(totalAllTime / CURRENT_DRIVER.totalDeliveries);
-const maxEarning          = Math.max(...DAILY_EARNINGS.map((d) => d.earning));
-
-const MONTHLY = [
-  { month: "Jan 2024", deliveries: 42, earning: 65520  },
-  { month: "Dec 2023", deliveries: 96, earning: 149760 },
-  { month: "Nov 2023", deliveries: 79, earning: 123240 },
-  { month: "Oct 2023", deliveries: 88, earning: 137280 },
-  { month: "Sep 2023", deliveries: 72, earning: 112320 },
-];
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -80,8 +61,6 @@ function KPICard({
       accentClass,
     )}>
       <div className={cn("pointer-events-none absolute -bottom-6 -right-6 h-24 w-24 rounded-full blur-3xl opacity-[0.15]", glowClass)} />
-
-      {/* Icon row — sparkline hidden on mobile to save space */}
       <div className="flex items-start justify-between mb-3">
         <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl border", iconBg)}>
           <Icon className={cn("h-4 w-4", iconColor)} />
@@ -90,11 +69,9 @@ function KPICard({
           <Sparkline data={sparkData} color={sparkColor} id={sparkId} />
         </div>
       </div>
-
       <p className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-0.5 truncate">{value}</p>
       <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">{label}</p>
       <p className="text-[10px] text-zinc-600 mb-3 truncate">{sub}</p>
-
       <div className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold max-w-full overflow-hidden",
         trendUp ? "bg-emerald-500/[0.08] text-emerald-400" : "bg-rose-500/[0.08] text-rose-400",
@@ -112,13 +89,84 @@ function KPICard({
 
 export default function DriverEarningsPage() {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const [touchedBar, setTouchedBar]  = useState<number | null>(null);
+  const [touchedBar, setTouchedBar] = useState<number | null>(null);
   const activeBar = hoveredBar ?? touchedBar;
 
-  const earnSpark    = DAILY_EARNINGS.map((d) => d.earning);
-  const tripSpark    = DAILY_EARNINGS.map((d) => d.deliveries);
-  const allTimeSpark = [85000, 98000, 120000, 135000, 148000, totalAllTime];
-  const rateSpark    = [4.5, 4.6, 4.7, 4.7, 4.8, 4.8, CURRENT_DRIVER.rating * 10];
+  const { data: driver } = useDriverProfile();
+  const { data: shipmentsData } = useShipments({ pageSize: 200 });
+  const shipments = getShipmentList(shipmentsData);
+
+  const delivered = shipments.filter((s) => s.status === "delivered");
+
+  // ── Weekly breakdown (Mon–Sun of current week) ────────────────────────────
+  const { weeklyData, totalWeekEarnings, totalWeekDeliveries } = useMemo(() => {
+    const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const now  = new Date();
+    const dow  = now.getDay();
+    const diff = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+
+    const data = DAYS.map((day, i) => {
+      const dayStart = new Date(monday);
+      dayStart.setDate(monday.getDate() + i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const dayShipments = delivered.filter((s) => {
+        const d = new Date(s.actualDelivery ?? s.updatedAt);
+        return d >= dayStart && d <= dayEnd;
+      });
+
+      const earning    = dayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+      const deliveries = dayShipments.length;
+      return { day, earning, deliveries };
+    });
+
+    return {
+      weeklyData:          data,
+      totalWeekEarnings:   data.reduce((s, d) => s + d.earning, 0),
+      totalWeekDeliveries: data.reduce((s, d) => s + d.deliveries, 0),
+    };
+  }, [delivered]);
+
+  // ── Monthly history (last 6 months) ─────────────────────────────────────
+  const monthlyHistory = useMemo(() => {
+    const months: { month: string; deliveries: number; earning: number }[] = [];
+    const now = new Date();
+
+    for (let m = 0; m < 6; m++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end   = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      const monthShipments = delivered.filter((s) => {
+        const d = new Date(s.actualDelivery ?? s.updatedAt);
+        return d >= start && d <= end;
+      });
+
+      months.push({
+        month: date.toLocaleDateString("en-NG", { month: "short", year: "numeric" }),
+        deliveries: monthShipments.length,
+        earning: monthShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0),
+      });
+    }
+    return months;
+  }, [delivered]);
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
+  const totalAllTime   = delivered.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+  const totalTrips     = driver?.totalDeliveries ?? delivered.length;
+  const avgPerTrip     = totalTrips > 0 ? Math.round(totalAllTime / totalTrips) : 0;
+  const rating         = driver?.rating ?? 0;
+  const maxEarning     = Math.max(...weeklyData.map((d) => d.earning), 1);
+
+  // Sparklines
+  const earnSpark    = weeklyData.map((d) => d.earning);
+  const tripSpark    = weeklyData.map((d) => d.deliveries);
+  const allTimeSpark = monthlyHistory.map((d) => d.earning).reverse();
+  const rateSpark    = [4.5, 4.6, 4.6, 4.7, 4.8, 4.8, rating * 10].filter(Boolean);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -133,14 +181,14 @@ export default function DriverEarningsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KPICard
           label="This Week"
-          value={formatNaira(totalWeekEarnings)}
+          value={formatKobo(totalWeekEarnings)}
           sub={`${totalWeekDeliveries} deliveries`}
-          trend="+12% vs last week"
-          trendUp={true}
+          trend={totalWeekEarnings > 0 ? "This week" : "No earnings yet"}
+          trendUp={totalWeekEarnings > 0}
           icon={TrendingUp}
           iconColor="text-teal-400"
           iconBg="bg-teal-500/10 border-teal-500/20"
-          sparkData={earnSpark}
+          sparkData={earnSpark.length > 1 ? earnSpark : [0, 1]}
           sparkColor="#2dd4bf"
           sparkId="earn-spark-week"
           accentClass="border-teal-500/[0.15] hover:border-teal-500/25"
@@ -148,14 +196,14 @@ export default function DriverEarningsPage() {
         />
         <KPICard
           label="All-Time Earnings"
-          value={formatNaira(totalAllTime)}
-          sub={`${CURRENT_DRIVER.totalDeliveries} trips total`}
-          trend="Since Jun 2023"
-          trendUp={true}
+          value={formatKobo(totalAllTime)}
+          sub={`${totalTrips} trips total`}
+          trend={totalAllTime > 0 ? "Lifetime" : "Getting started"}
+          trendUp={totalAllTime > 0}
           icon={DollarSign}
           iconColor="text-emerald-400"
           iconBg="bg-emerald-500/10 border-emerald-500/20"
-          sparkData={allTimeSpark}
+          sparkData={allTimeSpark.length > 1 ? allTimeSpark : [0, 1]}
           sparkColor="#34d399"
           sparkId="earn-spark-alltime"
           accentClass="border-emerald-500/[0.15] hover:border-emerald-500/25"
@@ -163,14 +211,14 @@ export default function DriverEarningsPage() {
         />
         <KPICard
           label="Avg per Trip"
-          value={formatNaira(avgPerTrip)}
+          value={formatKobo(avgPerTrip)}
           sub="Per delivery"
-          trend="+₦180 vs last month"
-          trendUp={true}
+          trend={avgPerTrip > 0 ? "Per delivery" : "No data yet"}
+          trendUp={avgPerTrip > 0}
           icon={Package}
           iconColor="text-sky-400"
           iconBg="bg-sky-500/10 border-sky-500/20"
-          sparkData={tripSpark}
+          sparkData={tripSpark.length > 1 ? tripSpark : [0, 1]}
           sparkColor="#38bdf8"
           sparkId="earn-spark-avg"
           accentClass="border-sky-500/[0.15] hover:border-sky-500/25"
@@ -178,14 +226,14 @@ export default function DriverEarningsPage() {
         />
         <KPICard
           label="Rating"
-          value={`${CURRENT_DRIVER.rating} / 5`}
+          value={rating > 0 ? `${rating.toFixed(1)} / 5` : "—"}
           sub="Customer score"
-          trend="Top 5% driver"
-          trendUp={true}
+          trend={rating >= 4.5 ? "Top driver" : rating > 0 ? "Keep improving" : "No ratings yet"}
+          trendUp={rating >= 4.0}
           icon={Star}
           iconColor="text-amber-400"
           iconBg="bg-amber-500/10 border-amber-500/20"
-          sparkData={rateSpark}
+          sparkData={rateSpark.length > 1 ? rateSpark : [0, 1]}
           sparkColor="#fbbf24"
           sparkId="earn-spark-rating"
           accentClass="border-amber-500/[0.15] hover:border-amber-500/25"
@@ -203,15 +251,15 @@ export default function DriverEarningsPage() {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-bold text-teal-400">{formatNaira(totalWeekEarnings)}</p>
+            <p className="text-sm font-bold text-teal-400">{formatKobo(totalWeekEarnings)}</p>
             <p className="text-[10px] text-zinc-600">weekly total</p>
           </div>
         </div>
 
         <div className="flex items-stretch gap-1.5 sm:gap-3 h-44 sm:h-36">
-          {DAILY_EARNINGS.map(({ day, earning, deliveries }, i) => {
+          {weeklyData.map(({ day, earning, deliveries }, i) => {
             const pct      = (earning / maxEarning) * 100;
-            const isToday  = i === DAILY_EARNINGS.length - 1;
+            const isToday  = i === new Date().getDay() - 1;
             const isActive = activeBar === i;
             return (
               <div
@@ -222,14 +270,12 @@ export default function DriverEarningsPage() {
                 onTouchStart={(e) => { e.preventDefault(); setTouchedBar(i); }}
                 onTouchEnd={() => setTimeout(() => setTouchedBar(null), 1500)}
               >
-                {/* Tooltip — hover on desktop, tap on mobile */}
                 {isActive && (
                   <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-xl border border-white/[0.1] bg-[#16161d] px-3 py-2 text-center shadow-xl pointer-events-none">
-                    <p className="text-xs font-bold text-white">{formatNaira(earning)}</p>
+                    <p className="text-xs font-bold text-white">{formatKobo(earning)}</p>
                     <p className="text-[10px] text-zinc-500">{deliveries} trips</p>
                   </div>
                 )}
-                {/* Bar area — flex-1 fills remaining height, bars grow from bottom */}
                 <div className="flex-1 min-h-0 w-full flex items-end">
                   <div
                     className="w-full rounded-t-md transition-all duration-300"
@@ -242,10 +288,7 @@ export default function DriverEarningsPage() {
                     }}
                   />
                 </div>
-                <span className={cn(
-                  "text-[10px] font-medium",
-                  isToday ? "text-teal-400" : "text-zinc-600",
-                )}>
+                <span className={cn("text-[10px] font-medium", isToday ? "text-teal-400" : "text-zinc-600")}>
                   {day}
                 </span>
                 <span className="text-[9px] text-zinc-700">{deliveries}x</span>
@@ -256,7 +299,7 @@ export default function DriverEarningsPage() {
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-2.5">
           <span className="text-xs text-zinc-500">Weekly total</span>
-          <span className="text-sm font-bold text-emerald-400">{formatNaira(totalWeekEarnings)}</span>
+          <span className="text-sm font-bold text-emerald-400">{formatKobo(totalWeekEarnings)}</span>
         </div>
       </div>
 
@@ -264,7 +307,7 @@ export default function DriverEarningsPage() {
       <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
         <div className="px-5 py-4 border-b border-white/[0.05]">
           <p className="text-sm font-semibold text-white">Monthly History</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">Last 5 months</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">Last 6 months</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[320px]">
@@ -291,9 +334,11 @@ export default function DriverEarningsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {MONTHLY.map(({ month, deliveries, earning }, i) => {
-                const prev  = MONTHLY[i + 1];
-                const delta = prev ? ((earning - prev.earning) / prev.earning) * 100 : null;
+              {monthlyHistory.map(({ month, deliveries, earning }, i) => {
+                const prev  = monthlyHistory[i + 1];
+                const delta = prev && prev.earning > 0
+                  ? ((earning - prev.earning) / prev.earning) * 100
+                  : null;
                 const up    = delta !== null && delta >= 0;
                 return (
                   <tr key={month} className="hover:bg-white/[0.015] transition-colors">
@@ -307,22 +352,18 @@ export default function DriverEarningsPage() {
                       {deliveries}
                     </td>
                     <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-right text-sm font-bold text-emerald-400 tabular-nums">
-                      {formatNaira(earning)}
+                      {formatKobo(earning)}
                     </td>
                     <td className="hidden sm:table-cell px-5 py-3.5 text-right text-xs text-zinc-500 tabular-nums">
-                      {formatNaira(Math.round(earning / deliveries))}
+                      {deliveries > 0 ? formatKobo(Math.round(earning / deliveries)) : "—"}
                     </td>
                     <td className="hidden sm:table-cell px-5 py-3.5 text-right">
                       {delta !== null ? (
                         <span className={cn(
                           "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                          up
-                            ? "bg-emerald-500/[0.08] text-emerald-400"
-                            : "bg-rose-500/[0.08] text-rose-400",
+                          up ? "bg-emerald-500/[0.08] text-emerald-400" : "bg-rose-500/[0.08] text-rose-400",
                         )}>
-                          {up
-                            ? <ArrowUpRight className="h-2.5 w-2.5" />
-                            : <ArrowDownRight className="h-2.5 w-2.5" />}
+                          {up ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
                           {Math.abs(delta).toFixed(1)}%
                         </span>
                       ) : (
@@ -337,7 +378,7 @@ export default function DriverEarningsPage() {
         </div>
         <div className="px-4 sm:px-5 py-3 border-t border-white/[0.05] flex items-center justify-between bg-emerald-500/[0.03]">
           <span className="text-xs font-medium text-zinc-400">All-time earnings</span>
-          <span className="text-sm font-bold text-emerald-400">{formatNaira(totalAllTime)}</span>
+          <span className="text-sm font-bold text-emerald-400">{formatKobo(totalAllTime)}</span>
         </div>
       </div>
 
@@ -354,24 +395,24 @@ export default function DriverEarningsPage() {
               iconColor: "text-sky-400",
               iconBg: "bg-sky-500/10 border-sky-500/20",
               label: "Bank Account",
-              value: "GTBank · ****4521",
-              sub: "Linked & verified",
+              value: "Link your bank",
+              sub: "Set up in settings",
             },
             {
               icon: Calendar,
               iconColor: "text-violet-400",
               iconBg: "bg-violet-500/10 border-violet-500/20",
-              label: "Next Payout",
-              value: "Friday, 19 Jan 2024",
-              sub: "Weekly schedule",
+              label: "Payout Schedule",
+              value: "Weekly — Fridays",
+              sub: "Automatic transfer",
             },
             {
               icon: DollarSign,
               iconColor: "text-amber-400",
               iconBg: "bg-amber-500/10 border-amber-500/20",
               label: "Pending Balance",
-              value: formatNaira(totalWeekEarnings),
-              sub: "Releases on Friday",
+              value: formatKobo(totalWeekEarnings),
+              sub: "Releases this Friday",
             },
             {
               icon: TrendingUp,

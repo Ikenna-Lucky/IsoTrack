@@ -11,22 +11,82 @@ import {
   Clock,
   Calendar,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
-import {
-  CUSTOMER_SHIPMENTS,
-  STATUS_META,
-  formatNaira,
-  type ShipmentStatus,
-} from "@/lib/mock/customer";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
+const STATUS_META: Record<
+  ShipmentStatus,
+  { label: string; color: string; bg: string; border: string; dot: string }
+> = {
+  pending:          { label: "Pending",          color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   dot: "#f59e0b" },
+  assigned:         { label: "Driver Assigned",  color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  picked_up:        { label: "Picked Up",        color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  in_transit:       { label: "In Transit",       color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  out_for_delivery: { label: "Out for Delivery", color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  dot: "#8b5cf6" },
+  delivered:        { label: "Delivered",        color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", dot: "#10b981" },
+  failed:           { label: "Failed",           color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    dot: "#f43f5e" },
+  cancelled:        { label: "Cancelled",        color: "text-zinc-400",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20",    dot: "#71717a" },
+};
+
+// ─── Timeline from events ─────────────────────────────────────────────────────
+
+const STATUS_STEPS = [
+  { status: "pending",          label: "Order placed",      sub: "Shipment request received"      },
+  { status: "assigned",         label: "Driver assigned",   sub: "A driver accepted the order"    },
+  { status: "picked_up",        label: "Package picked up", sub: "Driver collected the package"   },
+  { status: "out_for_delivery", label: "Out for delivery",  sub: "Driver near delivery area"       },
+  { status: "delivered",        label: "Delivered",         sub: "Package delivered successfully" },
+] as const;
+
+function deriveTimeline(s: Shipment) {
+  const ORDER = STATUS_STEPS.map((st) => st.status as string);
+  const currentIdx = Math.max(ORDER.indexOf(s.status), 0);
+  const isFailed = s.status === "failed" || s.status === "cancelled";
+
+  return STATUS_STEPS.map(({ status, label, sub }, i) => {
+    const event = s.events?.find((e) => e.status === status);
+    const time = event
+      ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "—";
+
+    let state: "done" | "current" | "pending";
+    if (isFailed)              state = i < currentIdx ? "done" : "pending";
+    else if (i < currentIdx)   state = "done";
+    else if (i === currentIdx) state = "current";
+    else                       state = "pending";
+
+    return { label, sub: event?.message ?? sub, time, state };
+  });
+}
+
+// ─── Filter config ────────────────────────────────────────────────────────────
+
+const FILTER_VALUES = ["all", "out_for_delivery", "pending", "delivered", "failed"] as const;
+type FilterValue = (typeof FILTER_VALUES)[number];
+
+const FILTERS: { label: string; value: FilterValue }[] = [
   { label: "All",       value: "all"              },
   { label: "Active",    value: "out_for_delivery" },
   { label: "Pending",   value: "pending"          },
   { label: "Delivered", value: "delivered"        },
   { label: "Failed",    value: "failed"           },
 ];
+
+// ─── Timeline step ────────────────────────────────────────────────────────────
 
 function TimelineStep({
   label, sub, time, state, isLast,
@@ -66,20 +126,25 @@ function TimelineStep({
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function CustomerShipmentsPage() {
-  const [filter,   setFilter]   = useState<ShipmentStatus | "all">("all");
+  const [filter,   setFilter]   = useState<FilterValue>("all");
   const [search,   setSearch]   = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const filtered = CUSTOMER_SHIPMENTS.filter((s) => {
+  const { data: shipmentsData, isLoading } = useShipments({ pageSize: 100 });
+  const allShipments = getShipmentList(shipmentsData);
+
+  const filtered = allShipments.filter((s) => {
     const matchFilter = filter === "all" || s.status === filter;
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
       s.trackingId.toLowerCase().includes(q) ||
-      s.pickup.city.toLowerCase().includes(q) ||
-      s.delivery.city.toLowerCase().includes(q) ||
-      s.packageType.toLowerCase().includes(q);
+      s.pickupAddress.city.toLowerCase().includes(q) ||
+      s.deliveryAddress.city.toLowerCase().includes(q) ||
+      (s.description ?? "").toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
@@ -90,13 +155,13 @@ export default function CustomerShipmentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">My Shipments</h2>
-          <p className="text-sm text-zinc-500 mt-0.5">{CUSTOMER_SHIPMENTS.length} shipments total</p>
+          <p className="text-sm text-zinc-500 mt-0.5">{allShipments.length} shipments total</p>
         </div>
         <div className="relative w-full sm:w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search ID, city, type…"
+            placeholder="Search ID, city, description…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] pl-9 pr-3.5 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/[0.1] transition-all"
@@ -108,8 +173,8 @@ export default function CustomerShipmentsPage() {
       <div className="flex items-center gap-0 border-b border-white/[0.05] overflow-x-auto">
         {FILTERS.map(({ label, value }) => {
           const count = value === "all"
-            ? CUSTOMER_SHIPMENTS.length
-            : CUSTOMER_SHIPMENTS.filter((s) => s.status === value).length;
+            ? allShipments.length
+            : allShipments.filter((s) => s.status === value).length;
           const active = filter === value;
           return (
             <button
@@ -134,8 +199,15 @@ export default function CustomerShipmentsPage() {
         })}
       </div>
 
-      {/* Empty state */}
-      {filtered.length === 0 ? (
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
+        </div>
+      )}
+
+      {/* Empty */}
+      {!isLoading && filtered.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
             <Package className="h-5 w-5 text-zinc-700" />
@@ -145,12 +217,16 @@ export default function CustomerShipmentsPage() {
             {search ? "Try a different search term" : "No shipments match this filter"}
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* List */}
+      {!isLoading && filtered.length > 0 && (
         <ul className="space-y-2">
           {filtered.map((s) => {
             const meta       = STATUS_META[s.status];
             const isExpanded = expanded === s.id;
             const isLive     = s.status === "out_for_delivery" || s.status === "in_transit";
+            const timeline   = deriveTimeline(s);
 
             return (
               <li
@@ -182,11 +258,12 @@ export default function CustomerShipmentsPage() {
                       )}
                     </div>
                     <p className="text-[11px] text-zinc-500 truncate">
-                      {s.pickup.city}<span className="text-zinc-700"> → </span>{s.delivery.city}{" · "}{s.packageType}
+                      {s.pickupAddress.city}<span className="text-zinc-700"> → </span>{s.deliveryAddress.city}
+                      {s.description ? `  · ${s.description}` : ""}
                     </p>
                   </div>
                   <div className="shrink-0 text-right mr-1">
-                    <p className="text-sm font-bold tabular-nums text-zinc-200">{formatNaira(s.amount)}</p>
+                    <p className="text-sm font-bold tabular-nums text-zinc-200">{formatNaira(s.priceKobo)}</p>
                     <span className={cn("text-[10px] font-semibold", meta.color)}>{meta.label}</span>
                   </div>
                   <ChevronDown className={cn(
@@ -212,11 +289,15 @@ export default function CustomerShipmentsPage() {
                           <div className="space-y-2.5 min-w-0 flex-1">
                             <div>
                               <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">From</p>
-                              <p className="text-xs font-medium text-zinc-300 truncate">{s.pickup.address}, {s.pickup.city}</p>
+                              <p className="text-xs font-medium text-zinc-300 truncate">
+                                {s.pickupAddress.street}, {s.pickupAddress.city}
+                              </p>
                             </div>
                             <div>
                               <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">To</p>
-                              <p className="text-xs font-medium text-zinc-300 truncate">{s.delivery.address}, {s.delivery.city}</p>
+                              <p className="text-xs font-medium text-zinc-300 truncate">
+                                {s.deliveryAddress.street}, {s.deliveryAddress.city}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -224,12 +305,20 @@ export default function CustomerShipmentsPage() {
 
                       <div className="space-y-2">
                         {[
-                          { icon: Package,  label: "Package Type", value: s.packageType },
-                          { icon: Clock,    label: "Amount",       value: formatNaira(s.amount) },
+                          {
+                            icon: Package,
+                            label: "Description",
+                            value: s.description || `${s.weightKg} kg package`,
+                          },
+                          {
+                            icon: Clock,
+                            label: "Amount",
+                            value: formatNaira(s.priceKobo),
+                          },
                           {
                             icon: Calendar,
-                            label: s.deliveredAt ? "Delivered" : "Created",
-                            value: new Date(s.deliveredAt ?? s.createdAt).toLocaleDateString("en-NG", {
+                            label: s.actualDelivery ? "Delivered" : "Created",
+                            value: new Date(s.actualDelivery ?? s.createdAt).toLocaleDateString("en-NG", {
                               day: "numeric", month: "short", year: "numeric",
                             }),
                           },
@@ -250,9 +339,9 @@ export default function CustomerShipmentsPage() {
                     {/* Timeline */}
                     <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
                       <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Delivery Timeline</p>
-                      {s.timeline.map((ev, i) => (
+                      {timeline.map((ev, i) => (
                         <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
-                          isLast={i === s.timeline.length - 1} />
+                          isLast={i === timeline.length - 1} />
                       ))}
                     </div>
 
@@ -260,26 +349,28 @@ export default function CustomerShipmentsPage() {
                     {s.driver && (
                       <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-sky-500/20 border border-teal-500/20 text-[11px] font-bold text-teal-300">
-                          {s.driver.name.split(" ").map((n) => n[0]).join("")}
+                          {s.driver.user.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-zinc-200 truncate">{s.driver.name}</p>
+                          <p className="text-xs font-semibold text-zinc-200 truncate">{s.driver.user.name}</p>
                           <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mt-0.5">
                             <Star className="h-2.5 w-2.5 text-amber-400" />
-                            {s.driver.rating}
+                            {s.driver.rating.toFixed(1)}
                             <span className="text-zinc-700">·</span>
-                            {s.driver.vehicle}
+                            <span className="capitalize">{s.driver.vehicleType}</span>
                             <span className="text-zinc-700">·</span>
-                            <span className="font-mono">{s.driver.plate}</span>
+                            <span className="font-mono">{s.driver.vehiclePlate}</span>
                           </div>
                         </div>
-                        <a
-                          href={`tel:${s.driver.phone}`}
-                          className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-3 py-2 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                          Call
-                        </a>
+                        {s.driver.user.phone && (
+                          <a
+                            href={`tel:${s.driver.user.phone}`}
+                            className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-3 py-2 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            Call
+                          </a>
+                        )}
                       </div>
                     )}
 

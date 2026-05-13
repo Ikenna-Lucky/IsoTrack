@@ -14,7 +14,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatNaira } from "@/lib/mock/business";
+import { useCreateShipment } from "@/hooks/use-shipments";
+
+function formatNaira(amount: number) {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -297,11 +301,12 @@ function Step4({ data }: { data: FormData }) {
 
 export default function NewShipmentPage() {
   const router = useRouter();
+  const createShipment = useCreateShipment();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<FormData>(INITIAL);
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [createdTrackingId, setCreatedTrackingId] = useState<string | null>(null);
 
   const set = (k: keyof FormData, v: string) => {
     setData((prev) => ({ ...prev, [k]: v }));
@@ -320,6 +325,10 @@ export default function NewShipmentPage() {
       if (!data.deliveryContact) e.deliveryContact = "Required";
       if (!data.deliveryPhone) e.deliveryPhone = "Required";
     }
+    if (step === 3) {
+      if (!data.weight || Number(data.weight) <= 0) e.weight = "Required";
+      if (!data.amount || Number(data.amount) <= 0) e.amount = "Required";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -328,15 +337,39 @@ export default function NewShipmentPage() {
   const back = () => setStep((s) => s - 1);
 
   const submit = async () => {
-    setSubmitting(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1400));
-    setSubmitting(false);
-    setDone(true);
+    setServerError(null);
+    const baseAmount = Number(data.amount);
+    const expressExtra = data.priority === "express" ? 500 : 0;
+    const totalKobo = (baseAmount + expressExtra) * 100;
+    const descriptionText = [data.packageType, data.description].filter(Boolean).join(": ");
+
+    try {
+      const shipment = await createShipment.mutateAsync({
+        description: descriptionText,
+        weightKg: Number(data.weight),
+        pickupAddress: {
+          street: data.pickupAddress,
+          city: data.pickupCity || LAGOS_CITIES[0]!,
+          state: "Lagos",
+        },
+        deliveryAddress: {
+          street: data.deliveryAddress,
+          city: data.deliveryCity || LAGOS_CITIES[0]!,
+          state: "Lagos",
+        },
+        priceKobo: totalKobo,
+      });
+      setCreatedTrackingId(shipment.trackingId);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to create shipment. Please try again.";
+      setServerError(message);
+    }
   };
 
-  if (done) {
-    const trackingId = "IST-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+  if (createdTrackingId) {
+    const trackingId = createdTrackingId;
     return (
       <div className="max-w-md mx-auto mt-16 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 mx-auto mb-5">
@@ -355,7 +388,7 @@ export default function NewShipmentPage() {
             View All Shipments
           </button>
           <button
-            onClick={() => { setStep(1); setData(INITIAL); setDone(false); }}
+            onClick={() => { setStep(1); setData(INITIAL); setCreatedTrackingId(null); setServerError(null); }}
             className="rounded-xl border border-white/[0.07] px-6 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] transition-all"
           >
             Create Another
@@ -425,7 +458,17 @@ export default function NewShipmentPage() {
         {step === 1 && <Step1 data={data} set={set} errors={errors} />}
         {step === 2 && <Step2 data={data} set={set} errors={errors} />}
         {step === 3 && <Step3 data={data} set={set} />}
-        {step === 4 && <Step4 data={data} />}
+        {step === 4 && (
+          <>
+            <Step4 data={data} />
+            {serverError && (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3 text-sm text-rose-400">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{serverError}</span>
+              </div>
+            )}
+          </>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8 pt-5 border-t border-white/[0.05]">
@@ -449,10 +492,10 @@ export default function NewShipmentPage() {
           ) : (
             <button
               onClick={submit}
-              disabled={submitting}
+              disabled={createShipment.isPending}
               className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-60"
             >
-              {submitting ? (
+              {createShipment.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Creating…

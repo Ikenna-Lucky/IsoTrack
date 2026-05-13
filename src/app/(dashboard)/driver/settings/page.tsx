@@ -19,7 +19,8 @@ import {
   Trash2,
   MapPin,
 } from "lucide-react";
-import { CURRENT_DRIVER } from "@/lib/mock/driver";
+import { useDriverProfile } from "@/hooks/use-driver";
+import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
@@ -161,13 +162,17 @@ function NotifRow({
 // ─── Tab: Profile ─────────────────────────────────────────────────────────────
 
 function ProfileTab() {
-  const [name,      setName]      = useState(CURRENT_DRIVER.name);
-  const [email,     setEmail]     = useState(CURRENT_DRIVER.email);
-  const [phone,     setPhone]     = useState(CURRENT_DRIVER.phone);
-  const [emergency, setEmergency] = useState("+234 802 555 7890");
+  const { data: driver } = useDriverProfile();
+  const user = useAuthStore((s) => s.user);
+
+  const [name,      setName]      = useState(user?.name      ?? "");
+  const [email,     setEmail]     = useState(user?.email     ?? "");
+  const [phone,     setPhone]     = useState(user?.phone     ?? "");
+  const [emergency, setEmergency] = useState("");
   const [city,      setCity]      = useState("Lagos");
   const [saved,     setSaved]     = useState(false);
 
+  const initials = (user?.name ?? "").slice(0, 2).toUpperCase() || "DV";
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
   return (
@@ -177,16 +182,16 @@ function ProfileTab() {
         <div className="flex items-center gap-5">
           <div className="relative shrink-0">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/25 to-emerald-500/25 border border-teal-500/20 text-xl font-bold text-teal-300 uppercase">
-              {CURRENT_DRIVER.avatar}
+              {initials}
             </div>
             <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.1] bg-[#16161d] text-zinc-400 hover:text-white transition-colors shadow-lg">
               <Camera className="h-3 w-3" />
             </button>
           </div>
           <div>
-            <p className="text-sm font-medium text-zinc-200">{name}</p>
+            <p className="text-sm font-medium text-zinc-200">{name || "—"}</p>
             <p className="text-xs text-zinc-600 mt-0.5">
-              ★ {CURRENT_DRIVER.rating} · {CURRENT_DRIVER.totalDeliveries} total trips
+              ★ {driver?.rating?.toFixed(1) ?? "—"} · {driver?.totalDeliveries ?? 0} total trips
             </p>
             <button className="mt-2 text-[11px] font-medium text-teal-400 hover:text-teal-300 transition-colors">
               Upload new photo
@@ -221,9 +226,11 @@ function ProfileTab() {
           <div>
             <FieldLabel>Member since</FieldLabel>
             <Input
-              value={new Date(CURRENT_DRIVER.joinedAt).toLocaleDateString("en-NG", {
-                day: "numeric", month: "long", year: "numeric",
-              })}
+              value={driver?.createdAt
+                ? new Date(driver.createdAt).toLocaleDateString("en-NG", {
+                    day: "numeric", month: "long", year: "numeric",
+                  })
+                : "—"}
               disabled
             />
           </div>
@@ -240,13 +247,17 @@ function ProfileTab() {
 // ─── Tab: Vehicle ─────────────────────────────────────────────────────────────
 
 function VehicleTab() {
-  const [vehicleType,  setVehicleType]  = useState(CURRENT_DRIVER.vehicleType);
-  const [plate,        setPlate]        = useState(CURRENT_DRIVER.vehiclePlate);
-  const [model,        setModel]        = useState("Honda CB300");
-  const [color,        setColor]        = useState("Red");
-  const [year,         setYear]         = useState("2021");
-  const [insurance,    setInsurance]    = useState("NSR-2024-0041-88");
-  const [saved,        setSaved]        = useState(false);
+  const { data: driver } = useDriverProfile();
+
+  const [vehicleType, setVehicleType] = useState<"bike" | "car" | "van" | "truck">(
+    (driver?.vehicleType as "bike" | "car" | "van" | "truck") ?? "bike",
+  );
+  const [plate,     setPlate]     = useState(driver?.vehiclePlate ?? "");
+  const [model,     setModel]     = useState("");
+  const [color,     setColor]     = useState("");
+  const [year,      setYear]      = useState("");
+  const [insurance, setInsurance] = useState("");
+  const [saved,     setSaved]     = useState(false);
 
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
@@ -260,13 +271,13 @@ function VehicleTab() {
             <FieldLabel>Vehicle type</FieldLabel>
             <select
               value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value as typeof CURRENT_DRIVER.vehicleType)}
+              onChange={(e) => setVehicleType(e.target.value as "bike" | "car" | "van" | "truck")}
               className={selectClass}
             >
-              <option value="Motorcycle">Motorcycle</option>
-              <option value="Bicycle">Bicycle</option>
-              <option value="Car">Car</option>
-              <option value="Van">Van</option>
+              <option value="bike">Bike / Motorcycle</option>
+              <option value="car">Car</option>
+              <option value="van">Van</option>
+              <option value="truck">Truck</option>
             </select>
           </div>
           <div>

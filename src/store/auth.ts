@@ -31,6 +31,11 @@ export interface RegisterData {
   password: string;
   role: UserRole;
   phone?: string;
+  // Business-specific
+  businessName?: string;
+  // Driver-specific
+  vehicleType?: "bike" | "car" | "van" | "truck";
+  vehiclePlate?: string;
 }
 
 interface AuthApiResponse {

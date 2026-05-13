@@ -8,7 +8,6 @@ import {
   MapPin,
   Phone,
   Star,
-  Clock,
   AlertCircle,
   CheckCircle2,
   Package,
@@ -17,9 +16,13 @@ import {
   Navigation,
   ChevronRight,
 } from "lucide-react";
-import { CUSTOMER_SHIPMENTS, STATUS_META, formatNaira } from "@/lib/mock/customer";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
 import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
+import type { Shipment, ShipmentStatus } from "@/types";
+import { formatKobo } from "@/types";
 import { cn } from "@/lib/utils";
+
+// ─── Dynamic map ──────────────────────────────────────────────────────────────
 
 const LiveMap = dynamic(
   () => import("@/components/map/live-map").then((m) => m.LiveMap),
@@ -28,6 +31,55 @@ const LiveMap = dynamic(
     loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-zinc-800/60" />,
   },
 );
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<
+  ShipmentStatus,
+  { label: string; color: string; bg: string; border: string; dot: string }
+> = {
+  pending:          { label: "Pending",          color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   dot: "#f59e0b" },
+  assigned:         { label: "Driver Assigned",  color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  picked_up:        { label: "Picked Up",        color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  in_transit:       { label: "In Transit",       color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  out_for_delivery: { label: "Out for Delivery", color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  dot: "#8b5cf6" },
+  delivered:        { label: "Delivered",        color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", dot: "#10b981" },
+  failed:           { label: "Failed",           color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    dot: "#f43f5e" },
+  cancelled:        { label: "Cancelled",        color: "text-zinc-400",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20",    dot: "#71717a" },
+};
+
+// ─── Timeline derivation ──────────────────────────────────────────────────────
+
+const STATUS_STEPS = [
+  { status: "pending",          label: "Order placed",      sub: "Shipment request received"      },
+  { status: "assigned",         label: "Driver assigned",   sub: "A driver accepted the order"    },
+  { status: "picked_up",        label: "Package picked up", sub: "Driver collected the package"   },
+  { status: "out_for_delivery", label: "Out for delivery",  sub: "Driver near delivery area"       },
+  { status: "delivered",        label: "Delivered",         sub: "Package delivered successfully" },
+] as const;
+
+function deriveTimeline(s: Shipment) {
+  const ORDER = STATUS_STEPS.map((st) => st.status as string);
+  const currentIdx = Math.max(ORDER.indexOf(s.status), 0);
+  const isFailed = s.status === "failed" || s.status === "cancelled";
+
+  return STATUS_STEPS.map(({ status, label, sub }, i) => {
+    const event = s.events?.find((e) => e.status === status);
+    const time = event
+      ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "—";
+
+    let state: "done" | "current" | "pending";
+    if (isFailed)              state = i < currentIdx ? "done" : "pending";
+    else if (i < currentIdx)   state = "done";
+    else if (i === currentIdx) state = "current";
+    else                       state = "pending";
+
+    return { label, sub: event?.message ?? sub, time, state };
+  });
+}
+
+// ─── Timeline step ────────────────────────────────────────────────────────────
 
 function TimelineStep({
   label, sub, time, state, isLast,
@@ -67,15 +119,21 @@ function TimelineStep({
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function CustomerTrackPage() {
   const [query,        setQuery]        = useState("");
   const [searched,     setSearched]     = useState(false);
   const [liveLocation, setLiveLocation] = useState<LocationUpdate | null>(null);
 
-  const result = CUSTOMER_SHIPMENTS.find(
+  const { data: shipmentsData } = useShipments({ pageSize: 100 });
+  const shipments = getShipmentList(shipmentsData);
+
+  const result: Shipment | null = shipments.find(
     (s) => s.trackingId.toLowerCase() === query.trim().toLowerCase(),
   ) ?? null;
-  const isActive = result?.status === "out_for_delivery";
+
+  const isActive = result?.status === "out_for_delivery" || result?.status === "in_transit";
 
   const { connected } = useSocket({
     trackingId: searched && isActive ? result!.trackingId : null,
@@ -87,6 +145,8 @@ export default function CustomerTrackPage() {
     setLiveLocation(null);
     if (query.trim()) setSearched(true);
   };
+
+  const timeline = result ? deriveTimeline(result) : [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -118,32 +178,34 @@ export default function CustomerTrackPage() {
         </button>
       </form>
 
-      {/* Quick chips */}
-      <div>
-        <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-widest text-zinc-600">Your Shipments</p>
-        <div className="flex flex-wrap gap-1.5">
-          {CUSTOMER_SHIPMENTS.map((s) => {
-            const meta = STATUS_META[s.status];
-            const isSelected = query === s.trackingId;
-            return (
-              <button
-                key={s.id}
-                onClick={() => { setQuery(s.trackingId); setSearched(false); setLiveLocation(null); }}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-medium transition-all",
-                  isSelected
-                    ? "border-violet-500/30 bg-violet-500/10 text-violet-400"
-                    : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300",
-                )}
-              >
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: meta.dot }} />
-                <span className="font-mono">{s.trackingId}</span>
-                <span className={cn("text-[9px] font-semibold hidden sm:inline", meta.color)}>{meta.label}</span>
-              </button>
-            );
-          })}
+      {/* Quick chips — your shipments */}
+      {shipments.length > 0 && (
+        <div>
+          <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-widest text-zinc-600">Your Shipments</p>
+          <div className="flex flex-wrap gap-1.5">
+            {shipments.slice(0, 8).map((s) => {
+              const meta = STATUS_META[s.status];
+              const isSelected = query === s.trackingId;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => { setQuery(s.trackingId); setSearched(false); setLiveLocation(null); }}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-medium transition-all",
+                    isSelected
+                      ? "border-violet-500/30 bg-violet-500/10 text-violet-400"
+                      : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300",
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: meta.dot }} />
+                  <span className="font-mono">{s.trackingId}</span>
+                  <span className={cn("text-[9px] font-semibold hidden sm:inline", meta.color)}>{meta.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Not found */}
       {searched && !result && (
@@ -192,6 +254,7 @@ export default function CustomerTrackPage() {
               </div>
 
               <div className="p-5 space-y-4">
+                {/* Route */}
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col items-center pt-1 shrink-0">
                     <div className="h-2.5 w-2.5 rounded-full border-2 border-violet-400" />
@@ -201,27 +264,32 @@ export default function CustomerTrackPage() {
                   <div className="space-y-3 min-w-0 flex-1">
                     <div>
                       <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">From</p>
-                      <p className="text-sm font-medium text-zinc-200 truncate">{result.pickup.address}, {result.pickup.city}</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">
+                        {result.pickupAddress.street}, {result.pickupAddress.city}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">To</p>
-                      <p className="text-sm font-medium text-zinc-200 truncate">{result.delivery.address}, {result.delivery.city}</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">
+                        {result.deliveryAddress.street}, {result.deliveryAddress.city}
+                      </p>
                     </div>
                   </div>
                 </div>
 
+                {/* Meta chips */}
                 <div className="flex flex-wrap gap-2">
-                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
-                    <Package className="h-3 w-3" />{result.packageType}
-                  </span>
-                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
-                    {formatNaira(result.amount)}
-                  </span>
-                  {result.driver?.eta && (
-                    <span className="flex items-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 px-2.5 py-1.5 text-xs font-semibold text-violet-400">
-                      <Clock className="h-3 w-3" />ETA {result.driver.eta}
+                  {result.description && (
+                    <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
+                      <Package className="h-3 w-3" />{result.description}
                     </span>
                   )}
+                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
+                    {formatKobo(result.priceKobo)}
+                  </span>
+                  <span className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs text-zinc-400">
+                    {result.weightKg} kg
+                  </span>
                 </div>
               </div>
             </div>
@@ -254,12 +322,12 @@ export default function CustomerTrackPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-zinc-200">Delivery Timeline</h3>
                 <span className="text-[10px] text-zinc-600">
-                  {result.timeline.filter((e) => e.state === "done").length}/{result.timeline.length} complete
+                  {timeline.filter((e) => e.state === "done").length}/{timeline.length} complete
                 </span>
               </div>
-              {result.timeline.map((ev, i) => (
+              {timeline.map((ev, i) => (
                 <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
-                  isLast={i === result.timeline.length - 1} />
+                  isLast={i === timeline.length - 1} />
               ))}
             </div>
 
@@ -269,26 +337,28 @@ export default function CustomerTrackPage() {
                 <h3 className="text-sm font-semibold text-zinc-200 mb-4">Driver</h3>
                 <div className="flex items-center gap-4">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/25 to-sky-500/25 border border-teal-500/20 text-sm font-bold text-teal-300 ring-2 ring-teal-500/10 ring-offset-2 ring-offset-[#0d0d11]">
-                    {result.driver.name.split(" ").map((n) => n[0]).join("")}
+                    {result.driver.user.name.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-zinc-100 truncate">{result.driver.name}</p>
+                    <p className="text-[15px] font-semibold text-zinc-100 truncate">{result.driver.user.name}</p>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
                       <Star className="h-3 w-3 text-amber-400" />
-                      {result.driver.rating}
+                      {result.driver.rating.toFixed(1)}
                       <span className="text-zinc-700">·</span>
-                      {result.driver.vehicle}
+                      <span className="capitalize">{result.driver.vehicleType}</span>
                       <span className="text-zinc-700">·</span>
-                      <span className="font-mono">{result.driver.plate}</span>
+                      <span className="font-mono">{result.driver.vehiclePlate}</span>
                     </div>
                   </div>
-                  <a
-                    href={`tel:${result.driver.phone}`}
-                    className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-4 py-2 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    Call
-                  </a>
+                  {result.driver.user.phone && (
+                    <a
+                      href={`tel:${result.driver.user.phone}`}
+                      className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-4 py-2 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      Call
+                    </a>
+                  )}
                 </div>
               </div>
             )}
@@ -302,8 +372,8 @@ export default function CustomerTrackPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-emerald-300">Delivered Successfully</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    {result.deliveredAt
-                      ? new Date(result.deliveredAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
+                    {result.actualDelivery
+                      ? new Date(result.actualDelivery).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
                       : "Delivery confirmed"}
                   </p>
                 </div>

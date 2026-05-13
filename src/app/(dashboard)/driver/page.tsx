@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -8,34 +8,43 @@ import {
   Phone,
   Package,
   CheckCircle2,
-  Clock,
   TrendingUp,
   Star,
   Navigation,
-  ChevronRight,
   Wifi,
   WifiOff,
   ArrowRight,
   Flame,
   AlertCircle,
+  Bell,
 } from "lucide-react";
+import { formatKobo } from "@/types";
+import { useDriverProfile, useUpdateDriverStatus } from "@/hooks/use-driver";
 import {
-  CURRENT_DRIVER,
-  MOCK_DELIVERIES,
-  DAILY_EARNINGS,
-  STATUS_META,
-  formatNaira,
-} from "@/lib/mock/driver";
+  useShipments,
+  useActiveDelivery,
+  getShipmentList,
+  useUpdateShipmentStatus,
+} from "@/hooks/use-shipments";
+import { useNotifications } from "@/hooks/use-notifications";
 import { useSocket } from "@/hooks/use-socket";
 import { cn } from "@/lib/utils";
+import type { Shipment, ShipmentStatus, Notification } from "@/types";
 
-// ─── Derived data ─────────────────────────────────────────────────────────────
+// ─── Status meta ──────────────────────────────────────────────────────────────
 
-const activeDelivery   = MOCK_DELIVERIES.find((d) => d.status === "out_for_delivery")!;
-const recentDeliveries = MOCK_DELIVERIES.filter((d) => d.status === "delivered").slice(0, 4);
-const todayStats       = DAILY_EARNINGS[DAILY_EARNINGS.length - 1]!;
-const weekEarnings     = DAILY_EARNINGS.reduce((s, d) => s + d.earning, 0);
-const maxEarning       = Math.max(...DAILY_EARNINGS.map((d) => d.earning));
+const STATUS_META: Record<ShipmentStatus, { dot: string }> = {
+  pending:          { dot: "#94a3b8" },
+  assigned:         { dot: "#818cf8" },
+  picked_up:        { dot: "#60a5fa" },
+  in_transit:       { dot: "#34d399" },
+  out_for_delivery: { dot: "#a78bfa" },
+  delivered:        { dot: "#10b981" },
+  failed:           { dot: "#f87171" },
+  cancelled:        { dot: "#6b7280" },
+};
+
+// ─── Route waypoints (for location simulation) ────────────────────────────────
 
 const ROUTE_WAYPOINTS = [
   { lat: 6.4355, lng: 3.4197 },
@@ -45,12 +54,45 @@ const ROUTE_WAYPOINTS = [
   { lat: 6.4512, lng: 3.4401 },
 ];
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Index of today in a Mon–Sun array (Mon = 0 … Sun = 6) */
+function todayIdx(): number {
+  const d = new Date().getDay(); // 0 = Sunday
+  return d === 0 ? 6 : d - 1;
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  if (h < 48) return "Yesterday";
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function notifMeta(n: Notification) {
+  const t = (n.title + " " + n.message).toLowerCase();
+  if (t.includes("deliver") && (t.includes("complet") || t.includes("success")))
+    return { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/15" };
+  if (t.includes("rat") || t.includes("review"))
+    return { icon: Star, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/15" };
+  if (t.includes("assign") || t.includes("package") || t.includes("shipment"))
+    return { icon: Package, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/15" };
+  if (t.includes("fail") || t.includes("error") || t.includes("issue") || t.includes("cancel"))
+    return { icon: AlertCircle, color: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/15" };
+  if (t.includes("streak") || t.includes("milestone") || t.includes("congrat"))
+    return { icon: Flame, color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/15" };
+  return { icon: Bell, color: "text-zinc-400", bg: "bg-zinc-500/10 border-zinc-500/15" };
+}
+
+// ─── useCountUp ───────────────────────────────────────────────────────────────
 
 function useCountUp(target: number, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) return;
+    if (target === 0) { setCount(0); return; }
     let cur = 0;
     const inc = target / (duration / 16);
     const t = setInterval(() => {
@@ -70,8 +112,9 @@ function Sparkline({ data, color, id }: { data: number[]; color: string; id: str
   const min = Math.min(...data);
   const range = max - min || 1;
   const W = 68; const H = 30;
+  const n = Math.max(data.length, 2);
   const pts = data.map((v, i): [number, number] => [
-    (i / (data.length - 1)) * W,
+    (i / (n - 1)) * W,
     H - ((v - min) / range) * (H - 6) - 3,
   ]);
   const polyPts = pts.map(([x, y]) => `${x},${y}`).join(" ");
@@ -100,7 +143,6 @@ function KPICard({
   label: string; value: string; trend: string; trendUp: boolean; sub: string;
   sparkData: number[]; sparkColor: string; accentClass: string; glowClass: string; sparkId: string;
 }) {
-  const TrendIcon = TrendingUp;
   return (
     <div className={cn(
       "group relative rounded-2xl border bg-[#0d0d11] p-3.5 sm:p-5 overflow-hidden",
@@ -124,7 +166,7 @@ function KPICard({
         "inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold max-w-full overflow-hidden",
         trendUp ? "bg-emerald-500/[0.08] text-emerald-400" : "bg-rose-500/[0.08] text-rose-400",
       )}>
-        <TrendIcon className="h-2.5 w-2.5 shrink-0" />
+        <TrendingUp className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{trend}</span>
       </div>
     </div>
@@ -134,20 +176,24 @@ function KPICard({
 // ─── Active delivery card ─────────────────────────────────────────────────────
 
 function ActiveDeliveryCard({
-  statusOnline,
+  delivery,
+  isOnline,
   connected,
+  onMarkDelivered,
+  isMarkingDelivered,
 }: {
-  statusOnline: boolean;
+  delivery: Shipment;
+  isOnline: boolean;
   connected: boolean;
+  onMarkDelivered: () => void;
+  isMarkingDelivered: boolean;
 }) {
-  if (!activeDelivery) return null;
-
   return (
     <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.22] bg-[#0d0d11]">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute -top-16 left-1/3 h-40 w-72 rounded-full bg-violet-500/[0.08] blur-3xl" />
 
-      {/* Header bar — wraps on mobile */}
+      {/* Header bar */}
       <div className="relative flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-violet-500/[0.1]">
         <div className="flex items-center gap-2.5">
           <span className="h-2 w-2 animate-pulse rounded-full bg-violet-400 shadow-[0_0_8px_#8b5cf6]" />
@@ -167,7 +213,7 @@ function ActiveDeliveryCard({
             <span className="sm:hidden">{connected ? "Live" : "…"}</span>
           </span>
           <span className="rounded-full bg-violet-500/15 border border-violet-500/20 px-2.5 py-0.5 font-mono text-[10px] sm:text-[11px] font-semibold text-violet-300">
-            {activeDelivery.trackingId}
+            {delivery.trackingId}
           </span>
         </div>
       </div>
@@ -186,49 +232,60 @@ function ActiveDeliveryCard({
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Pickup</p>
               <p className="text-sm font-medium text-zinc-100 truncate">
-                {activeDelivery.pickup.address}, {activeDelivery.pickup.city}
+                {delivery.pickupAddress.street}, {delivery.pickupAddress.city}
               </p>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Delivering to</p>
               <p className="text-sm font-medium text-zinc-100 truncate">
-                {activeDelivery.delivery.address}, {activeDelivery.delivery.city}
+                {delivery.deliveryAddress.street}, {delivery.deliveryAddress.city}
               </p>
             </div>
           </div>
         </div>
 
         {/* Meta strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { label: "Customer", value: activeDelivery.customer.name, color: "text-zinc-200" },
-            { label: "ETA",      value: activeDelivery.eta ?? "—",    color: "text-teal-400" },
-            { label: "Distance", value: activeDelivery.distance,      color: "text-zinc-300" },
-            { label: "Earning",  value: formatNaira(activeDelivery.driverEarning), color: "text-emerald-400" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-              <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">{label}</p>
-              <p className={cn("text-[13px] font-semibold truncate", color)}>{value}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {delivery.customer && (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Customer</p>
+              <p className="text-[13px] font-semibold truncate text-zinc-200">{delivery.customer.name}</p>
             </div>
-          ))}
+          )}
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Package</p>
+            <p className="text-[13px] font-semibold truncate text-zinc-300">{delivery.weightKg} kg</p>
+          </div>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">Earning</p>
+            <p className="text-[13px] font-semibold truncate text-emerald-400">
+              {formatKobo(Math.round(delivery.priceKobo * 0.4))}
+            </p>
+          </div>
         </div>
 
-        {/* Actions — stacked on mobile, row on sm+ */}
+        {/* Actions */}
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
-          <a
-            href={`tel:${activeDelivery.customer.phone}`}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-teal-500/25 bg-teal-500/10 px-4 py-2.5 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.18] hover:border-teal-500/40 transition-all"
+          {delivery.customer?.phone && (
+            <a
+              href={`tel:${delivery.customer.phone}`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-teal-500/25 bg-teal-500/10 px-4 py-2.5 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.18] hover:border-teal-500/40 transition-all"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Call Customer
+            </a>
+          )}
+          <button
+            onClick={onMarkDelivered}
+            disabled={isMarkingDelivered}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white hover:bg-violet-500 active:scale-[0.98] transition-all shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Phone className="h-3.5 w-3.5" />
-            Call Customer
-          </a>
-          <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white hover:bg-violet-500 active:scale-[0.98] transition-all shadow-lg shadow-violet-500/20">
             <CheckCircle2 className="h-4 w-4" />
-            Mark as Delivered
+            {isMarkingDelivered ? "Marking…" : "Mark as Delivered"}
           </button>
         </div>
 
-        {statusOnline && (
+        {isOnline && (
           <p className="text-center text-[10px] text-zinc-700">
             📍 Your location is being shared with the customer every 4 seconds
           </p>
@@ -240,10 +297,22 @@ function ActiveDeliveryCard({
 
 // ─── Weekly chart ─────────────────────────────────────────────────────────────
 
-function WeeklyChart() {
+function WeeklyChart({
+  weeklyData,
+  todayStats,
+  weekEarnings,
+  maxEarning,
+}: {
+  weeklyData: Array<{ day: string; earning: number; deliveries: number }>;
+  todayStats: { day: string; earning: number; deliveries: number };
+  weekEarnings: number;
+  maxEarning: number;
+}) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [touchedIdx, setTouchedIdx]  = useState<number | null>(null);
+  const [touchedIdx, setTouchedIdx] = useState<number | null>(null);
   const activeIdx = hoveredIdx ?? touchedIdx;
+  const safeMax   = Math.max(maxEarning, 1);
+  const todayI    = todayIdx();
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4 sm:p-5">
@@ -253,15 +322,15 @@ function WeeklyChart() {
           <p className="text-[10px] text-zinc-600 mt-0.5">Income per day</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold text-teal-400">{formatNaira(weekEarnings)}</p>
+          <p className="text-sm font-bold text-teal-400">{formatKobo(weekEarnings)}</p>
           <p className="text-[10px] text-zinc-600">this week</p>
         </div>
       </div>
 
       <div className="flex items-stretch gap-1.5 sm:gap-2 h-28 sm:h-[72px]">
-        {DAILY_EARNINGS.map(({ day, earning, deliveries }, i) => {
-          const pct      = (earning / maxEarning) * 100;
-          const isToday  = i === DAILY_EARNINGS.length - 1;
+        {weeklyData.map(({ day, earning, deliveries }, i) => {
+          const pct      = (earning / safeMax) * 100;
+          const isToday  = i === todayI;
           const isActive = activeIdx === i;
           return (
             <div
@@ -275,11 +344,11 @@ function WeeklyChart() {
               {/* Tooltip */}
               {isActive && (
                 <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-lg border border-white/[0.1] bg-[#16161d] px-2.5 py-1.5 text-center shadow-xl pointer-events-none">
-                  <p className="text-[11px] font-bold text-white">{formatNaira(earning)}</p>
+                  <p className="text-[11px] font-bold text-white">{formatKobo(earning)}</p>
                   <p className="text-[9px] text-zinc-500">{deliveries} trips</p>
                 </div>
               )}
-              {/* Bar area — flex-1 fills remaining height, bars grow from bottom */}
+              {/* Bar area */}
               <div className="flex-1 min-h-0 w-full flex items-end">
                 <div
                   className="w-full rounded-t-md transition-all duration-300"
@@ -310,7 +379,7 @@ function WeeklyChart() {
           <p className="text-[10px] text-zinc-600">Today</p>
         </div>
         <div className="text-right">
-          <p className="text-xs font-bold text-emerald-400">{formatNaira(todayStats.earning)}</p>
+          <p className="text-xs font-bold text-emerald-400">{formatKobo(todayStats.earning)}</p>
           <p className="text-[10px] text-zinc-600">Today's earnings</p>
         </div>
       </div>
@@ -320,13 +389,16 @@ function WeeklyChart() {
 
 // ─── Recent deliveries ────────────────────────────────────────────────────────
 
-function RecentDeliveries() {
+function RecentDeliveries({ shipments }: { shipments: Shipment[] }) {
+  const recent = shipments.filter((s) => s.status === "delivered").slice(0, 4);
+  const total  = shipments.length;
+
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
       <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-white/[0.05]">
         <div>
           <p className="text-sm font-semibold text-white">Recent Deliveries</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">{MOCK_DELIVERIES.length} total assignments</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">{total} total assignments</p>
         </div>
         <Link
           href={"/driver/deliveries" as Route}
@@ -336,60 +408,58 @@ function RecentDeliveries() {
         </Link>
       </div>
 
-      <div className="divide-y divide-white/[0.04]">
-        {recentDeliveries.map((d) => {
-          const meta = STATUS_META[d.status];
-          return (
-            <div
-              key={d.id}
-              className="flex items-center gap-3 px-4 sm:px-5 py-3.5 hover:bg-white/[0.015] transition-colors"
-            >
-              {/* Status dot */}
+      {recent.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <p className="text-sm text-zinc-600">No completed deliveries yet</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-white/[0.04]">
+          {recent.map((d) => {
+            const meta = STATUS_META[d.status];
+            return (
               <div
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}80` }}
-              />
+                key={d.id}
+                className="flex items-center gap-3 px-4 sm:px-5 py-3.5 hover:bg-white/[0.015] transition-colors"
+              >
+                {/* Status dot */}
+                <div
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}80` }}
+                />
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                {/* Info */}
+                <div className="flex-1 min-w-0">
                   <p className="font-mono text-xs font-semibold text-zinc-200 truncate">{d.trackingId}</p>
+                  <p className="text-[11px] text-zinc-600 truncate">
+                    {d.pickupAddress.city} <span className="text-zinc-700">→</span> {d.deliveryAddress.city}
+                    {d.customer && ` · ${d.customer.name}`}
+                  </p>
                 </div>
-                <p className="text-[11px] text-zinc-600 truncate">
-                  {d.pickup.city} <span className="text-zinc-700">→</span> {d.delivery.city}
-                  {" · "}{d.customer.name}
+
+                {/* Weight — desktop only */}
+                <div className="hidden sm:flex items-center gap-1 shrink-0">
+                  <Navigation className="h-3 w-3 text-zinc-700" />
+                  <span className="text-[11px] text-zinc-600">{d.weightKg} kg</span>
+                </div>
+
+                {/* Earning */}
+                <p className="text-xs font-bold text-emerald-400 shrink-0 tabular-nums">
+                  +{formatKobo(Math.round(d.priceKobo * 0.4))}
                 </p>
               </div>
-
-              {/* Distance — desktop only */}
-              <div className="hidden sm:flex items-center gap-1 shrink-0">
-                <Navigation className="h-3 w-3 text-zinc-700" />
-                <span className="text-[11px] text-zinc-600">{d.distance}</span>
-              </div>
-
-              {/* Earning */}
-              <p className="text-xs font-bold text-emerald-400 shrink-0 tabular-nums">
-                +{formatNaira(d.driverEarning)}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Activity feed ────────────────────────────────────────────────────────────
 
-const ACTIVITY = [
-  { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/15", text: "IST-T8VL3ZKP delivered to Apapa",           time: "2h ago"    },
-  { icon: Star,         color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/15",    text: "Customer rated you ★ 4.9",                  time: "3h ago"    },
-  { icon: Package,      color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/15",  text: "New delivery: IST-K7X2M9PQ assigned",        time: "4h ago"    },
-  { icon: AlertCircle,  color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/15",      text: "IST-H4FR7NKP failed — customer unreachable", time: "Yesterday" },
-  { icon: Flame,        color: "text-orange-400",  bg: "bg-orange-500/10 border-orange-500/15",  text: "5-day delivery streak 🔥",                   time: "Yesterday" },
-];
+function ActivityFeed({ notifications }: { notifications: Notification[] }) {
+  const items = notifications.slice(0, 5);
 
-function ActivityFeed() {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4 sm:p-5">
       <div className="flex items-center justify-between mb-4">
@@ -399,21 +469,49 @@ function ActivityFeed() {
           <span className="text-[10px] text-zinc-600">Live</span>
         </div>
       </div>
-      <div className="space-y-2.5">
-        {ACTIVITY.map((a, i) => {
-          const Icon = a.icon;
-          return (
-            <div key={i} className="flex items-start gap-3">
-              <div className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border mt-0.5", a.bg)}>
-                <Icon className={cn("h-3 w-3", a.color)} />
+
+      {items.length === 0 ? (
+        <p className="text-sm text-zinc-600 text-center py-4">No recent activity</p>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((n) => {
+            const { icon: Icon, color, bg } = notifMeta(n);
+            return (
+              <div key={n.id} className="flex items-start gap-3">
+                <div className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border mt-0.5", bg)}>
+                  <Icon className={cn("h-3 w-3", color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-zinc-300 leading-snug">{n.message}</p>
+                  <p className="text-[10px] text-zinc-700 mt-0.5">{relativeTime(n.createdAt)}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-zinc-300 leading-snug">{a.text}</p>
-                <p className="text-[10px] text-zinc-700 mt-0.5">{a.time}</p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function PageSkeleton() {
+  return (
+    <div className="max-w-5xl mx-auto space-y-5 animate-pulse">
+      <div className="h-14 rounded-xl bg-white/[0.04]" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-28 rounded-2xl bg-[#0d0d11] border border-white/[0.06]" />
+        ))}
+      </div>
+      <div className="h-48 rounded-2xl bg-[#0d0d11] border border-white/[0.06]" />
+      <div className="grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 h-64 rounded-2xl bg-[#0d0d11] border border-white/[0.06]" />
+        <div className="space-y-4">
+          <div className="h-36 rounded-2xl bg-[#0d0d11] border border-white/[0.06]" />
+          <div className="h-52 rounded-2xl bg-[#0d0d11] border border-white/[0.06]" />
+        </div>
       </div>
     </div>
   );
@@ -422,43 +520,118 @@ function ActivityFeed() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriverOverviewPage() {
-  const [statusOnline,  setStatusOnline]  = useState(true);
-  const [waypointIndex, setWaypointIndex] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waypointIdxRef = useRef(0);
+  const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Data fetching ──
+  const { data: driver, isLoading: driverLoading } = useDriverProfile();
+  const shipmentsQuery = useShipments();
+  const shipments      = getShipmentList(shipmentsQuery.data);
+  const { activeDelivery } = useActiveDelivery();
+  const { notifications }  = useNotifications();
+
+  // ── Mutations ──
+  const { mutate: updateDriverStatus } = useUpdateDriverStatus();
+  const { mutate: updateShipmentStatus, isPending: isMarkingDelivered } = useUpdateShipmentStatus();
+
+  // ── Derived state ──
+  const isOnline = driver?.status !== "offline";
+
+  // ── Socket (location broadcasting) ──
   const { connected, emitLocation } = useSocket({
     trackingId: activeDelivery?.trackingId ?? null,
   });
 
+  // ── Weekly earnings (computed from shipments) ──
+  const weeklyData = useMemo(() => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const now   = new Date();
+    const dow   = now.getDay(); // 0 = Sun
+    const diff  = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+
+    return days.map((day, i) => {
+      const dayStart = new Date(monday);
+      dayStart.setDate(monday.getDate() + i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const dayShipments = shipments.filter((s) => {
+        if (s.status !== "delivered") return false;
+        const d = new Date(s.updatedAt);
+        return d >= dayStart && d <= dayEnd;
+      });
+
+      return {
+        day,
+        earning:    dayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0),
+        deliveries: dayShipments.length,
+      };
+    });
+  }, [shipments]);
+
+  const currTodayIdx = todayIdx();
+  const todayStats   = weeklyData[currTodayIdx] ?? { day: "Mon", earning: 0, deliveries: 0 };
+  const weekEarnings = weeklyData.reduce((s, d) => s + d.earning, 0);
+  const maxEarning   = Math.max(...weeklyData.map((d) => d.earning), 1);
+
+  // ── Location simulation (broadcasts GPS while on active delivery) ──
   useEffect(() => {
-    if (!activeDelivery || !statusOnline) return;
+    if (!activeDelivery || !isOnline) return;
     intervalRef.current = setInterval(() => {
-      setWaypointIndex((prev) => {
-        const next = (prev + 1) % ROUTE_WAYPOINTS.length;
-        const wp   = ROUTE_WAYPOINTS[next]!;
-        emitLocation({
-          trackingId: activeDelivery.trackingId,
-          lat:     wp.lat + (Math.random() - 0.5) * 0.0008,
-          lng:     wp.lng + (Math.random() - 0.5) * 0.0008,
-          heading: Math.random() * 360,
-          speed:   18 + Math.random() * 12,
-        });
-        return next;
+      waypointIdxRef.current = (waypointIdxRef.current + 1) % ROUTE_WAYPOINTS.length;
+      const wp = ROUTE_WAYPOINTS[waypointIdxRef.current]!;
+      emitLocation({
+        trackingId: activeDelivery.trackingId,
+        lat:     wp.lat + (Math.random() - 0.5) * 0.0008,
+        lng:     wp.lng + (Math.random() - 0.5) * 0.0008,
+        heading: Math.random() * 360,
+        speed:   18 + Math.random() * 12,
       });
     }, 4000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [statusOnline, emitLocation]);
+  }, [isOnline, emitLocation, activeDelivery]);
 
-  // Animated counters
+  // ── Animated counters ──
   const animEarnings   = useCountUp(todayStats.earning);
   const animDeliveries = useCountUp(todayStats.deliveries);
-  const animTotal      = useCountUp(CURRENT_DRIVER.totalDeliveries);
+  const animTotal      = useCountUp(driver?.totalDeliveries ?? 0);
 
-  // Sparkline data
-  const earnSpark  = DAILY_EARNINGS.map((d) => d.earning);
-  const tripSpark  = DAILY_EARNINGS.map((d) => d.deliveries);
-  const totalSpark = [270, 274, 278, 281, 284, 286, CURRENT_DRIVER.totalDeliveries];
-  const rateSpark  = [4.6, 4.7, 4.7, 4.8, 4.8, 4.8, CURRENT_DRIVER.rating * 10];
+  // ── Sparkline data ──
+  const earnSpark  = weeklyData.map((d) => d.earning);
+  const tripSpark  = weeklyData.map((d) => d.deliveries);
+  const totalSpark = Array(7).fill(driver?.totalDeliveries ?? 0);
+  const rateSpark  = Array(7).fill(Math.round((driver?.rating ?? 0) * 10));
+
+  // ── Greeting ──
+  const hour     = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  // ── Handlers ──
+  const handleToggleOnline = () => {
+    if (!driver) return;
+    updateDriverStatus({
+      driverId: driver.id,
+      status:   isOnline ? "offline" : "available",
+    });
+  };
+
+  const handleMarkDelivered = () => {
+    if (!activeDelivery) return;
+    updateShipmentStatus({
+      id:     activeDelivery.id,
+      status: "delivered",
+      note:   "Package delivered successfully",
+    });
+  };
+
+  // ── Early return: loading ──
+  if (driverLoading) return <PageSkeleton />;
+
+  const driverName = driver?.user.name ?? "Driver";
+  const firstName  = driverName.split(" ")[0] ?? driverName;
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -467,7 +640,7 @@ export default function DriverOverviewPage() {
       <div className="flex items-start sm:items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
-            Good morning, {CURRENT_DRIVER.name.split(" ")[0]} 👋
+            {greeting}, {firstName} 👋
           </h2>
           <p className="text-sm text-zinc-500 mt-0.5 truncate">
             {new Date().toLocaleDateString("en-NG", {
@@ -477,21 +650,21 @@ export default function DriverOverviewPage() {
           </p>
         </div>
 
-        {/* Online toggle */}
+        {/* Online / Offline toggle */}
         <button
-          onClick={() => setStatusOnline((v) => !v)}
+          onClick={handleToggleOnline}
           className={cn(
             "flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-4 py-2 text-[12px] sm:text-[13px] font-semibold transition-all duration-200 active:scale-[0.97]",
-            statusOnline
+            isOnline
               ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/[0.15]"
               : "border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200",
           )}
         >
           <span className={cn(
             "h-2 w-2 rounded-full shrink-0",
-            statusOnline ? "animate-pulse bg-teal-400 shadow-[0_0_8px_#2dd4bf]" : "bg-zinc-600",
+            isOnline ? "animate-pulse bg-teal-400 shadow-[0_0_8px_#2dd4bf]" : "bg-zinc-600",
           )} />
-          {statusOnline ? "Online" : "Offline"}
+          {isOnline ? "Online" : "Offline"}
         </button>
       </div>
 
@@ -499,10 +672,10 @@ export default function DriverOverviewPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
           label="Today's Earnings"
-          value={formatNaira(animEarnings)}
-          trend="+₦1,200 vs yesterday"
-          trendUp={true}
-          sub="Sun, 11 May"
+          value={formatKobo(animEarnings)}
+          trend={weekEarnings > 0 ? `${formatKobo(weekEarnings)} this week` : "No earnings yet"}
+          trendUp={weekEarnings > 0}
+          sub={new Date().toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" })}
           sparkData={earnSpark}
           sparkColor="#2dd4bf"
           sparkId="drv-spark-earn"
@@ -512,8 +685,8 @@ export default function DriverOverviewPage() {
         <KPICard
           label="Deliveries Today"
           value={String(animDeliveries)}
-          trend="+1 vs yesterday"
-          trendUp={true}
+          trend={todayStats.deliveries > 0 ? `${todayStats.deliveries} completed` : "None yet today"}
+          trendUp={todayStats.deliveries > 0}
           sub="Completed trips"
           sparkData={tripSpark}
           sparkColor="#38bdf8"
@@ -524,9 +697,9 @@ export default function DriverOverviewPage() {
         <KPICard
           label="Total Deliveries"
           value={String(animTotal)}
-          trend="+3 this week"
-          trendUp={true}
-          sub="All-time trips"
+          trend="All-time trips"
+          trendUp
+          sub="Career total"
           sparkData={totalSpark}
           sparkColor="#a78bfa"
           sparkId="drv-spark-total"
@@ -535,10 +708,10 @@ export default function DriverOverviewPage() {
         />
         <KPICard
           label="Rating"
-          value={"★ " + CURRENT_DRIVER.rating}
-          trend="Top 5% driver"
-          trendUp={true}
-          sub="Last 50 deliveries"
+          value={"★ " + (driver?.rating.toFixed(1) ?? "—")}
+          trend="Last 50 deliveries"
+          trendUp
+          sub="Customer rating"
           sparkData={rateSpark}
           sparkColor="#fbbf24"
           sparkId="drv-spark-rating"
@@ -549,19 +722,30 @@ export default function DriverOverviewPage() {
 
       {/* ── Active delivery ── */}
       {activeDelivery && (
-        <ActiveDeliveryCard statusOnline={statusOnline} connected={connected} />
+        <ActiveDeliveryCard
+          delivery={activeDelivery}
+          isOnline={isOnline}
+          connected={connected}
+          onMarkDelivered={handleMarkDelivered}
+          isMarkingDelivered={isMarkingDelivered}
+        />
       )}
 
       {/* ── Main content row ── */}
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Recent deliveries — 2/3 width on desktop, full-width below chart on mobile */}
         <div className="lg:col-span-2 order-2 lg:order-1">
-          <RecentDeliveries />
+          <RecentDeliveries shipments={shipments} />
         </div>
-        {/* Right column — appears first on mobile (quick stats), 1/3 on desktop */}
+        {/* Right column — appears first on mobile, 1/3 on desktop */}
         <div className="space-y-4 order-1 lg:order-2">
-          <WeeklyChart />
-          <ActivityFeed />
+          <WeeklyChart
+            weeklyData={weeklyData}
+            todayStats={todayStats}
+            weekEarnings={weekEarnings}
+            maxEarning={maxEarning}
+          />
+          <ActivityFeed notifications={notifications} />
         </div>
       </div>
 

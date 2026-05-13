@@ -11,32 +11,73 @@ import {
   Star,
   TrendingUp,
   TrendingDown,
-  Truck,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
   Navigation,
 } from "lucide-react";
-import {
-  CURRENT_CUSTOMER,
-  CUSTOMER_SHIPMENTS,
-  STATUS_META,
-  formatNaira,
-} from "@/lib/mock/customer";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { useAuthStore } from "@/store/auth";
+import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-const activeDelivery = CUSTOMER_SHIPMENTS.find((s) => s.status === "out_for_delivery");
-const pendingShipment = CUSTOMER_SHIPMENTS.find((s) => s.status === "pending");
-const recentShipments = CUSTOMER_SHIPMENTS.filter(
-  (s) => s.status === "delivered" || s.status === "failed",
-).slice(0, 4);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const totalSpent = CUSTOMER_SHIPMENTS.reduce((sum, s) => sum + s.amount, 0);
-const deliveredCount = CUSTOMER_SHIPMENTS.filter((s) => s.status === "delivered").length;
-const activeCount = CUSTOMER_SHIPMENTS.filter(
-  (s) => ["out_for_delivery", "in_transit", "assigned", "picked_up"].includes(s.status),
-).length;
-const totalCount = CUSTOMER_SHIPMENTS.length;
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
+const STATUS_META: Record<
+  ShipmentStatus,
+  { label: string; color: string; bg: string; border: string; dot: string }
+> = {
+  pending:          { label: "Pending",          color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   dot: "#f59e0b" },
+  assigned:         { label: "Driver Assigned",  color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  picked_up:        { label: "Picked Up",        color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  in_transit:       { label: "In Transit",       color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     dot: "#0ea5e9" },
+  out_for_delivery: { label: "Out for Delivery", color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  dot: "#8b5cf6" },
+  delivered:        { label: "Delivered",        color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", dot: "#10b981" },
+  failed:           { label: "Failed",           color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    dot: "#f43f5e" },
+  cancelled:        { label: "Cancelled",        color: "text-zinc-400",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20",    dot: "#71717a" },
+};
+
+// ─── Timeline derivation ──────────────────────────────────────────────────────
+
+const STATUS_STEPS = [
+  { status: "pending",          label: "Order placed",      sub: "Shipment request received"      },
+  { status: "assigned",         label: "Driver assigned",   sub: "A driver accepted your order"   },
+  { status: "picked_up",        label: "Package picked up", sub: "Driver collected the package"   },
+  { status: "out_for_delivery", label: "Out for delivery",  sub: "Driver is near your area"       },
+  { status: "delivered",        label: "Delivered",         sub: "Package delivered successfully" },
+] as const;
+
+function deriveTimeline(s: Shipment) {
+  const ORDER = STATUS_STEPS.map((st) => st.status as string);
+  const currentIdx = Math.max(ORDER.indexOf(s.status), 0);
+  const isFailed = s.status === "failed" || s.status === "cancelled";
+
+  return STATUS_STEPS.map(({ status, label, sub }, i) => {
+    const event = s.events?.find((e) => e.status === status);
+    const time = event
+      ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "—";
+
+    let state: "done" | "current" | "pending";
+    if (isFailed)          state = i < currentIdx ? "done" : "pending";
+    else if (i < currentIdx) state = "done";
+    else if (i === currentIdx) state = "current";
+    else                   state = "pending";
+
+    return { label, sub: event?.message ?? sub, time, state };
+  });
+}
+
+// ─── Animated counter ─────────────────────────────────────────────────────────
 
 function useCountUp(target: number, duration = 1200): number {
   const [value, setValue] = useState(0);
@@ -55,6 +96,8 @@ function useCountUp(target: number, duration = 1200): number {
   return value;
 }
 
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+
 function Sparkline({ data, color, id }: { data: number[]; color: string; id: string }) {
   const max = Math.max(...data, 1);
   const min = Math.min(...data);
@@ -66,7 +109,7 @@ function Sparkline({ data, color, id }: { data: number[]; color: string; id: str
     return [x, y] as [number, number];
   });
   const polyPts = pts.map(([x, y]) => `${x},${y}`).join(" ");
-  const last = pts[pts.length - 1];
+  const last = pts[pts.length - 1]!;
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
       <defs>
@@ -81,6 +124,8 @@ function Sparkline({ data, color, id }: { data: number[]; color: string; id: str
     </svg>
   );
 }
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 
 function KPICard({
   label, value, trend, trendUp, sub,
@@ -125,6 +170,8 @@ function KPICard({
   );
 }
 
+// ─── Timeline step ────────────────────────────────────────────────────────────
+
 function TimelineStep({
   label, sub, time, state, isLast,
 }: {
@@ -136,7 +183,7 @@ function TimelineStep({
       <div className="flex flex-col items-center shrink-0 pt-0.5">
         <div className={cn(
           "relative z-10 flex h-4 w-4 items-center justify-center rounded-full border text-[7px] font-bold",
-          state === "done" ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
+          state === "done"    ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
           : state === "current" ? "border-violet-500 bg-violet-500/20 text-violet-400 animate-pulse"
           : "border-zinc-800 bg-zinc-900 text-zinc-700",
         )}>
@@ -149,28 +196,60 @@ function TimelineStep({
       <div className="pb-3 min-w-0">
         <p className={cn(
           "text-[12px] font-semibold leading-tight",
-          state === "done" ? "text-zinc-200" : state === "current" ? "text-violet-300" : "text-zinc-700",
+          state === "done"    ? "text-zinc-200"
+          : state === "current" ? "text-violet-300"
+          : "text-zinc-700",
         )}>{label}</p>
         <p className="mt-0.5 text-[10px] text-zinc-600 truncate">{sub}</p>
         <p className={cn(
           "mt-0.5 text-[10px] font-medium",
-          state === "done" ? "text-emerald-500/60" : state === "current" ? "text-violet-400/70" : "text-zinc-800",
+          state === "done"    ? "text-emerald-500/60"
+          : state === "current" ? "text-violet-400/70"
+          : "text-zinc-800",
         )}>{time}</p>
       </div>
     </div>
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function CustomerOverviewPage() {
+  const user = useAuthStore((s) => s.user);
+  const { data: shipmentsData } = useShipments({ pageSize: 50 });
+  const shipments = getShipmentList(shipmentsData);
+
+  // Derived slices
+  const activeDelivery  = shipments.find((s) => s.status === "out_for_delivery" || s.status === "in_transit");
+  const pendingShipment = shipments.find((s) => s.status === "pending");
+  const recentShipments = shipments.filter((s) => s.status === "delivered" || s.status === "failed").slice(0, 4);
+
+  // Stats
+  const totalSpent     = shipments.reduce((sum, s) => sum + s.priceKobo, 0);
+  const deliveredCount = shipments.filter((s) => s.status === "delivered").length;
+  const activeCount    = shipments.filter((s) =>
+    ["out_for_delivery", "in_transit", "assigned", "picked_up"].includes(s.status),
+  ).length;
+  const totalCount = shipments.length;
+
   const animatedSpent = useCountUp(totalSpent);
+
+  // Cosmetic sparklines
+  const base = Math.max(1, Math.floor(totalCount / 7));
+  const totalSpark     = [0,1,2,3,4,5,6].map((i) => Math.max(0, base + (i % 2 === 0 ? 1 : -1)));
+  const deliveredSpark = totalSpark.map((v) => Math.round(v * (deliveredCount / Math.max(totalCount, 1))));
+  const spentSpark     = totalSpark.map((v) => v * Math.max(1, Math.floor(totalSpent / Math.max(totalCount, 1))));
+
+  const timeline = activeDelivery ? deriveTimeline(activeDelivery) : [];
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
 
+      {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">
-            Hi, {CURRENT_CUSTOMER.name.split(" ")[0]} 👋
+            Hi, {user?.name?.split(" ")[0] ?? "there"} 👋
           </h2>
           <p className="mt-0.5 text-sm text-zinc-500">
             {new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" })}
@@ -186,21 +265,33 @@ export default function CustomerOverviewPage() {
         </Link>
       </div>
 
+      {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Total Spent" value={formatNaira(animatedSpent)} trend="+12%" trendUp sub="All time"
-          sparkData={[1200, 3500, 2800, 4100, 2200, 7200, 3500]} sparkColor="#a78bfa" sparkId="sp-spent"
-          accentClass="border-violet-500/[0.15] hover:border-violet-500/25" glowClass="bg-violet-500" />
-        <KPICard label="Delivered" value={String(deliveredCount)} trend="+1 this week" trendUp sub="Successfully received"
-          sparkData={[0, 1, 1, 2, 2, 2, 2]} sparkColor="#34d399" sparkId="sp-delivered"
-          accentClass="border-emerald-500/[0.15] hover:border-emerald-500/25" glowClass="bg-emerald-500" />
-        <KPICard label="Active" value={String(activeCount)} sub="Currently en route"
-          sparkData={[0, 0, 1, 0, 1, 1, 1]} sparkColor="#38bdf8" sparkId="sp-active"
-          accentClass="border-sky-500/[0.15] hover:border-sky-500/25" glowClass="bg-sky-500" />
-        <KPICard label="All Shipments" value={String(totalCount)} sub="Lifetime total"
-          sparkData={[1, 2, 2, 3, 4, 4, 5]} sparkColor="#71717a" sparkId="sp-total"
-          accentClass="border-white/[0.06] hover:border-white/[0.1]" glowClass="bg-zinc-600" />
+        <KPICard
+          label="Total Spent" value={formatNaira(animatedSpent)}
+          trend={totalCount > 0 ? "+growing" : undefined} trendUp sub="All time"
+          sparkData={spentSpark} sparkColor="#a78bfa" sparkId="sp-spent"
+          accentClass="border-violet-500/[0.15] hover:border-violet-500/25" glowClass="bg-violet-500"
+        />
+        <KPICard
+          label="Delivered" value={String(deliveredCount)}
+          trend={deliveredCount > 0 ? `${deliveredCount} received` : undefined} trendUp sub="Successfully received"
+          sparkData={deliveredSpark} sparkColor="#34d399" sparkId="sp-delivered"
+          accentClass="border-emerald-500/[0.15] hover:border-emerald-500/25" glowClass="bg-emerald-500"
+        />
+        <KPICard
+          label="Active" value={String(activeCount)} sub="Currently en route"
+          sparkData={[0, 0, 1, 0, 1, 1, activeCount]} sparkColor="#38bdf8" sparkId="sp-active"
+          accentClass="border-sky-500/[0.15] hover:border-sky-500/25" glowClass="bg-sky-500"
+        />
+        <KPICard
+          label="All Shipments" value={String(totalCount)} sub="Lifetime total"
+          sparkData={totalSpark} sparkColor="#71717a" sparkId="sp-total"
+          accentClass="border-white/[0.06] hover:border-white/[0.1]" glowClass="bg-zinc-600"
+        />
       </div>
 
+      {/* ── Pending alert ── */}
       {pendingShipment && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/[0.18] bg-amber-500/[0.04] px-4 py-3">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
@@ -208,13 +299,14 @@ export default function CustomerOverviewPage() {
             <p className="text-xs font-semibold text-zinc-200">Awaiting driver assignment</p>
             <p className="text-[10px] text-zinc-500 mt-0.5">
               <span className="font-mono">{pendingShipment.trackingId}</span>
-              {" · "}{pendingShipment.pickup.city} → {pendingShipment.delivery.city}
+              {" · "}{pendingShipment.pickupAddress.city} → {pendingShipment.deliveryAddress.city}
             </p>
           </div>
           <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-400">Pending</span>
         </div>
       )}
 
+      {/* ── Active delivery ── */}
       {activeDelivery && (
         <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.22] bg-[#0d0d11]">
           <div className="pointer-events-none absolute -top-12 right-1/4 h-36 w-64 rounded-full bg-violet-500/[0.07] blur-3xl" />
@@ -237,15 +329,17 @@ export default function CustomerOverviewPage() {
           </div>
 
           <div className="grid gap-5 p-5 sm:grid-cols-2">
+            {/* Timeline */}
             <div>
               <p className="mb-3 text-[9px] font-semibold uppercase tracking-widest text-zinc-600">Delivery Progress</p>
-              {activeDelivery.timeline.map((ev, i) => (
+              {timeline.map((ev, i) => (
                 <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
-                  isLast={i === activeDelivery.timeline.length - 1} />
+                  isLast={i === timeline.length - 1} />
               ))}
             </div>
 
             <div className="space-y-3">
+              {/* Route */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
                 <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Route</p>
                 <div className="flex items-start gap-2.5">
@@ -257,46 +351,53 @@ export default function CustomerOverviewPage() {
                   <div className="space-y-2.5 min-w-0 flex-1">
                     <div>
                       <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">From</p>
-                      <p className="text-[12px] font-medium text-zinc-200 truncate">{activeDelivery.pickup.address}, {activeDelivery.pickup.city}</p>
+                      <p className="text-[12px] font-medium text-zinc-200 truncate">
+                        {activeDelivery.pickupAddress.street}, {activeDelivery.pickupAddress.city}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">To</p>
-                      <p className="text-[12px] font-medium text-zinc-200 truncate">{activeDelivery.delivery.address}, {activeDelivery.delivery.city}</p>
+                      <p className="text-[12px] font-medium text-zinc-200 truncate">
+                        {activeDelivery.deliveryAddress.street}, {activeDelivery.deliveryAddress.city}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
+              {/* Driver */}
               {activeDelivery.driver && (
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
                   <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Your Driver</p>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/25 to-sky-500/25 border border-teal-500/20 text-[11px] font-bold text-teal-300">
-                      {activeDelivery.driver.name.split(" ").map((n) => n[0]).join("")}
+                      {activeDelivery.driver.user.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-zinc-200 truncate">{activeDelivery.driver.name}</p>
+                      <p className="text-sm font-semibold text-zinc-200 truncate">{activeDelivery.driver.user.name}</p>
                       <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-zinc-500">
                         <Star className="h-2.5 w-2.5 text-amber-400" />
-                        <span>{activeDelivery.driver.rating}</span>
+                        <span>{activeDelivery.driver.rating.toFixed(1)}</span>
                         <span className="text-zinc-700">·</span>
-                        <span>{activeDelivery.driver.vehicle}</span>
+                        <span className="capitalize">{activeDelivery.driver.vehicleType}</span>
+                        <span className="text-zinc-700">·</span>
+                        <span className="font-mono">{activeDelivery.driver.vehiclePlate}</span>
                       </div>
                     </div>
-                    {activeDelivery.driver.eta && (
-                      <div className="flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[10px] font-bold text-violet-400 shrink-0">
-                        <Clock className="h-2.5 w-2.5" />
-                        {activeDelivery.driver.eta}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[10px] font-bold text-violet-400 shrink-0">
+                      <Clock className="h-2.5 w-2.5" />
+                      En route
+                    </div>
                   </div>
-                  <a
-                    href={`tel:${activeDelivery.driver.phone}`}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] py-2 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    Call {activeDelivery.driver.name.split(" ")[0]}
-                  </a>
+                  {activeDelivery.driver.user.phone && (
+                    <a
+                      href={`tel:${activeDelivery.driver.user.phone}`}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] py-2 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      Call {activeDelivery.driver.user.name.split(" ")[0]}
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -304,6 +405,7 @@ export default function CustomerOverviewPage() {
         </div>
       )}
 
+      {/* ── Recent shipments ── */}
       <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
           <div>
@@ -317,29 +419,38 @@ export default function CustomerOverviewPage() {
             View all <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <div className="divide-y divide-white/[0.04]">
-          {recentShipments.map((s) => {
-            const meta = STATUS_META[s.status];
-            return (
-              <div key={s.id} className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/[0.015] transition-colors cursor-pointer">
-                <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }} />
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.02]">
-                  <Package className="h-3.5 w-3.5 text-zinc-600" />
+
+        {recentShipments.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <CheckCircle2 className="h-8 w-8 text-zinc-700" />
+            <p className="text-sm text-zinc-600">No completed shipments yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/[0.04]">
+            {recentShipments.map((s) => {
+              const meta = STATUS_META[s.status];
+              return (
+                <div key={s.id} className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/[0.015] transition-colors cursor-pointer">
+                  <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }} />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.02]">
+                    <Package className="h-3.5 w-3.5 text-zinc-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs font-bold text-zinc-200">{s.trackingId}</p>
+                    <p className="text-[10px] text-zinc-600 truncate mt-0.5">
+                      {s.pickupAddress.city}<span className="text-zinc-700"> → </span>{s.deliveryAddress.city}
+                      {s.description ? `  · ${s.description}` : ""}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs font-bold tabular-nums text-zinc-300">{formatNaira(s.priceKobo)}</p>
+                    <p className={cn("text-[10px] font-semibold mt-0.5", meta.color)}>{meta.label}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-xs font-bold text-zinc-200">{s.trackingId}</p>
-                  <p className="text-[10px] text-zinc-600 truncate mt-0.5">
-                    {s.pickup.city}<span className="text-zinc-700"> → </span>{s.delivery.city}{" · "}{s.packageType}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-xs font-bold tabular-nums text-zinc-300">{formatNaira(s.amount)}</p>
-                  <p className={cn("text-[10px] font-semibold mt-0.5", meta.color)}>{meta.label}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
     </div>

@@ -22,14 +22,32 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import {
-  MOCK_SHIPMENTS,
-  MOCK_DRIVERS,
-  DAILY_STATS,
-  STATUS_META,
-  formatNaira,
-} from "@/lib/mock/business";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { useDrivers } from "@/hooks/use-driver";
+import { useBusinessAnalytics } from "@/hooks/use-business";
 import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
+import type { Shipment, Driver, ShipmentStatus } from "@/types";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
+const STATUS_META: Record<ShipmentStatus, { label: string; dot: string; color: string; bg: string; border: string }> = {
+  pending:          { label: "Pending",          dot: "#f59e0b", color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/20" },
+  assigned:         { label: "Assigned",         dot: "#38bdf8", color: "text-sky-400",     bg: "bg-sky-400/10",     border: "border-sky-400/20" },
+  picked_up:        { label: "Picked Up",        dot: "#a78bfa", color: "text-violet-400",  bg: "bg-violet-400/10",  border: "border-violet-400/20" },
+  in_transit:       { label: "In Transit",       dot: "#60a5fa", color: "text-blue-400",    bg: "bg-blue-400/10",    border: "border-blue-400/20" },
+  out_for_delivery: { label: "Out for Delivery", dot: "#22d3ee", color: "text-cyan-400",    bg: "bg-cyan-400/10",    border: "border-cyan-400/20" },
+  delivered:        { label: "Delivered",        dot: "#34d399", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
+  failed:           { label: "Failed",           dot: "#f87171", color: "text-rose-400",    bg: "bg-rose-400/10",    border: "border-rose-400/20" },
+  cancelled:        { label: "Cancelled",        dot: "#71717a", color: "text-zinc-500",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20" },
+};
 
 const LiveMap = dynamic(
   () => import("@/components/map/live-map").then((m) => m.LiveMap),
@@ -195,7 +213,7 @@ const PIPELINE_STAGES = [
   { key: "failed",           label: "Failed",           color: "#f87171" },
 ] as const;
 
-function DeliveryPipeline() {
+function DeliveryPipeline({ shipments }: { shipments: Shipment[] }) {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] px-5 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -207,7 +225,7 @@ function DeliveryPipeline() {
 
       <div className="flex items-center gap-0 overflow-x-auto pb-1">
         {PIPELINE_STAGES.map((stage, idx) => {
-          const count = MOCK_SHIPMENTS.filter((s) => s.status === stage.key).length;
+          const count = shipments.filter((s) => s.status === stage.key).length;
           const isLast = idx === PIPELINE_STAGES.length - 1;
           return (
             <div key={stage.key} className="flex items-center flex-shrink-0">
@@ -283,9 +301,9 @@ function ShipmentProgressDots({ status }: { status: string }) {
 
 // ─── Shipments table ──────────────────────────────────────────────────────────
 
-function RecentShipments() {
+function RecentShipments({ shipments }: { shipments: Shipment[] }) {
   const [hovered, setHovered] = useState<string | null>(null);
-  const recent = MOCK_SHIPMENTS.slice(0, 6);
+  const recent = shipments.slice(0, 6);
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
@@ -293,7 +311,7 @@ function RecentShipments() {
         <div>
           <p className="text-sm font-semibold text-white">Recent Shipments</p>
           <p className="text-[10px] text-zinc-600 mt-0.5">
-            {MOCK_SHIPMENTS.length} total
+            {shipments.length} total
           </p>
         </div>
         <Link
@@ -306,9 +324,13 @@ function RecentShipments() {
       </div>
 
       <div className="divide-y divide-white/[0.04]">
+        {recent.length === 0 && (
+          <p className="px-5 py-8 text-center text-sm text-zinc-600">No shipments yet — create your first one.</p>
+        )}
         {recent.map((s) => {
           const meta = STATUS_META[s.status];
           const isHovered = hovered === s.id;
+          const driverName = s.driver?.user?.name ?? null;
           return (
             <div
               key={s.id}
@@ -334,22 +356,22 @@ function RecentShipments() {
                   <ShipmentProgressDots status={s.status} />
                 </div>
                 <p className="text-[11px] text-zinc-600 truncate">
-                  {s.pickup.city}{" "}
+                  {s.pickupAddress.city}{" "}
                   <span className="text-zinc-700">→</span>{" "}
-                  {s.delivery.city}
+                  {s.deliveryAddress.city}
                 </p>
               </div>
 
               {/* Driver — desktop only */}
-              {s.driver && (
+              {driverName && (
                 <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                   {!isHovered && (
                     <>
                       <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-sky-500/20 border border-teal-500/20 text-[8px] font-bold text-teal-300 uppercase">
-                        {s.driver.name.slice(0, 2)}
+                        {driverName.slice(0, 2)}
                       </div>
                       <p className="text-[11px] text-zinc-500 max-w-[80px] truncate">
-                        {s.driver.name.split(" ")[0]}
+                        {driverName.split(" ")[0]}
                       </p>
                     </>
                   )}
@@ -368,7 +390,7 @@ function RecentShipments() {
               {/* Amount — always visible */}
               {!isHovered && (
                 <p className="text-xs font-semibold text-zinc-300 shrink-0 tabular-nums">
-                  {formatNaira(s.amount)}
+                  {formatNaira(s.priceKobo)}
                 </p>
               )}
 
@@ -401,9 +423,16 @@ function RecentShipments() {
 
 // ─── Weekly bar chart ─────────────────────────────────────────────────────────
 
-function WeeklyChart() {
+function WeeklyChart({ totalRevenueKobo, deliveredCount, totalShipments }: { totalRevenueKobo: number; deliveredCount: number; totalShipments: number }) {
+  // Generate cosmetic weekly bars based on real totals
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const base = Math.max(1, Math.floor(totalShipments / 7));
+  const bars = DAYS.map((day, i) => ({
+    day,
+    shipments: i === 6 ? (totalShipments % 7 || base) : Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
+  }));
+  const max = Math.max(...bars.map((d) => d.shipments), 1);
   const [tooltip, setTooltip] = useState<number | null>(null);
-  const max = Math.max(...DAILY_STATS.map((d) => d.shipments));
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-5">
@@ -413,17 +442,15 @@ function WeeklyChart() {
           <p className="text-[10px] text-zinc-600 mt-0.5">Shipments per day</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold text-sky-400">
-            {DAILY_STATS.reduce((s, d) => s + d.shipments, 0)}
-          </p>
-          <p className="text-[10px] text-zinc-600">this week</p>
+          <p className="text-sm font-bold text-sky-400">{totalShipments}</p>
+          <p className="text-[10px] text-zinc-600">total</p>
         </div>
       </div>
 
       <div className="relative flex items-end gap-2 h-[72px]">
-        {DAILY_STATS.map((d, i) => {
+        {bars.map((d, i) => {
           const pct = (d.shipments / max) * 100;
-          const isLast = i === DAILY_STATS.length - 1;
+          const isLast = i === bars.length - 1;
           const isHovered = tooltip === i;
           return (
             <div
@@ -432,39 +459,23 @@ function WeeklyChart() {
               onMouseEnter={() => setTooltip(i)}
               onMouseLeave={() => setTooltip(null)}
             >
-              {/* Tooltip */}
               {isHovered && (
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/[0.1] bg-[#16161d] px-2 py-1 text-[10px] font-semibold text-white shadow-xl z-10">
                   {d.shipments} shipments
                 </div>
               )}
-              <div
-                className="w-full flex items-end transition-all duration-300"
-                style={{ height: "60px" }}
-              >
+              <div className="w-full flex items-end transition-all duration-300" style={{ height: "60px" }}>
                 <div
-                  className={`w-full rounded-t-md transition-all duration-500 ${
-                    isHovered
-                      ? "opacity-100"
-                      : isLast
-                        ? "opacity-90"
-                        : "opacity-50"
-                  }`}
+                  className={`w-full rounded-t-md transition-all duration-500 ${isHovered ? "opacity-100" : isLast ? "opacity-90" : "opacity-50"}`}
                   style={{
                     height: `${pct}%`,
                     minHeight: "4px",
-                    background: isLast || isHovered
-                      ? "linear-gradient(to top, #0ea5e9, #38bdf8)"
-                      : "rgba(255,255,255,0.07)",
-                    boxShadow: (isLast || isHovered)
-                      ? "0 0 12px #0ea5e980"
-                      : "none",
+                    background: isLast || isHovered ? "linear-gradient(to top, #0ea5e9, #38bdf8)" : "rgba(255,255,255,0.07)",
+                    boxShadow: (isLast || isHovered) ? "0 0 12px #0ea5e980" : "none",
                   }}
                 />
               </div>
-              <span className={`text-[9px] font-medium ${isLast ? "text-sky-400" : "text-zinc-700"}`}>
-                {d.day}
-              </span>
+              <span className={`text-[9px] font-medium ${isLast ? "text-sky-400" : "text-zinc-700"}`}>{d.day}</span>
             </div>
           );
         })}
@@ -472,15 +483,11 @@ function WeeklyChart() {
 
       <div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-white">
-            {formatNaira(DAILY_STATS.reduce((s, d) => s + d.revenue, 0))}
-          </p>
+          <p className="text-xs font-bold text-white">{formatNaira(totalRevenueKobo)}</p>
           <p className="text-[10px] text-zinc-600">Total revenue</p>
         </div>
         <div className="text-right">
-          <p className="text-xs font-bold text-emerald-400">
-            {DAILY_STATS.reduce((s, d) => s + d.delivered, 0)}
-          </p>
+          <p className="text-xs font-bold text-emerald-400">{deliveredCount}</p>
           <p className="text-[10px] text-zinc-600">Delivered</p>
         </div>
       </div>
@@ -491,13 +498,13 @@ function WeeklyChart() {
 // ─── Fleet panel ──────────────────────────────────────────────────────────────
 
 const DRIVER_STATUS_CONFIG = {
-  active:  { ring: "ring-emerald-400", label: "Active",  bg: "bg-emerald-400" },
-  idle:    { ring: "ring-amber-400",   label: "Idle",    bg: "bg-amber-400"   },
-  offline: { ring: "ring-zinc-700",    label: "Offline", bg: "bg-zinc-600"    },
+  available:   { ring: "ring-emerald-400", label: "Available",   bg: "bg-emerald-400" },
+  on_delivery: { ring: "ring-sky-400",     label: "On Delivery", bg: "bg-sky-400"     },
+  offline:     { ring: "ring-zinc-700",    label: "Offline",     bg: "bg-zinc-600"    },
 } as const;
 
-function FleetPanel() {
-  const top5 = MOCK_DRIVERS.slice(0, 5);
+function FleetPanel({ drivers }: { drivers: Driver[] }) {
+  const top5 = drivers.slice(0, 5);
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-5">
@@ -505,7 +512,7 @@ function FleetPanel() {
         <div>
           <p className="text-sm font-semibold text-white">Fleet</p>
           <p className="text-[10px] text-zinc-600 mt-0.5">
-            {MOCK_DRIVERS.length} drivers total
+            {drivers.length} driver{drivers.length !== 1 ? "s" : ""} total
           </p>
         </div>
         <Link
@@ -519,8 +526,8 @@ function FleetPanel() {
 
       {/* Status summary pills */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {(["active", "idle", "offline"] as const).map((s) => {
-          const count = MOCK_DRIVERS.filter((d) => d.status === s).length;
+        {(["available", "on_delivery", "offline"] as const).map((s) => {
+          const count = drivers.filter((d) => d.status === s).length;
           const cfg = DRIVER_STATUS_CONFIG[s];
           return (
             <div
@@ -538,8 +545,12 @@ function FleetPanel() {
 
       {/* Driver list */}
       <div className="space-y-2.5">
+        {top5.length === 0 && (
+          <p className="py-4 text-center text-sm text-zinc-600">No drivers assigned yet.</p>
+        )}
         {top5.map((d) => {
           const cfg = DRIVER_STATUS_CONFIG[d.status];
+          const initials = d.user.name.slice(0, 2).toUpperCase();
           return (
             <div
               key={d.id}
@@ -548,21 +559,21 @@ function FleetPanel() {
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-[1.5px] ring-offset-1 ring-offset-[#0d0d11] text-[10px] font-bold text-white uppercase bg-gradient-to-br from-zinc-700 to-zinc-800 ${cfg.ring}`}
               >
-                {d.avatar}
+                {initials}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-200 truncate">
-                  {d.name}
+                  {d.user.name}
                 </p>
                 <p className="text-[10px] text-zinc-600">
-                  {d.totalDeliveries} deliveries · ★ {d.rating}
+                  {d.totalDeliveries} deliveries · ★ {d.rating.toFixed(1)}
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-[11px] font-semibold text-zinc-300 tabular-nums">
-                  {formatNaira(d.monthlyEarnings)}
+                <p className="text-[11px] font-semibold text-zinc-300 uppercase">
+                  {d.vehicleType}
                 </p>
-                <p className="text-[9px] text-zinc-700">this month</p>
+                <p className="text-[9px] text-zinc-700 font-mono">{d.vehiclePlate}</p>
               </div>
             </div>
           );
@@ -620,7 +631,22 @@ function ActivityFeed() {
 export default function BusinessOverviewPage() {
   const [liveLocation, setLiveLocation] = useState<LocationUpdate | null>(null);
 
-  const activeShipment = MOCK_SHIPMENTS.find(
+  // ── Real data hooks ──────────────────────────────────────────────────────────
+  const { data: analytics } = useBusinessAnalytics();
+  const { data: shipmentsData } = useShipments({ pageSize: 20 });
+  const { data: drivers = [] } = useDrivers();
+
+  const shipments = getShipmentList(shipmentsData);
+
+  // ── Derived stats ────────────────────────────────────────────────────────────
+  const totalRevenueKobo  = analytics?.totalRevenueKobo ?? 0;
+  const totalShipments    = analytics?.totalShipments   ?? shipments.length;
+  const deliveredCount    = (analytics?.statusBreakdown?.delivered as number | undefined) ?? shipments.filter((s) => s.status === "delivered").length;
+  const availableDrivers  = drivers.filter((d) => d.status === "available").length;
+  const successRate       = totalShipments > 0 ? Math.round((deliveredCount / totalShipments) * 100) : 0;
+
+  // ── Live tracking — pick first active shipment ────────────────────────────────
+  const activeShipment = shipments.find(
     (s) => s.status === "in_transit" || s.status === "out_for_delivery",
   );
 
@@ -629,22 +655,20 @@ export default function BusinessOverviewPage() {
     onLocation: (update) => setLiveLocation(update),
   });
 
-  // Derived stats
-  const totalRevenue = MOCK_SHIPMENTS.reduce((sum, s) => sum + s.amount, 0);
-  const deliveredCount = MOCK_SHIPMENTS.filter((s) => s.status === "delivered").length;
-  const activeDrivers = MOCK_DRIVERS.filter((d) => d.status === "active").length;
-  const successRate = Math.round((deliveredCount / MOCK_SHIPMENTS.length) * 100);
-
-  // Animated counters
-  const animShipments = useCountUp(MOCK_SHIPMENTS.length);
-  const animRevenue   = useCountUp(totalRevenue);
-  const animDrivers   = useCountUp(MOCK_DRIVERS.length);
+  // ── Animated counters ────────────────────────────────────────────────────────
+  const animShipments = useCountUp(totalShipments);
+  const animRevenue   = useCountUp(totalRevenueKobo);
+  const animDrivers   = useCountUp(drivers.length);
   const animRate      = useCountUp(successRate);
 
-  // Spark data from daily stats
-  const shipmentSpark = DAILY_STATS.map((d) => d.shipments);
-  const revenueSpark  = DAILY_STATS.map((d) => d.revenue);
-  const driverSpark   = [3, 4, 4, 5, 4, 5, activeDrivers];
+  // ── Cosmetic sparkline data (no time-series from backend) ────────────────────
+  const base          = Math.max(1, Math.floor(totalShipments / 7));
+  const shipmentSpark = [0, 1, 2, 3, 4, 5, 6].map((i) =>
+    Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
+  );
+  const revenueBase   = Math.max(1, Math.floor(totalRevenueKobo / 7));
+  const revenueSpark  = shipmentSpark.map((v) => v * revenueBase);
+  const driverSpark   = [3, 4, 4, 5, 4, 5, availableDrivers];
   const rateSpark     = [82, 85, 88, 86, 89, 91, successRate];
 
   return (
@@ -691,10 +715,10 @@ export default function BusinessOverviewPage() {
           glowClass="bg-sky-500"
         />
         <KPICard
-          label="Active Drivers"
-          value={`${activeDrivers}/${animDrivers}`}
-          trend="+1 driver"
-          trendUp={true}
+          label="Available Drivers"
+          value={`${availableDrivers}/${animDrivers}`}
+          trend={availableDrivers > 0 ? `${availableDrivers} online` : "None online"}
+          trendUp={availableDrivers > 0}
           sub="Online now"
           sparkData={driverSpark}
           sparkColor="#2dd4bf"
@@ -703,11 +727,11 @@ export default function BusinessOverviewPage() {
           glowClass="bg-teal-500"
         />
         <KPICard
-          label="Revenue (MTD)"
+          label="Revenue (Total)"
           value={formatNaira(animRevenue)}
           trend="+22%"
           trendUp={true}
-          sub="Month to date"
+          sub="All time"
           sparkData={revenueSpark}
           sparkColor="#a78bfa"
           sparkId="spark-revenue"
@@ -717,8 +741,8 @@ export default function BusinessOverviewPage() {
         <KPICard
           label="Success Rate"
           value={`${animRate}%`}
-          trend="+1.2%"
-          trendUp={true}
+          trend={successRate >= 80 ? "+vs target" : "Below 80%"}
+          trendUp={successRate >= 80}
           sub="Delivered on time"
           sparkData={rateSpark}
           sparkColor="#34d399"
@@ -729,7 +753,7 @@ export default function BusinessOverviewPage() {
       </div>
 
       {/* ── Delivery pipeline ── */}
-      <DeliveryPipeline />
+      <DeliveryPipeline shipments={shipments} />
 
       {/* ── Live tracking panel ── */}
       {activeShipment && (
@@ -741,7 +765,7 @@ export default function BusinessOverviewPage() {
                 Live — {activeShipment.trackingId}
               </span>
               <span className="text-[10px] text-zinc-600">
-                {activeShipment.pickup.city} → {activeShipment.delivery.city}
+                {activeShipment.pickupAddress.city} → {activeShipment.deliveryAddress.city}
               </span>
             </div>
             <span
@@ -772,18 +796,22 @@ export default function BusinessOverviewPage() {
 
         {/* Recent shipments — takes 2/3 */}
         <div className="lg:col-span-2">
-          <RecentShipments />
+          <RecentShipments shipments={shipments} />
         </div>
 
         {/* Right column — 1/3 */}
         <div className="space-y-4">
-          <WeeklyChart />
+          <WeeklyChart
+            totalRevenueKobo={totalRevenueKobo}
+            deliveredCount={deliveredCount}
+            totalShipments={totalShipments}
+          />
           <ActivityFeed />
         </div>
       </div>
 
       {/* ── Fleet panel (full width) ── */}
-      <FleetPanel />
+      <FleetPanel drivers={drivers} />
 
     </div>
   );

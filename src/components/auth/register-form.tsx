@@ -25,21 +25,40 @@ import type { UserRole } from "@/types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name too long"),
-  email: z.string().email("Enter a valid email address"),
-  password: z
-    .string()
-    .min(8, "At least 8 characters required")
-    .regex(/[A-Z]/, "Include at least one uppercase letter")
-    .regex(/[0-9]/, "Include at least one number"),
-  role: z.enum(["business", "driver", "customer"]),
-  phone: z
-    .string()
-    .regex(/^\+?[1-9]\d{6,14}$/, "Enter a valid number (e.g. +2348012345678)")
-    .optional()
-    .or(z.literal("")),
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name too long"),
+    email: z.string().email("Enter a valid email address"),
+    password: z
+      .string()
+      .min(8, "At least 8 characters required")
+      .regex(/[A-Z]/, "Include at least one uppercase letter")
+      .regex(/[0-9]/, "Include at least one number"),
+    role: z.enum(["business", "driver", "customer"]),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{6,14}$/, "Enter a valid number (e.g. +2348012345678)")
+      .optional()
+      .or(z.literal("")),
+    // Business-specific
+    businessName: z.string().min(2, "Business name must be at least 2 characters").max(100).optional(),
+    // Driver-specific
+    vehicleType: z.enum(["bike", "car", "van", "truck"]).optional(),
+    vehiclePlate: z.string().min(3, "Enter a valid plate number").max(20).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "business" && !data.businessName) {
+      ctx.addIssue({ code: "custom", path: ["businessName"], message: "Business name is required" });
+    }
+    if (data.role === "driver") {
+      if (!data.vehicleType) {
+        ctx.addIssue({ code: "custom", path: ["vehicleType"], message: "Vehicle type is required" });
+      }
+      if (!data.vehiclePlate) {
+        ctx.addIssue({ code: "custom", path: ["vehiclePlate"], message: "Plate number is required" });
+      }
+    }
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -195,6 +214,8 @@ export function RegisterForm() {
         password: values.password,
         role: values.role,
         ...(values.phone ? { phone: values.phone } : {}),
+        ...(values.role === "business" && values.businessName ? { businessName: values.businessName } : {}),
+        ...(values.role === "driver" ? { vehicleType: values.vehicleType, vehiclePlate: values.vehiclePlate } : {}),
       });
       router.push(ROLE_ROUTES[values.role] as Route);
     } catch (err: unknown) {
@@ -376,6 +397,80 @@ export function RegisterForm() {
               />
             </Field>
           </div>
+
+          {/* ── Business name (business role only) ───────────────────────── */}
+          {selectedRole === "business" && (
+            <div style={slide("0.3s")}>
+              <Field label="Business name" error={errors.businessName?.message}>
+                <input
+                  {...register("businessName")}
+                  id="businessName"
+                  type="text"
+                  autoComplete="organization"
+                  placeholder="e.g. SwiftCargo Ltd"
+                  className={cn(
+                    "w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-zinc-700",
+                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
+                    "transition-all duration-200",
+                    errors.businessName
+                      ? "border-red-500/40 bg-red-500/[0.02]"
+                      : "border-white/[0.07] hover:border-white/[0.12]",
+                  )}
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* ── Vehicle fields (driver role only) ────────────────────────── */}
+          {selectedRole === "driver" && (
+            <div className="space-y-4" style={slide("0.3s")}>
+              <Field label="Vehicle type" error={errors.vehicleType?.message}>
+                <Controller
+                  name="vehicleType"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="grid grid-cols-4 gap-2">
+                      {(["bike", "car", "van", "truck"] as const).map((v) => {
+                        const labels = { bike: "🛵 Bike", car: "🚗 Car", van: "🚐 Van", truck: "🚛 Truck" };
+                        const active = field.value === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => field.onChange(v)}
+                            className={cn(
+                              "rounded-xl border px-2 py-3 text-center text-[12px] font-medium transition-all duration-200",
+                              active
+                                ? "border-sky-500/50 bg-sky-500/[0.07] text-white"
+                                : "border-white/[0.06] text-zinc-600 hover:border-white/[0.1] hover:text-zinc-400",
+                            )}
+                          >
+                            {labels[v]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                />
+              </Field>
+              <Field label="Plate number" error={errors.vehiclePlate?.message}>
+                <input
+                  {...register("vehiclePlate")}
+                  id="vehiclePlate"
+                  type="text"
+                  placeholder="e.g. LND 123 XA"
+                  className={cn(
+                    "w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-zinc-700 uppercase",
+                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
+                    "transition-all duration-200",
+                    errors.vehiclePlate
+                      ? "border-red-500/40 bg-red-500/[0.02]"
+                      : "border-white/[0.07] hover:border-white/[0.12]",
+                  )}
+                />
+              </Field>
+            </div>
+          )}
 
           {/* ── Password ─────────────────────────────────────────────────── */}
           <div style={slide("0.36s")}>
