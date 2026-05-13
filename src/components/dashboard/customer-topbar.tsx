@@ -1,44 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, Bell, X, MapPin, Package, CheckCircle2 } from "lucide-react";
+import { Menu, Bell, X, MapPin, Package, CheckCircle2, Info } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
-import { CURRENT_CUSTOMER } from "@/lib/mock/customer";
+import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/use-notifications";
+import type { Notification } from "@/types";
+import { cn } from "@/lib/utils";
 
-// ─── Mock notifications ───────────────────────────────────────────────────────
+// ─── Notification icon helper ─────────────────────────────────────────────────
 
-const NOTIFICATIONS = [
-  {
-    id: "n1",
-    icon: MapPin,
-    iconColor: "text-violet-400",
-    iconBg: "bg-violet-500/10 border-violet-500/15",
-    text: "IST-K7X2M9PQ is out for delivery",
-    sub: "ETA ~8 minutes · Ikoyi",
-    time: "2 min ago",
-    unread: true,
-  },
-  {
-    id: "n2",
-    icon: Package,
-    iconColor: "text-amber-400",
-    iconBg: "bg-amber-500/10 border-amber-500/15",
-    text: "Driver assigned to IST-X2PR5VCZ",
-    sub: "Your package has been picked up",
-    time: "14 min ago",
-    unread: true,
-  },
-  {
-    id: "n3",
-    icon: CheckCircle2,
-    iconColor: "text-emerald-400",
-    iconBg: "bg-emerald-500/10 border-emerald-500/15",
-    text: "IST-R3KM6XUB delivered successfully",
-    sub: "Delivered to Victoria Island",
-    time: "2 days ago",
-    unread: false,
-  },
-];
+function notifIcon(n: Notification) {
+  const t = n.title?.toLowerCase() ?? "";
+  if (t.includes("deliver") || t.includes("out for"))
+    return { Icon: MapPin,       color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/15" };
+  if (t.includes("assign") || t.includes("pick"))
+    return { Icon: Package,      color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/15"  };
+  if (t.includes("deliver") && t.includes("success"))
+    return { Icon: CheckCircle2, color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/15" };
+  return   { Icon: Info,         color: "text-zinc-400",   bg: "bg-zinc-500/10 border-zinc-500/15"   };
+}
+
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -50,14 +40,12 @@ interface Props {
 export function CustomerTopbar({ title, onMenuClick }: Props) {
   const user = useAuthStore((s) => s.user);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const { notifications, unreadCount } = useNotifications();
+  const { mutate: markAllRead }        = useMarkAllNotificationsRead();
 
-  const initials = (user?.name ?? CURRENT_CUSTOMER.name).slice(0, 2).toUpperCase();
-  const firstName = (user?.name ?? CURRENT_CUSTOMER.name).split(" ")[0];
+  const initials  = (user?.name ?? "CU").slice(0, 2).toUpperCase();
+  const firstName = (user?.name ?? "Customer").split(" ")[0];
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-white/[0.05] bg-[#09090c]/90 backdrop-blur-xl px-4 sm:px-6">
@@ -121,7 +109,7 @@ export function CustomerTopbar({ title, onMenuClick }: Props) {
                   <div className="flex items-center gap-3">
                     {unreadCount > 0 && (
                       <button
-                        onClick={markAllRead}
+                        onClick={() => markAllRead()}
                         className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors font-medium"
                       >
                         Mark all read
@@ -138,33 +126,41 @@ export function CustomerTopbar({ title, onMenuClick }: Props) {
 
                 {/* Notification items */}
                 <div className="divide-y divide-white/[0.04] max-h-72 overflow-y-auto">
-                  {notifications.map((n) => {
-                    const Icon = n.icon;
-                    return (
-                      <div
-                        key={n.id}
-                        className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer ${
-                          n.unread
-                            ? "bg-violet-500/[0.03] hover:bg-violet-500/[0.06]"
-                            : "hover:bg-white/[0.02]"
-                        }`}
-                      >
-                        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border ${n.iconBg}`}>
-                          <Icon className={`h-3 w-3 ${n.iconColor}`} />
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 gap-2">
+                      <Bell className="h-6 w-6 text-zinc-700" />
+                      <p className="text-xs text-zinc-600">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.slice(0, 20).map((n) => {
+                      const { Icon, color, bg } = notifIcon(n);
+                      return (
+                        <div
+                          key={n.id}
+                          className={cn(
+                            "flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer",
+                            !n.isRead
+                              ? "bg-violet-500/[0.03] hover:bg-violet-500/[0.06]"
+                              : "hover:bg-white/[0.02]",
+                          )}
+                        >
+                          <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border ${bg}`}>
+                            <Icon className={`h-3 w-3 ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-xs leading-snug", !n.isRead ? "text-zinc-200 font-medium" : "text-zinc-500")}>
+                              {n.title}
+                            </p>
+                            <p className="text-[10px] text-zinc-600 mt-0.5 line-clamp-1">{n.message}</p>
+                            <p className="text-[10px] text-zinc-700 mt-0.5">{relativeTime(n.createdAt)}</p>
+                          </div>
+                          {!n.isRead && (
+                            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs leading-snug ${n.unread ? "text-zinc-200 font-medium" : "text-zinc-500"}`}>
-                            {n.text}
-                          </p>
-                          <p className="text-[10px] text-zinc-600 mt-0.5">{n.sub}</p>
-                          <p className="text-[10px] text-zinc-700 mt-0.5">{n.time}</p>
-                        </div>
-                        {n.unread && (
-                          <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Footer */}
@@ -178,6 +174,7 @@ export function CustomerTopbar({ title, onMenuClick }: Props) {
           )}
         </div>
 
+        {/* Divider */}
         {/* Divider */}
         <span className="h-5 w-px bg-white/[0.06] mx-0.5" />
 

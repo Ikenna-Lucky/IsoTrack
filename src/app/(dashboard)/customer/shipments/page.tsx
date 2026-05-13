@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import {
   Search,
   ChevronDown,
@@ -303,88 +305,21 @@ export default function CustomerShipmentsPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        {[
-                          {
-                            icon: Package,
-                            label: "Description",
-                            value: s.description || `${s.weightKg} kg package`,
-                          },
-                          {
-                            icon: Clock,
-                            label: "Amount",
-                            value: formatNaira(s.priceKobo),
-                          },
-                          {
-                            icon: Calendar,
-                            label: s.actualDelivery ? "Delivered" : "Created",
-                            value: new Date(s.actualDelivery ?? s.createdAt).toLocaleDateString("en-NG", {
-                              day: "numeric", month: "short", year: "numeric",
-                            }),
-                          },
-                        ].map(({ icon: Icon, label, value }) => (
-                          <div key={label} className="flex items-center gap-2.5 rounded-xl border border-white/[0.05] bg-black/20 px-3 py-2.5">
-                            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.03]">
-                              <Icon className="h-3 w-3 text-zinc-600" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[9px] uppercase tracking-wider text-zinc-700">{label}</p>
-                              <p className="text-xs font-semibold text-zinc-300 truncate">{value}</p>
-                            </div>
-                          </div>
-                        ))}
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                        <span className="text-[10px] text-zinc-600">
+                          {new Date(s.createdAt).toLocaleDateString("en-NG", {
+                            day: "numeric", month: "short", year: "numeric",
+                          })}
+                        </span>
+                        <Link
+                          href={`/customer/track?id=${s.trackingId}` as Route}
+                          className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                        >
+                          Track →
+                        </Link>
                       </div>
                     </div>
-
-                    {/* Timeline */}
-                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
-                      <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Delivery Timeline</p>
-                      {timeline.map((ev, i) => (
-                        <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
-                          isLast={i === timeline.length - 1} />
-                      ))}
-                    </div>
-
-                    {/* Driver */}
-                    {s.driver && (
-                      <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-sky-500/20 border border-teal-500/20 text-[11px] font-bold text-teal-300">
-                          {s.driver.user.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-zinc-200 truncate">{s.driver.user.name}</p>
-                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mt-0.5">
-                            <Star className="h-2.5 w-2.5 text-amber-400" />
-                            {s.driver.rating.toFixed(1)}
-                            <span className="text-zinc-700">·</span>
-                            <span className="capitalize">{s.driver.vehicleType}</span>
-                            <span className="text-zinc-700">·</span>
-                            <span className="font-mono">{s.driver.vehiclePlate}</span>
-                          </div>
-                        </div>
-                        {s.driver.user.phone && (
-                          <a
-                            href={`tel:${s.driver.user.phone}`}
-                            className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-3 py-2 text-xs font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
-                          >
-                            <Phone className="h-3.5 w-3.5" />
-                            Call
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Live CTA */}
-                    {isLive && (
-                      <a
-                        href="/customer/track"
-                        className="flex items-center justify-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/[0.08] py-2.5 text-sm font-semibold text-violet-400 hover:bg-violet-500/[0.15] transition-all"
-                      >
-                        <MapPin className="h-4 w-4" />
-                        View live map
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </a>
-                    )}
                   </div>
                 )}
               </li>

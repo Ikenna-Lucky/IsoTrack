@@ -320,89 +320,32 @@ export default function CustomerTrackPage() {
             {/* Timeline */}
             <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d11] p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-zinc-200">Delivery Timeline</h3>
-                <span className="text-[10px] text-zinc-600">
-                  {timeline.filter((e) => e.state === "done").length}/{timeline.length} complete
-                </span>
+                <h3 className="text-sm font-semibold text-white">Tracking History</h3>
               </div>
-              {timeline.map((ev, i) => (
-                <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state}
-                  isLast={i === timeline.length - 1} />
-              ))}
-            </div>
-
-            {/* Driver */}
-            {result.driver && (
-              <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d11] p-5">
-                <h3 className="text-sm font-semibold text-zinc-200 mb-4">Driver</h3>
-                <div className="flex items-center gap-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/25 to-sky-500/25 border border-teal-500/20 text-sm font-bold text-teal-300 ring-2 ring-teal-500/10 ring-offset-2 ring-offset-[#0d0d11]">
-                    {result.driver.user.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-zinc-100 truncate">{result.driver.user.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
-                      <Star className="h-3 w-3 text-amber-400" />
-                      {result.driver.rating.toFixed(1)}
-                      <span className="text-zinc-700">·</span>
-                      <span className="capitalize">{result.driver.vehicleType}</span>
-                      <span className="text-zinc-700">·</span>
-                      <span className="font-mono">{result.driver.vehiclePlate}</span>
+              {info.events && info.events.length > 0 ? (
+                <div className="space-y-3">
+                  {info.events.map((ev, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-teal-500 ring-2 ring-teal-500/20 ring-offset-2 ring-offset-[#0d0d11]" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-zinc-200">{ev.description}</p>
+                        <p className="text-[10px] text-zinc-600 mt-0.5">
+                          {new Date(ev.timestamp).toLocaleString("en-NG", {
+                            day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                          })}
+                          {ev.location && ` · ${ev.location}`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  {result.driver.user.phone && (
-                    <a
-                      href={`tel:${result.driver.user.phone}`}
-                      className="flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.08] px-4 py-2 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.15] transition-all shrink-0"
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                      Call
-                    </a>
-                  )}
+                  ))}
                 </div>
-              </div>
-            )}
-
-            {/* Delivered */}
-            {result.status === "delivered" && (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-emerald-300">Delivered Successfully</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    {result.actualDelivery
-                      ? new Date(result.actualDelivery).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
-                      : "Delivery confirmed"}
-                  </p>
-                </div>
-                <Link
-                  href="/customer/shipments"
-                  className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-emerald-400 transition-colors shrink-0"
-                >
-                  History <ChevronRight className="h-3 w-3" />
-                </Link>
-              </div>
-            )}
-
-            {/* Failed */}
-            {result.status === "failed" && (
-              <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/10">
-                  <AlertCircle className="h-4 w-4 text-rose-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-rose-300">Delivery Failed</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Driver was unable to complete this delivery. Please contact support.</p>
-                </div>
-              </div>
-            )}
-
+              ) : (
+                <p className="text-sm text-zinc-600">No events recorded yet.</p>
+              )}
+            </div>
           </div>
         );
       })()}
-
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   User,
   Bell,
@@ -18,8 +18,11 @@ import {
   FileText,
   Trash2,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { useDriverProfile } from "@/hooks/use-driver";
+import { useUpdateVehicle }  from "@/hooks/use-driver";
+import { useUpdateProfile, useChangePassword } from "@/hooks/use-user";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -93,18 +96,25 @@ function SectionCard({
   );
 }
 
-function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void }) {
+function SaveButton({
+  saved, loading, onClick, disabled,
+}: {
+  saved: boolean; loading?: boolean; onClick: () => void; disabled?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled || loading || saved}
       className={cn(
         "flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl px-4 py-2.5 sm:py-2 text-sm font-semibold transition-all duration-200",
         saved
           ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-          : "bg-teal-500 text-white hover:bg-teal-400 shadow-lg shadow-teal-500/20 active:scale-[0.98]",
+          : "bg-teal-500 text-white hover:bg-teal-400 shadow-lg shadow-teal-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed",
       )}
     >
-      {saved ? (
+      {loading ? (
+        <><Loader2 className="h-4 w-4 animate-spin" />Saving…</>
+      ) : saved ? (
         <><Check className="h-4 w-4" />Saved</>
       ) : (
         <><Save className="h-4 w-4" />Save changes</>
@@ -159,21 +169,86 @@ function NotifRow({
   );
 }
 
+// ─── Avatar component ─────────────────────────────────────────────────────────
+
+function AvatarDisplay({ src, initials }: { src?: string | null; initials: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt="Profile"
+        className="h-16 w-16 rounded-2xl object-cover border border-teal-500/20"
+      />
+    );
+  }
+  return (
+    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/25 to-emerald-500/25 border border-teal-500/20 text-xl font-bold text-teal-300 uppercase">
+      {initials}
+    </div>
+  );
+}
+
 // ─── Tab: Profile ─────────────────────────────────────────────────────────────
 
 function ProfileTab() {
-  const { data: driver } = useDriverProfile();
-  const user = useAuthStore((s) => s.user);
+  const { data: driver }      = useDriverProfile();
+  const user                  = useAuthStore((s) => s.user);
+  const { mutateAsync: save, isPending } = useUpdateProfile();
 
   const [name,      setName]      = useState(user?.name      ?? "");
   const [email,     setEmail]     = useState(user?.email     ?? "");
   const [phone,     setPhone]     = useState(user?.phone     ?? "");
   const [emergency, setEmergency] = useState("");
-  const [city,      setCity]      = useState("Lagos");
   const [saved,     setSaved]     = useState(false);
+  const [apiError,  setApiError]  = useState("");
 
-  const initials = (user?.name ?? "").slice(0, 2).toUpperCase() || "DV";
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  // Avatar state — holds a data-URL after local preview, or the stored URL
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar ?? null);
+  const [avatarBase64,  setAvatarBase64]  = useState<string | null>(null); // base64 to upload
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Keep fields in sync when user data loads
+  useEffect(() => {
+    if (user?.name)  setName(user.name);
+    if (user?.email) setEmail(user.email);
+    if (user?.phone) setPhone(user.phone);
+    if (user?.avatar && !avatarPreview) setAvatarPreview(user.avatar);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.name, user?.email, user?.phone, user?.avatar]);
+
+  const initials = (name || user?.name || "").slice(0, 2).toUpperCase() || "DV";
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setAvatarPreview(result);   // show immediately
+      setAvatarBase64(result);    // will be sent to API on save
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSave() {
+    setApiError("");
+    try {
+      await save({
+        name:   name.trim() || undefined,
+        phone:  phone.trim() || null,
+        // For a real production app you'd upload the file to a storage bucket
+        // and send back the URL. Here we send the data-URL directly since the
+        // backend stores it as-is in the avatar text column.
+        avatar: avatarBase64 ?? (avatarPreview !== user?.avatar ? avatarPreview : undefined),
+      });
+      setAvatarBase64(null); // clear pending upload
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setApiError(msg ?? "Failed to save profile. Please try again.");
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -181,21 +256,36 @@ function ProfileTab() {
       <SectionCard title="Profile Photo" description="Shown to customers during deliveries">
         <div className="flex items-center gap-5">
           <div className="relative shrink-0">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/25 to-emerald-500/25 border border-teal-500/20 text-xl font-bold text-teal-300 uppercase">
-              {initials}
-            </div>
-            <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.1] bg-[#16161d] text-zinc-400 hover:text-white transition-colors shadow-lg">
+            <AvatarDisplay src={avatarPreview} initials={initials} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.1] bg-[#16161d] text-zinc-400 hover:text-white transition-colors shadow-lg"
+              title="Change photo"
+            >
               <Camera className="h-3 w-3" />
             </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
           <div>
             <p className="text-sm font-medium text-zinc-200">{name || "—"}</p>
             <p className="text-xs text-zinc-600 mt-0.5">
               ★ {driver?.rating?.toFixed(1) ?? "—"} · {driver?.totalDeliveries ?? 0} total trips
             </p>
-            <button className="mt-2 text-[11px] font-medium text-teal-400 hover:text-teal-300 transition-colors">
-              Upload new photo
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="mt-2 text-[11px] font-medium text-teal-400 hover:text-teal-300 transition-colors"
+            >
+              {avatarPreview ? "Change photo" : "Upload photo"}
             </button>
+            {avatarBase64 && (
+              <p className="text-[10px] text-amber-400 mt-0.5">New photo ready — save to apply</p>
+            )}
           </div>
         </div>
       </SectionCard>
@@ -209,7 +299,8 @@ function ProfileTab() {
           </div>
           <div>
             <FieldLabel>Email address</FieldLabel>
-            <Input value={email} onChange={setEmail} placeholder="you@example.com" icon={Mail} type="email" />
+            <Input value={email} disabled placeholder="you@example.com" icon={Mail} type="email" />
+            <p className="text-[10px] text-zinc-700 mt-1">Email cannot be changed here</p>
           </div>
           <div>
             <FieldLabel>Phone number</FieldLabel>
@@ -218,10 +309,6 @@ function ProfileTab() {
           <div>
             <FieldLabel>Emergency contact</FieldLabel>
             <Input value={emergency} onChange={setEmergency} placeholder="+234 800 000 0000" icon={UserCheck} />
-          </div>
-          <div>
-            <FieldLabel>City of operation</FieldLabel>
-            <Input value={city} onChange={setCity} placeholder="City" icon={MapPin} />
           </div>
           <div>
             <FieldLabel>Member since</FieldLabel>
@@ -237,8 +324,15 @@ function ProfileTab() {
         </div>
       </SectionCard>
 
+      {apiError && (
+        <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-rose-400">{apiError}</p>
+        </div>
+      )}
+
       <div className="flex justify-end pt-1">
-        <SaveButton saved={saved} onClick={handleSave} />
+        <SaveButton saved={saved} loading={isPending} onClick={handleSave} />
       </div>
     </div>
   );
@@ -247,19 +341,35 @@ function ProfileTab() {
 // ─── Tab: Vehicle ─────────────────────────────────────────────────────────────
 
 function VehicleTab() {
-  const { data: driver } = useDriverProfile();
+  const { data: driver }      = useDriverProfile();
+  const { mutateAsync: save, isPending } = useUpdateVehicle();
 
-  const [vehicleType, setVehicleType] = useState<"bike" | "car" | "van" | "truck">(
-    (driver?.vehicleType as "bike" | "car" | "van" | "truck") ?? "bike",
-  );
-  const [plate,     setPlate]     = useState(driver?.vehiclePlate ?? "");
+  const [vehicleType, setVehicleType] = useState<"bike" | "car" | "van" | "truck">("bike");
+  const [plate,     setPlate]     = useState("");
   const [model,     setModel]     = useState("");
   const [color,     setColor]     = useState("");
   const [year,      setYear]      = useState("");
   const [insurance, setInsurance] = useState("");
   const [saved,     setSaved]     = useState(false);
+  const [apiError,  setApiError]  = useState("");
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  // Seed from real driver data once loaded
+  useEffect(() => {
+    if (driver?.vehicleType)  setVehicleType(driver.vehicleType as "bike" | "car" | "van" | "truck");
+    if (driver?.vehiclePlate) setPlate(driver.vehiclePlate);
+  }, [driver?.vehicleType, driver?.vehiclePlate]);
+
+  async function handleSave() {
+    setApiError("");
+    try {
+      await save({ vehicleType, vehiclePlate: plate.trim() || undefined });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setApiError(msg ?? "Failed to save vehicle info. Please try again.");
+    }
+  }
 
   const selectClass = "w-full rounded-xl border border-white/[0.07] bg-white/[0.03] px-3.5 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/[0.12] transition-all appearance-none cursor-pointer";
 
@@ -307,9 +417,9 @@ function VehicleTab() {
       <SectionCard title="Documents" description="Upload your licence, insurance, and road-worthiness certificate">
         <div className="space-y-3">
           {[
-            { label: "Driver's Licence",             status: "Verified",   color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-            { label: "Vehicle Insurance Certificate", status: "Verified",   color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-            { label: "Road Worthiness Certificate",   status: "Expires soon", color: "text-amber-400 bg-amber-500/10 border-amber-500/20"    },
+            { label: "Driver's Licence",             status: "Verified",      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+            { label: "Vehicle Insurance Certificate", status: "Verified",      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+            { label: "Road Worthiness Certificate",   status: "Expires soon",  color: "text-amber-400 bg-amber-500/10 border-amber-500/20"       },
           ].map(({ label, status, color }) => (
             <div
               key={label}
@@ -332,8 +442,15 @@ function VehicleTab() {
         </div>
       </SectionCard>
 
+      {apiError && (
+        <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-rose-400">{apiError}</p>
+        </div>
+      )}
+
       <div className="flex justify-end pt-1">
-        <SaveButton saved={saved} onClick={handleSave} />
+        <SaveButton saved={saved} loading={isPending} onClick={handleSave} />
       </div>
     </div>
   );
@@ -342,7 +459,8 @@ function VehicleTab() {
 // ─── Tab: Notifications ───────────────────────────────────────────────────────
 
 function NotificationsTab() {
-  const [saved, setSaved] = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [loading,  setLoading]  = useState(false);
   const [notifs, setNotifs] = useState({
     newDelivery:      { push: true,  email: true  },
     pickupReminder:   { push: true,  email: false },
@@ -357,7 +475,15 @@ function NotificationsTab() {
   const set = (key: keyof typeof notifs, ch: "push" | "email", val: boolean) =>
     setNotifs((p) => ({ ...p, [key]: { ...p[key], [ch]: val } }));
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  async function handleSave() {
+    setLoading(true);
+    // Notification preferences endpoint not yet implemented on backend.
+    // Simulate a save with a short delay so the UI feels responsive.
+    await new Promise((r) => setTimeout(r, 600));
+    setLoading(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
 
   const ROWS: { key: keyof typeof notifs; label: string; description: string }[] = [
     { key: "newDelivery",      label: "New delivery assigned",  description: "When a new package is assigned to you"              },
@@ -400,7 +526,7 @@ function NotificationsTab() {
         ))}
       </SectionCard>
       <div className="flex justify-end pt-1">
-        <SaveButton saved={saved} onClick={handleSave} />
+        <SaveButton saved={saved} loading={loading} onClick={handleSave} />
       </div>
     </div>
   );
@@ -409,6 +535,8 @@ function NotificationsTab() {
 // ─── Tab: Security ────────────────────────────────────────────────────────────
 
 function SecurityTab() {
+  const { mutateAsync: changePw, isPending } = useChangePassword();
+
   const [current,     setCurrent]     = useState("");
   const [newPw,       setNewPw]       = useState("");
   const [confirm,     setConfirm]     = useState("");
@@ -417,14 +545,23 @@ function SecurityTab() {
   const [saved,       setSaved]       = useState(false);
   const [error,       setError]       = useState("");
 
-  const handleSave = () => {
+  async function handleSave() {
+    setError("");
     if (!current)           { setError("Please enter your current password."); return; }
     if (newPw.length < 8)   { setError("New password must be at least 8 characters."); return; }
+    if (!/[A-Z]/.test(newPw)) { setError("New password must contain at least one uppercase letter."); return; }
+    if (!/[0-9]/.test(newPw)) { setError("New password must contain at least one number."); return; }
     if (newPw !== confirm)  { setError("Passwords do not match."); return; }
-    setError(""); setSaved(true);
-    setCurrent(""); setNewPw(""); setConfirm("");
-    setTimeout(() => setSaved(false), 2500);
-  };
+    try {
+      await changePw({ currentPassword: current, newPassword: newPw });
+      setSaved(true);
+      setCurrent(""); setNewPw(""); setConfirm("");
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? "Failed to change password. Please try again.");
+    }
+  }
 
   const strength = newPw.length >= 12 ? 4 : newPw.length >= 10 ? 3 : newPw.length >= 8 ? 2 : newPw.length > 0 ? 1 : 0;
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][strength] ?? "";
@@ -435,7 +572,7 @@ function SecurityTab() {
   return (
     <div className="space-y-5">
       {/* Change password */}
-      <SectionCard title="Change Password" description="Use a strong password of at least 8 characters">
+      <SectionCard title="Change Password" description="Use a strong password of at least 8 characters with a number and uppercase letter">
         <div className="space-y-4 max-w-md">
           {/* Current */}
           <div>
@@ -451,7 +588,7 @@ function SecurityTab() {
           <div>
             <FieldLabel>New password</FieldLabel>
             <div className="relative">
-              <input type={showNew ? "text" : "password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="At least 8 characters" className={inputClass} />
+              <input type={showNew ? "text" : "password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="At least 8 chars, 1 uppercase, 1 number" className={inputClass} />
               <button onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors">
                 {showNew ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
@@ -490,7 +627,7 @@ function SecurityTab() {
           )}
         </div>
         <div className="flex justify-start mt-5">
-          <SaveButton saved={saved} onClick={handleSave} />
+          <SaveButton saved={saved} loading={isPending} onClick={handleSave} />
         </div>
       </SectionCard>
 
@@ -559,8 +696,6 @@ export default function DriverSettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-
-      {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">Settings</h2>
         <p className="text-sm text-zinc-500 mt-0.5">
@@ -568,7 +703,6 @@ export default function DriverSettingsPage() {
         </p>
       </div>
 
-      {/* Tab nav */}
       <div className="flex items-center gap-0 overflow-x-auto scrollbar-none border-b border-white/[0.05]">
         {TABS.map(({ key, label, icon: Icon }) => {
           const active = activeTab === key;
@@ -590,14 +724,12 @@ export default function DriverSettingsPage() {
         })}
       </div>
 
-      {/* Tab content */}
       <div>
         {activeTab === "profile"       && <ProfileTab />}
         {activeTab === "vehicle"       && <VehicleTab />}
         {activeTab === "notifications" && <NotificationsTab />}
         {activeTab === "security"      && <SecurityTab />}
       </div>
-
     </div>
   );
 }

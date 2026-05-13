@@ -36,6 +36,22 @@ export function useBusinessProfile() {
   });
 }
 
+/**
+ * Returns aggregated analytics for the business:
+ * status breakdown, total shipments, total revenue, recent shipments.
+ * Refetches every 60 s.
+ */
+export function useBusinessAnalytics() {
+  return useQuery({
+    queryKey: businessKeys.analytics(),
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<BusinessAnalytics>>("/business/analytics");
+      return data.data;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 /** Update the business profile (name, address). */
@@ -46,32 +62,11 @@ export function useUpdateBusinessProfile() {
       businessName?: string;
       address?: { street: string; city: string; state: string };
     }) => {
-      const { data } = await api.patch<ApiResponse<Business>>(
-        "/business/profile",
-        input,
-      );
+      const { data } = await api.patch<ApiResponse<unknown>>("/business/profile", input);
       return data.data;
     },
-    onSuccess: (updated) => {
-      qc.setQueryData<Business>(businessKeys.profile(), updated);
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["business"] });
     },
-  });
-}
-
-// ─── Queries (continued) ──────────────────────────────────────────────────────
-
-/**
- * Returns shipment stats and recent activity for the business dashboard.
- */
-export function useBusinessAnalytics() {
-  return useQuery({
-    queryKey: businessKeys.analytics(),
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<BusinessAnalytics>>(
-        "/business/analytics",
-      );
-      return data.data;
-    },
-    staleTime: 60_000, // analytics can be slightly stale — refetch every minute
   });
 }

@@ -503,17 +503,16 @@ export default function ShipmentsPage() {
                           </span>
                         </div>
                         <div className="flex items-center">
-                          <span className="text-xs font-semibold text-zinc-200 tabular-nums whitespace-nowrap">
+                          <span className="text-xs font-semibold text-white tabular-nums">
                             {formatNaira(s.priceKobo)}
                           </span>
                         </div>
                         <div className="flex items-center">
-                          <span className="text-[10px] text-zinc-600 whitespace-nowrap">
-                            {new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                          <span className="text-[10px] text-zinc-600">
+                            {new Date(s.createdAt).toLocaleDateString("en-NG", {
+                              day: "numeric", month: "short",
+                            })}
                           </span>
-                        </div>
-                        <div className="flex items-center justify-end">
-                          <ChevronDown className={cn("h-3.5 w-3.5 text-zinc-600 transition-transform duration-200", isExpanded && "rotate-180 text-sky-400")} />
                         </div>
                       </div>
                       {isExpanded && <ExpandedDetail s={s} />}
@@ -524,47 +523,30 @@ export default function ShipmentsPage() {
             </>
           )
         )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-white/[0.05]">
-            <p className="text-[11px] text-zinc-600">
-              Page {page} of {totalPages}
-              {pagination && ` · ${pagination.total} shipments`}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded-lg border border-white/[0.07] px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                Prev
-              </button>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                    p === page
-                      ? "bg-sky-500/[0.15] text-sky-400 border border-sky-500/[0.22]"
-                      : "border border-white/[0.07] text-zinc-600 hover:text-zinc-200 hover:bg-white/[0.05]",
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg border border-white/[0.07] px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ← Prev
+          </button>
+          <span className="text-xs text-zinc-600">
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

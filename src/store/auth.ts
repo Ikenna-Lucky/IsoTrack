@@ -15,6 +15,7 @@ interface AuthStore {
 
   // Actions
   setAuth: (user: User, accessToken: string) => void;
+  updateUser: (patch: Partial<User>) => void;
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
 
@@ -68,6 +69,9 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     // ── Sync actions ───────────────────────────────────────────────────────
     setAuth: (user, accessToken) =>
       set({ user, accessToken, isAuthenticated: true, isLoading: false }),
+
+    updateUser: (patch) =>
+      set((s) => ({ user: s.user ? { ...s.user, ...patch } : s.user })),
 
     clearAuth: () =>
       set({

@@ -13,12 +13,8 @@ import {
 import type { Route } from "next";
 import { Logo } from "@/components/shared/logo";
 import { useAuthStore } from "@/store/auth";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
 import { cn } from "@/lib/utils";
-import {
-  CURRENT_CUSTOMER,
-  CUSTOMER_SHIPMENTS,
-  STATUS_META,
-} from "@/lib/mock/customer";
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -43,15 +39,22 @@ export function CustomerSidebar({ open, onClose }: Props) {
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
 
-  const activeDelivery = CUSTOMER_SHIPMENTS.find(
+  const { data: shipmentsData } = useShipments({ pageSize: 100 });
+  const shipments = getShipmentList(shipmentsData);
+
+  const activeDelivery = shipments.find(
     (s) => s.status === "out_for_delivery" || s.status === "in_transit",
   );
 
-  const activeCount = CUSTOMER_SHIPMENTS.filter(
-    (s) => s.status === "out_for_delivery" || s.status === "in_transit" || s.status === "assigned" || s.status === "picked_up",
+  const activeCount = shipments.filter(
+    (s) =>
+      s.status === "out_for_delivery" ||
+      s.status === "in_transit" ||
+      s.status === "assigned" ||
+      s.status === "picked_up",
   ).length;
 
-  const deliveredCount = CUSTOMER_SHIPMENTS.filter((s) => s.status === "delivered").length;
+  const deliveredCount = shipments.filter((s) => s.status === "delivered").length;
 
   return (
     <>
@@ -139,13 +142,17 @@ export function CustomerSidebar({ open, onClose }: Props) {
               <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
                 <MapPin className="h-2.5 w-2.5 text-violet-400/60 shrink-0" />
                 <span className="truncate">
-                  {activeDelivery.pickup.city} → {activeDelivery.delivery.city}
+                  {activeDelivery.pickupAddress.city} → {activeDelivery.deliveryAddress.city}
                 </span>
               </div>
-              {activeDelivery.driver?.eta && (
+              {activeDelivery.estimatedDelivery && (
                 <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400">
                   <Clock className="h-2.5 w-2.5 shrink-0" />
-                  ETA {activeDelivery.driver.eta}
+                  ETA{" "}
+                  {new Date(activeDelivery.estimatedDelivery).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                  })}
                 </div>
               )}
               <Link
@@ -177,14 +184,14 @@ export function CustomerSidebar({ open, onClose }: Props) {
         <div className="px-4 pb-4 border-t border-white/[0.04] pt-3 space-y-2">
           <div className="flex items-center gap-3 rounded-xl bg-white/[0.025] border border-white/[0.05] px-3 py-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 border border-violet-500/25 text-[11px] font-bold text-violet-300 uppercase ring-1 ring-violet-500/10 ring-offset-1 ring-offset-[#09090c]">
-              {(user?.name ?? CURRENT_CUSTOMER.name).slice(0, 2)}
+              {(user?.name ?? "CU").slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-200 truncate">
-                {user?.name ?? CURRENT_CUSTOMER.name}
+                {user?.name ?? "Customer"}
               </p>
               <p className="text-[10px] text-zinc-600 truncate">
-                {user?.email ?? CURRENT_CUSTOMER.email}
+                {user?.email ?? ""}
               </p>
             </div>
           </div>

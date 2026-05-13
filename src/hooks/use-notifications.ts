@@ -30,31 +30,24 @@ export function useNotifications() {
   const notifications = query.data ?? [];
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  return { ...query, notifications, unreadCount };
+
+  return {
+    ...query,
+    notifications,
+    unreadCount,
+  };
 }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
-
-/** Mark a single notification as read. Optimistically updates the cache. */
+/** Mark a single notification as read. */
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await api.patch(`/notifications/${id}/read`);
-      return id;
+      const { data } = await api.patch<ApiResponse<Notification>>(`/notifications/${id}/read`);
+      return data.data;
     },
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: notificationKeys.list() });
-      const previous = qc.getQueryData<Notification[]>(notificationKeys.list());
-      qc.setQueryData<Notification[]>(notificationKeys.list(), (old) =>
-        old?.map((n) => (n.id === id ? { ...n, isRead: true } : n)) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _id, ctx) => {
-      if (ctx?.previous) {
-        qc.setQueryData<Notification[]>(notificationKeys.list(), ctx.previous);
-      }
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: notificationKeys.list() });
     },
   });
 }
@@ -66,18 +59,8 @@ export function useMarkAllNotificationsRead() {
     mutationFn: async () => {
       await api.patch("/notifications/read-all");
     },
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: notificationKeys.list() });
-      const previous = qc.getQueryData<Notification[]>(notificationKeys.list());
-      qc.setQueryData<Notification[]>(notificationKeys.list(), (old) =>
-        old?.map((n) => ({ ...n, isRead: true })) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        qc.setQueryData<Notification[]>(notificationKeys.list(), ctx.previous);
-      }
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: notificationKeys.list() });
     },
   });
 }

@@ -14,30 +14,53 @@ import {
   Star,
   TrendingUp,
   Bike,
+  Car,
+  Truck,
 } from "lucide-react";
 import type { Route } from "next";
 import { Logo } from "@/components/shared/logo";
 import { useAuthStore } from "@/store/auth";
+import { useDriverProfile } from "@/hooks/use-driver";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
 import { cn } from "@/lib/utils";
-import { CURRENT_DRIVER, DAILY_EARNINGS, formatNaira } from "@/lib/mock/driver";
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { href: "/driver",           label: "Overview",   icon: LayoutDashboard, exact: true },
-  { href: "/driver/deliveries",label: "Deliveries", icon: Package                      },
-  { href: "/driver/earnings",  label: "Earnings",   icon: DollarSign                   },
+  { href: "/driver",            label: "Overview",    icon: LayoutDashboard, exact: true },
+  { href: "/driver/deliveries", label: "Deliveries",  icon: Package                      },
+  { href: "/driver/earnings",   label: "Earnings",    icon: DollarSign                   },
 ];
 
 const BOTTOM_ITEMS = [
-  { href: "/driver/settings", label: "Settings",   icon: Settings   },
+  { href: "/driver/settings", label: "Settings",    icon: Settings   },
   { href: "/driver/help",     label: "Help & Docs", icon: HelpCircle },
 ];
 
-// ─── Derived stats ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const todayStats  = DAILY_EARNINGS[DAILY_EARNINGS.length - 1]!;
-const weekEarnings = DAILY_EARNINGS.reduce((s, d) => s + d.earning, 0);
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function VehicleIcon({ type }: { type: string }) {
+  if (type === "truck") return <Truck className="h-2.5 w-2.5 text-zinc-600" />;
+  if (type === "bike")  return <Bike  className="h-2.5 w-2.5 text-zinc-600" />;
+  return <Car className="h-2.5 w-2.5 text-zinc-600" />;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -49,9 +72,46 @@ interface Props {
 export function DriverSidebar({ open, onClose }: Props) {
   const pathname = usePathname();
   const logout   = useAuthStore((s) => s.logout);
+  const user     = useAuthStore((s) => s.user);
+
+  const { data: driver }       = useDriverProfile();
+  const { data: shipmentsData } = useShipments({ pageSize: 200 });
+  const shipments               = getShipmentList(shipmentsData);
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
+
+  // Today's delivered shipments for the glance panel
+  const today = new Date().toDateString();
+  const todayShipments = shipments.filter(
+    (s) =>
+      s.status === "delivered" &&
+      s.actualDelivery &&
+      new Date(s.actualDelivery).toDateString() === today,
+  );
+  const todayEarnings   = todayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+  const todayDeliveries = todayShipments.length;
+
+  // This week's earnings (Mon–Sun)
+  const now     = new Date();
+  const dayOfWk = (now.getDay() + 6) % 7; // Mon = 0
+  const monday  = new Date(now);
+  monday.setDate(now.getDate() - dayOfWk);
+  monday.setHours(0, 0, 0, 0);
+
+  const weekEarnings = shipments
+    .filter(
+      (s) =>
+        s.status === "delivered" &&
+        s.actualDelivery &&
+        new Date(s.actualDelivery) >= monday,
+    )
+    .reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+
+  const displayName = user?.name ?? driver?.user?.name ?? "Driver";
+  const initials    = getInitials(displayName);
+  const rating      = driver?.rating ?? 0;
+  const isOnline    = driver?.status !== "offline";
 
   return (
     <>
@@ -86,13 +146,33 @@ export function DriverSidebar({ open, onClose }: Props) {
 
         {/* ── Online status pill ── */}
         <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center gap-2.5 rounded-xl border border-teal-500/20 bg-teal-500/[0.07] px-3.5 py-2.5">
+          <div
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5",
+              isOnline
+                ? "border-teal-500/20 bg-teal-500/[0.07]"
+                : "border-zinc-700/30 bg-zinc-800/20",
+            )}
+          >
             <span className="relative flex h-2 w-2 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
+              {isOnline && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-60" />
+              )}
+              <span
+                className={cn(
+                  "relative inline-flex h-2 w-2 rounded-full",
+                  isOnline ? "bg-teal-400" : "bg-zinc-600",
+                )}
+              />
             </span>
-            <span className="text-[13px] font-semibold text-teal-300">Online</span>
-            <span className="ml-auto text-[10px] text-teal-600 font-medium">Available</span>
+            <span className={cn("text-[13px] font-semibold", isOnline ? "text-teal-300" : "text-zinc-500")}>
+              {isOnline ? "Online" : "Offline"}
+            </span>
+            {driver && (
+              <span className={cn("ml-auto text-[10px] font-medium capitalize", isOnline ? "text-teal-600" : "text-zinc-700")}>
+                {driver.status === "on_delivery" ? "Delivering" : driver.status === "available" ? "Available" : "Offline"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -116,25 +196,17 @@ export function DriverSidebar({ open, onClose }: Props) {
                     : "text-zinc-500 border border-transparent hover:text-zinc-200 hover:bg-white/[0.04] hover:border-white/[0.04]",
                 )}
               >
-                {/* Left accent bar */}
                 {active && (
                   <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-teal-400" />
                 )}
-
                 <Icon
                   className={cn(
                     "h-4 w-4 shrink-0 transition-colors duration-150",
-                    active
-                      ? "text-teal-400"
-                      : "text-zinc-700 group-hover:text-zinc-300",
+                    active ? "text-teal-400" : "text-zinc-700 group-hover:text-zinc-300",
                   )}
                 />
-
                 <span className="flex-1">{label}</span>
-
-                {active && (
-                  <ChevronRight className="h-3 w-3 text-teal-400/60" />
-                )}
+                {active && <ChevronRight className="h-3 w-3 text-teal-400/60" />}
               </Link>
             );
           })}
@@ -188,7 +260,7 @@ export function DriverSidebar({ open, onClose }: Props) {
                 <span className="text-[10px] text-zinc-600">Earnings</span>
               </div>
               <span className="text-[10px] font-semibold text-emerald-400">
-                {formatNaira(todayStats.earning)}
+                {formatNaira(todayEarnings)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -197,7 +269,7 @@ export function DriverSidebar({ open, onClose }: Props) {
                 <span className="text-[10px] text-zinc-600">Deliveries</span>
               </div>
               <span className="text-[10px] font-semibold text-teal-400">
-                {todayStats.deliveries} trips
+                {todayDeliveries} trips
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -206,7 +278,7 @@ export function DriverSidebar({ open, onClose }: Props) {
                 <span className="text-[10px] text-zinc-600">Rating</span>
               </div>
               <span className="text-[10px] font-semibold text-amber-400">
-                ★ {CURRENT_DRIVER.rating}
+                ★ {rating > 0 ? rating.toFixed(1) : "—"}
               </span>
             </div>
             <div className="mt-1.5 pt-1.5 border-t border-white/[0.04] flex items-center justify-between">
@@ -221,22 +293,27 @@ export function DriverSidebar({ open, onClose }: Props) {
         {/* ── User card + logout ── */}
         <div className="px-4 pb-4 border-t border-white/[0.04] pt-3">
           <div className="flex items-center gap-3 rounded-xl bg-white/[0.025] border border-white/[0.05] px-3 py-2.5 mb-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/30 to-emerald-500/30 border border-teal-500/25 text-[11px] font-bold text-teal-300 uppercase ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c]">
-              {CURRENT_DRIVER.avatar}
-            </div>
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={displayName}
+                className="h-7 w-7 shrink-0 rounded-full object-cover border border-teal-500/25 ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c]"
+              />
+            ) : (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/30 to-emerald-500/30 border border-teal-500/25 text-[11px] font-bold text-teal-300 uppercase ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c]">
+                {initials}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-zinc-200 truncate">
-                {CURRENT_DRIVER.name}
-              </p>
+              <p className="text-xs font-semibold text-zinc-200 truncate">{displayName}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <Bike className="h-2.5 w-2.5 text-zinc-600" />
+                {driver && <VehicleIcon type={driver.vehicleType} />}
                 <p className="text-[10px] text-zinc-600 truncate font-mono">
-                  {CURRENT_DRIVER.vehiclePlate}
+                  {driver?.vehiclePlate ?? "—"}
                 </p>
               </div>
             </div>
           </div>
-
           <button
             onClick={() => logout()}
             className="group flex items-center gap-3 w-full rounded-xl px-3 py-2 text-[12px] font-medium text-zinc-600 border border-transparent hover:text-rose-400 hover:bg-rose-500/[0.07] hover:border-rose-500/[0.1] transition-all duration-150"

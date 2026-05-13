@@ -86,6 +86,30 @@ export function useActiveDelivery() {
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
+
+// ─── Utility helpers ──────────────────────────────────────────────────────────
+
+type RawShipmentsData =
+  | { data: Shipment[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } }
+  | undefined;
+
+/** Normalises both paginated and plain-array API responses → Shipment[]. */
+export function getShipmentList(raw: RawShipmentsData): Shipment[] {
+  if (!raw) return [];
+  return (raw as { data: Shipment[] }).data ?? [];
+}
+
+/** Returns pagination metadata when the response is paginated, otherwise null. */
+export function getPagination(
+  raw: RawShipmentsData,
+): { page: number; pageSize: number; total: number; totalPages: number } | null {
+  if (!raw) return null;
+  const p = (raw as { pagination?: { page: number; pageSize: number; total: number; totalPages: number } }).pagination;
+  return p ?? null;
+}
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
 /** Create a new shipment (business only). */
 export function useCreateShipment() {
   const qc = useQueryClient();
@@ -95,12 +119,12 @@ export function useCreateShipment() {
       return data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
+      void qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
     },
   });
 }
 
-/** Update a shipment's status (business or driver). */
+/** Update the status of a shipment (driver / business). */
 export function useUpdateShipmentStatus() {
   const qc = useQueryClient();
   return useMutation({
@@ -119,70 +143,9 @@ export function useUpdateShipmentStatus() {
       );
       return data.data;
     },
-    onSuccess: (updated, { id }) => {
-      // Push the fresh data into the cache immediately (no re-fetch needed)
-      qc.setQueryData<Shipment>(shipmentKeys.detail(id), updated);
-      qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
+    onSuccess: (updated) => {
+      void qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
+      void qc.invalidateQueries({ queryKey: shipmentKeys.detail(updated.id) });
     },
   });
-}
-
-/** Assign a driver to a pending shipment (business only). */
-export function useAssignDriver() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      shipmentId,
-      driverId,
-    }: {
-      shipmentId: string;
-      driverId: string;
-    }) => {
-      const { data } = await api.patch<ApiResponse<Shipment>>(
-        `/shipments/${shipmentId}/assign`,
-        { driverId },
-      );
-      return data.data;
-    },
-    onSuccess: (updated, { shipmentId }) => {
-      qc.setQueryData<Shipment>(shipmentKeys.detail(shipmentId), updated);
-      qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
-    },
-  });
-}
-
-/** Cancel a shipment (business only). */
-export function useCancelShipment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/shipments/${id}`);
-      return id;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
-    },
-  });
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Normalise the two possible response shapes into a flat array. */
-export function getShipmentList(
-  data: PaginatedResponse<Shipment> | ApiResponse<Shipment[]> | undefined,
-): Shipment[] {
-  if (!data) return [];
-  // Paginated response has `data.data` as an array + `data.pagination`
-  if ("pagination" in data) return data.data;
-  // Plain response has `data.data` as an array
-  if (Array.isArray(data.data)) return data.data;
-  return [];
-}
-
-/** Convenience: pull pagination info out of a paginated response. */
-export function getPagination(
-  data: PaginatedResponse<Shipment> | ApiResponse<Shipment[]> | undefined,
-) {
-  if (!data || !("pagination" in data)) return null;
-  return data.pagination;
 }

@@ -10,54 +10,47 @@ import {
   Package,
   Star,
   DollarSign,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CURRENT_DRIVER } from "@/lib/mock/driver";
+import { useAuthStore } from "@/store/auth";
+import { useDriverProfile } from "@/hooks/use-driver";
+import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/use-notifications";
+import type { Notification } from "@/types";
 
-// ─── Mock notifications ───────────────────────────────────────────────────────
+// ─── Notification icon helper ─────────────────────────────────────────────────
 
-const NOTIFICATIONS = [
-  {
-    id: 1,
-    icon: Package,
-    iconColor: "text-violet-400",
-    iconBg: "bg-violet-500/10 border-violet-500/15",
-    text: "New delivery assigned: IST-K7X2M9PQ",
-    sub: "Lekki → Ikoyi · Document · 4.2 km",
-    time: "2m ago",
-    unread: true,
-  },
-  {
-    id: 2,
-    icon: Star,
-    iconColor: "text-amber-400",
-    iconBg: "bg-amber-500/10 border-amber-500/15",
-    text: "Customer rated your last delivery ★ 4.9",
-    sub: "Adunola Fashola left a 5-star review",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: 3,
-    icon: DollarSign,
-    iconColor: "text-emerald-400",
-    iconBg: "bg-emerald-500/10 border-emerald-500/15",
-    text: "Payout of ₦14,400 processed",
-    sub: "Transferred to GTBank · ****4521",
-    time: "Yesterday",
-    unread: false,
-  },
-  {
-    id: 4,
-    icon: CheckCircle2,
-    iconColor: "text-teal-400",
-    iconBg: "bg-teal-500/10 border-teal-500/15",
-    text: "IST-T8VL3ZKP marked as delivered",
-    sub: "Maryland → Apapa · ₦2,720 earned",
-    time: "Yesterday",
-    unread: false,
-  },
-];
+function notifIcon(n: Notification) {
+  const t = n.title?.toLowerCase() ?? "";
+  if (t.includes("deliver") || t.includes("assign"))
+    return { Icon: Package,      color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/15" };
+  if (t.includes("rat") || t.includes("star"))
+    return { Icon: Star,         color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/15"  };
+  if (t.includes("pay") || t.includes("earn"))
+    return { Icon: DollarSign,   color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/15" };
+  if (t.includes("complet") || t.includes("success"))
+    return { Icon: CheckCircle2, color: "text-teal-400",   bg: "bg-teal-500/10 border-teal-500/15"   };
+  return   { Icon: Info,         color: "text-zinc-400",   bg: "bg-zinc-500/10 border-zinc-500/15"   };
+}
+
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -67,13 +60,16 @@ interface Props {
 }
 
 export function DriverTopbar({ title, onMenuClick }: Props) {
-  const [notifOpen,    setNotifOpen]    = useState(false);
-  const [searchOpen,   setSearchOpen]   = useState(false);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [notifOpen,  setNotifOpen]  = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const user              = useAuthStore((s) => s.user);
+  const { data: driver }  = useDriverProfile();
+  const { notifications, unreadCount } = useNotifications();
+  const { mutate: markAllRead }        = useMarkAllNotificationsRead();
+
+  const displayName = user?.name ?? driver?.user?.name ?? "Driver";
+  const initials    = getInitials(displayName);
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-white/[0.05] bg-[#09090c]/90 backdrop-blur-xl px-4 sm:px-6">
@@ -160,7 +156,7 @@ export function DriverTopbar({ title, onMenuClick }: Props) {
                   <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                       <button
-                        onClick={markAllRead}
+                        onClick={() => markAllRead()}
                         className="text-[10px] text-teal-400 hover:text-teal-300 transition-colors font-medium"
                       >
                         Mark all read
@@ -177,41 +173,46 @@ export function DriverTopbar({ title, onMenuClick }: Props) {
 
                 {/* Items */}
                 <div className="divide-y divide-white/[0.04] max-h-80 overflow-y-auto">
-                  {notifications.map((n) => {
-                    const Icon = n.icon;
-                    return (
-                      <div
-                        key={n.id}
-                        className={cn(
-                          "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
-                          n.unread
-                            ? "bg-teal-500/[0.03] hover:bg-teal-500/[0.06]"
-                            : "hover:bg-white/[0.02]",
-                        )}
-                      >
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 gap-2">
+                      <Bell className="h-6 w-6 text-zinc-700" />
+                      <p className="text-xs text-zinc-600">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.slice(0, 20).map((n) => {
+                      const { Icon, color, bg } = notifIcon(n);
+                      return (
                         <div
-                          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border ${n.iconBg}`}
+                          key={n.id}
+                          className={cn(
+                            "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
+                            !n.isRead
+                              ? "bg-teal-500/[0.03] hover:bg-teal-500/[0.06]"
+                              : "hover:bg-white/[0.02]",
+                          )}
                         >
-                          <Icon className={`h-3 w-3 ${n.iconColor}`} />
+                          <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border ${bg}`}>
+                            <Icon className={`h-3 w-3 ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={cn(
+                                "text-xs leading-snug",
+                                !n.isRead ? "text-zinc-200 font-medium" : "text-zinc-500",
+                              )}
+                            >
+                              {n.title}
+                            </p>
+                            <p className="text-[10px] text-zinc-600 mt-0.5 line-clamp-1">{n.message}</p>
+                            <p className="text-[10px] text-zinc-700 mt-0.5">{relativeTime(n.createdAt)}</p>
+                          </div>
+                          {!n.isRead && (
+                            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={cn(
-                              "text-xs leading-snug",
-                              n.unread ? "text-zinc-200 font-medium" : "text-zinc-500",
-                            )}
-                          >
-                            {n.text}
-                          </p>
-                          <p className="text-[10px] text-zinc-700 mt-0.5">{n.sub}</p>
-                          <p className="text-[10px] text-zinc-700 mt-0.5">{n.time}</p>
-                        </div>
-                        {n.unread && (
-                          <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Footer */}
@@ -230,11 +231,19 @@ export function DriverTopbar({ title, onMenuClick }: Props) {
 
         {/* Driver avatar */}
         <div className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/[0.04] transition-all cursor-pointer">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/30 to-emerald-500/30 border border-teal-500/25 text-[11px] font-bold text-teal-300 uppercase ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c] shrink-0">
-            {CURRENT_DRIVER.avatar}
-          </div>
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={displayName}
+              className="h-7 w-7 shrink-0 rounded-full object-cover border border-teal-500/25 ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c]"
+            />
+          ) : (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/30 to-emerald-500/30 border border-teal-500/25 text-[11px] font-bold text-teal-300 uppercase ring-1 ring-teal-500/10 ring-offset-1 ring-offset-[#09090c] shrink-0">
+              {initials}
+            </div>
+          )}
           <span className="hidden md:block text-[12px] font-medium text-zinc-400 max-w-[80px] truncate">
-            {CURRENT_DRIVER.name.split(" ")[0]}
+            {displayName.split(" ")[0]}
           </span>
         </div>
       </div>

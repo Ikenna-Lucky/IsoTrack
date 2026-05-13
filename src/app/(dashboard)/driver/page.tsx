@@ -31,6 +31,12 @@ import { useSocket } from "@/hooks/use-socket";
 import { cn } from "@/lib/utils";
 import type { Shipment, ShipmentStatus, Notification } from "@/types";
 
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency", currency: "NGN", maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
 // ─── Status meta ──────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<ShipmentStatus, { dot: string }> = {
@@ -560,164 +566,80 @@ export default function DriverOverviewPage() {
 
       const dayShipments = shipments.filter((s) => {
         if (s.status !== "delivered") return false;
-        const d = new Date(s.updatedAt);
+        if (!s.actualDelivery) return false;
+        const d = new Date(s.actualDelivery);
         return d >= dayStart && d <= dayEnd;
       });
 
-      return {
-        day,
-        earning:    dayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0),
-        deliveries: dayShipments.length,
-      };
+      const earning = dayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+      return { day, earning, deliveries: dayShipments.length };
     });
   }, [shipments]);
 
-  const currTodayIdx = todayIdx();
-  const todayStats   = weeklyData[currTodayIdx] ?? { day: "Mon", earning: 0, deliveries: 0 };
-  const weekEarnings = weeklyData.reduce((s, d) => s + d.earning, 0);
-  const maxEarning   = Math.max(...weeklyData.map((d) => d.earning), 1);
+  const maxEarning = Math.max(...weeklyData.map((d) => d.earning), 1);
 
-  // ── Location simulation (broadcasts GPS while on active delivery) ──
-  useEffect(() => {
-    if (!activeDelivery || !isOnline) return;
-    intervalRef.current = setInterval(() => {
-      waypointIdxRef.current = (waypointIdxRef.current + 1) % ROUTE_WAYPOINTS.length;
-      const wp = ROUTE_WAYPOINTS[waypointIdxRef.current]!;
-      emitLocation({
-        trackingId: activeDelivery.trackingId,
-        lat:     wp.lat + (Math.random() - 0.5) * 0.0008,
-        lng:     wp.lng + (Math.random() - 0.5) * 0.0008,
-        heading: Math.random() * 360,
-        speed:   18 + Math.random() * 12,
-      });
-    }, 4000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isOnline, emitLocation, activeDelivery]);
+  // ── Derived stats ──
+  const today = new Date().toDateString();
+  const todayDeliveries = shipments.filter(
+    (s) => s.status === "delivered" && s.actualDelivery && new Date(s.actualDelivery).toDateString() === today
+  );
+  const todayEarnings = todayDeliveries.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
+  const todayTrips    = todayDeliveries.length;
 
-  // ── Animated counters ──
-  const animEarnings   = useCountUp(todayStats.earning);
-  const animDeliveries = useCountUp(todayStats.deliveries);
-  const animTotal      = useCountUp(driver?.totalDeliveries ?? 0);
+  const now2 = new Date();
+  const dow2 = (now2.getDay() + 6) % 7; // Mon=0
+  const monday2 = new Date(now2);
+  monday2.setDate(now2.getDate() - dow2);
+  monday2.setHours(0, 0, 0, 0);
+  const weekEarnings = shipments
+    .filter((s) => s.status === "delivered" && s.actualDelivery && new Date(s.actualDelivery) >= monday2)
+    .reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
 
-  // ── Sparkline data ──
-  const earnSpark  = weeklyData.map((d) => d.earning);
-  const tripSpark  = weeklyData.map((d) => d.deliveries);
-  const totalSpark = Array(7).fill(driver?.totalDeliveries ?? 0);
-  const rateSpark  = Array(7).fill(Math.round((driver?.rating ?? 0) * 10));
-
-  // ── Greeting ──
-  const hour     = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
-  // ── Handlers ──
-  const handleToggleOnline = () => {
-    if (!driver) return;
-    updateDriverStatus({
-      driverId: driver.id,
-      status:   isOnline ? "offline" : "available",
-    });
-  };
+  const todayIdx = weeklyData.findIndex((d) =>
+    d.day === ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][(now2.getDay() + 6) % 7]
+  );
+  const todayStats = weeklyData[todayIdx] ?? { day: "Today", earning: todayEarnings, deliveries: todayTrips };
 
   const handleMarkDelivered = () => {
     if (!activeDelivery) return;
-    updateShipmentStatus({
-      id:     activeDelivery.id,
-      status: "delivered",
-      note:   "Package delivered successfully",
-    });
+    updateShipmentStatus({ id: activeDelivery.id, status: "delivered" });
   };
 
-  // ── Early return: loading ──
   if (driverLoading) return <PageSkeleton />;
-
-  const driverName = driver?.user.name ?? "Driver";
-  const firstName  = driverName.split(" ")[0] ?? driverName;
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
 
-      {/* ── Header ── */}
-      <div className="flex items-start sm:items-center justify-between gap-3">
+      {/* ── Header: driver name, rating, status toggle ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
-            {greeting}, {firstName} 👋
+          <h2 className="text-xl font-bold text-white tracking-tight truncate">
+            {driver?.user?.name ?? "Driver Dashboard"}
           </h2>
-          <p className="text-sm text-zinc-500 mt-0.5 truncate">
-            {new Date().toLocaleDateString("en-NG", {
-              weekday: "long", day: "numeric", month: "long",
-            })}
-            <span className="hidden sm:inline"> · Ready for deliveries?</span>
+          <p className="text-sm text-zinc-500 mt-0.5">
+            ★ {driver?.rating?.toFixed(1) ?? "—"} · {driver?.totalDeliveries ?? 0} deliveries
           </p>
         </div>
-
-        {/* Online / Offline toggle */}
         <button
-          onClick={handleToggleOnline}
+          onClick={() => updateDriverStatus(isOnline ? "offline" : "available")}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-4 py-2 text-[12px] sm:text-[13px] font-semibold transition-all duration-200 active:scale-[0.97]",
+            "flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all shrink-0",
             isOnline
-              ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/[0.15]"
-              : "border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200",
+              ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+              : "border-zinc-700/40 bg-zinc-800/30 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600/40",
           )}
         >
-          <span className={cn(
-            "h-2 w-2 rounded-full shrink-0",
-            isOnline ? "animate-pulse bg-teal-400 shadow-[0_0_8px_#2dd4bf]" : "bg-zinc-600",
-          )} />
-          {isOnline ? "Online" : "Offline"}
+          <span className={cn("h-2 w-2 rounded-full shrink-0", isOnline ? "bg-teal-400 shadow-[0_0_6px_#2dd4bf]" : "bg-zinc-600")} />
+          {isOnline ? "Online" : "Go Online"}
         </button>
       </div>
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard
-          label="Today's Earnings"
-          value={formatKobo(animEarnings)}
-          trend={weekEarnings > 0 ? `${formatKobo(weekEarnings)} this week` : "No earnings yet"}
-          trendUp={weekEarnings > 0}
-          sub={new Date().toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" })}
-          sparkData={earnSpark}
-          sparkColor="#2dd4bf"
-          sparkId="drv-spark-earn"
-          accentClass="border-teal-500/[0.15] hover:border-teal-500/25 hover:shadow-[0_0_24px_rgba(45,212,191,0.07)]"
-          glowClass="bg-teal-500"
-        />
-        <KPICard
-          label="Deliveries Today"
-          value={String(animDeliveries)}
-          trend={todayStats.deliveries > 0 ? `${todayStats.deliveries} completed` : "None yet today"}
-          trendUp={todayStats.deliveries > 0}
-          sub="Completed trips"
-          sparkData={tripSpark}
-          sparkColor="#38bdf8"
-          sparkId="drv-spark-trips"
-          accentClass="border-sky-500/[0.15] hover:border-sky-500/25 hover:shadow-[0_0_24px_rgba(56,189,248,0.07)]"
-          glowClass="bg-sky-500"
-        />
-        <KPICard
-          label="Total Deliveries"
-          value={String(animTotal)}
-          trend="All-time trips"
-          trendUp
-          sub="Career total"
-          sparkData={totalSpark}
-          sparkColor="#a78bfa"
-          sparkId="drv-spark-total"
-          accentClass="border-violet-500/[0.15] hover:border-violet-500/25 hover:shadow-[0_0_24px_rgba(167,139,250,0.07)]"
-          glowClass="bg-violet-500"
-        />
-        <KPICard
-          label="Rating"
-          value={"★ " + (driver?.rating.toFixed(1) ?? "—")}
-          trend="Last 50 deliveries"
-          trendUp
-          sub="Customer rating"
-          sparkData={rateSpark}
-          sparkColor="#fbbf24"
-          sparkId="drv-spark-rating"
-          accentClass="border-amber-500/[0.15] hover:border-amber-500/25 hover:shadow-[0_0_24px_rgba(251,191,36,0.07)]"
-          glowClass="bg-amber-500"
-        />
+      {/* ── KPI strip ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KPICard label="Today's Earnings" value={formatNaira(todayEarnings)} trend={`${todayTrips} trips`} trendUp={todayTrips > 0} sub="Today" sparkData={weeklyData.map(d => d.earning)} sparkColor="#2dd4bf" accentClass="border-teal-500/[0.15] bg-teal-500/[0.04]" glowClass="shadow-teal-500/10" sparkId="kpi-earnings" />
+        <KPICard label="Week Earnings"    value={formatNaira(weekEarnings)} trend="+12%" trendUp={true} sub="This week" sparkData={weeklyData.map(d => d.earning)} sparkColor="#34d399" accentClass="border-emerald-500/[0.15] bg-emerald-500/[0.04]" glowClass="shadow-emerald-500/10" sparkId="kpi-week" />
+        <KPICard label="Deliveries"       value={String(driver?.totalDeliveries ?? 0)} trend={`${todayTrips} today`} trendUp={todayTrips > 0} sub="All time" sparkData={weeklyData.map(d => d.deliveries)} sparkColor="#a78bfa" accentClass="border-violet-500/[0.15] bg-violet-500/[0.04]" glowClass="shadow-violet-500/10" sparkId="kpi-trips" />
+        <KPICard label="Rating"           value={`★ ${driver?.rating?.toFixed(1) ?? "—"}`} trend="Top 10%" trendUp={true} sub="Average" sparkData={[4,4,5,4,5,5,driver?.rating ?? 5]} sparkColor="#fb923c" accentClass="border-orange-500/[0.15] bg-orange-500/[0.04]" glowClass="shadow-orange-500/10" sparkId="kpi-rating" />
       </div>
 
       {/* ── Active delivery ── */}
@@ -731,23 +653,16 @@ export default function DriverOverviewPage() {
         />
       )}
 
-      {/* ── Main content row ── */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* Recent deliveries — 2/3 width on desktop, full-width below chart on mobile */}
-        <div className="lg:col-span-2 order-2 lg:order-1">
-          <RecentDeliveries shipments={shipments} />
+      {/* ── Weekly chart + recent deliveries ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <WeeklyChart weeklyData={weeklyData} todayStats={todayStats} weekEarnings={weekEarnings} maxEarning={maxEarning} />
         </div>
-        {/* Right column — appears first on mobile, 1/3 on desktop */}
-        <div className="space-y-4 order-1 lg:order-2">
-          <WeeklyChart
-            weeklyData={weeklyData}
-            todayStats={todayStats}
-            weekEarnings={weekEarnings}
-            maxEarning={maxEarning}
-          />
-          <ActivityFeed notifications={notifications} />
-        </div>
+        <RecentDeliveries shipments={shipments} />
       </div>
+
+      {/* ── Activity feed ── */}
+      <ActivityFeed notifications={notifications} />
 
     </div>
   );

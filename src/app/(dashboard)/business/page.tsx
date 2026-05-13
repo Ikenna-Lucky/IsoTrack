@@ -38,26 +38,72 @@ function formatNaira(kobo: number) {
   }).format(kobo / 100);
 }
 
-const STATUS_META: Record<ShipmentStatus, { label: string; dot: string; color: string; bg: string; border: string }> = {
-  pending:          { label: "Pending",          dot: "#f59e0b", color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/20" },
-  assigned:         { label: "Assigned",         dot: "#38bdf8", color: "text-sky-400",     bg: "bg-sky-400/10",     border: "border-sky-400/20" },
-  picked_up:        { label: "Picked Up",        dot: "#a78bfa", color: "text-violet-400",  bg: "bg-violet-400/10",  border: "border-violet-400/20" },
-  in_transit:       { label: "In Transit",       dot: "#60a5fa", color: "text-blue-400",    bg: "bg-blue-400/10",    border: "border-blue-400/20" },
-  out_for_delivery: { label: "Out for Delivery", dot: "#22d3ee", color: "text-cyan-400",    bg: "bg-cyan-400/10",    border: "border-cyan-400/20" },
-  delivered:        { label: "Delivered",        dot: "#34d399", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
-  failed:           { label: "Failed",           dot: "#f87171", color: "text-rose-400",    bg: "bg-rose-400/10",    border: "border-rose-400/20" },
-  cancelled:        { label: "Cancelled",        dot: "#71717a", color: "text-zinc-500",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20" },
+const STATUS_META: Record<
+  ShipmentStatus,
+  { label: string; dot: string; color: string; bg: string; border: string }
+> = {
+  pending: {
+    label: "Pending",
+    dot: "#f59e0b",
+    color: "text-amber-400",
+    bg: "bg-amber-400/10",
+    border: "border-amber-400/20",
+  },
+  assigned: {
+    label: "Assigned",
+    dot: "#38bdf8",
+    color: "text-sky-400",
+    bg: "bg-sky-400/10",
+    border: "border-sky-400/20",
+  },
+  picked_up: {
+    label: "Picked Up",
+    dot: "#a78bfa",
+    color: "text-violet-400",
+    bg: "bg-violet-400/10",
+    border: "border-violet-400/20",
+  },
+  in_transit: {
+    label: "In Transit",
+    dot: "#60a5fa",
+    color: "text-blue-400",
+    bg: "bg-blue-400/10",
+    border: "border-blue-400/20",
+  },
+  out_for_delivery: {
+    label: "Out for Delivery",
+    dot: "#22d3ee",
+    color: "text-cyan-400",
+    bg: "bg-cyan-400/10",
+    border: "border-cyan-400/20",
+  },
+  delivered: {
+    label: "Delivered",
+    dot: "#34d399",
+    color: "text-emerald-400",
+    bg: "bg-emerald-400/10",
+    border: "border-emerald-400/20",
+  },
+  failed: {
+    label: "Failed",
+    dot: "#f87171",
+    color: "text-rose-400",
+    bg: "bg-rose-400/10",
+    border: "border-rose-400/20",
+  },
+  cancelled: {
+    label: "Cancelled",
+    dot: "#71717a",
+    color: "text-zinc-500",
+    bg: "bg-zinc-500/10",
+    border: "border-zinc-500/20",
+  },
 };
 
-const LiveMap = dynamic(
-  () => import("@/components/map/live-map").then((m) => m.LiveMap),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[200px] w-full animate-pulse rounded-xl bg-zinc-800/40" />
-    ),
-  },
-);
+const LiveMap = dynamic(() => import("@/components/map/live-map").then((m) => m.LiveMap), {
+  ssr: false,
+  loading: () => <div className="h-[200px] w-full animate-pulse rounded-xl bg-zinc-800/40" />,
+});
 
 // ─── useCountUp ───────────────────────────────────────────────────────────────
 
@@ -83,15 +129,7 @@ function useCountUp(target: number, duration = 1300) {
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
-function Sparkline({
-  data,
-  color,
-  id,
-}: {
-  data: number[];
-  color: string;
-  id: string;
-}) {
+function Sparkline({ data, color, id }: { data: number[]; color: string; id: string }) {
   const max = Math.max(...data, 1);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -106,22 +144,14 @@ function Sparkline({
   const last = pts[pts.length - 1];
 
   return (
-    <svg
-      width={W}
-      height={H}
-      viewBox={`0 0 ${W} ${H}`}
-      className="overflow-visible"
-    >
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.25" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polygon
-        points={`0,${H} ${polyPts} ${W},${H}`}
-        fill={`url(#${id})`}
-      />
+      <polygon points={`0,${H} ${polyPts} ${W},${H}`} fill={`url(#${id})`} />
       <polyline
         points={polyPts}
         fill="none"
@@ -206,11 +236,11 @@ function KPICard({
 // ─── Delivery Pipeline ────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES = [
-  { key: "pending",          label: "Pending",          color: "#f59e0b" },
-  { key: "in_transit",       label: "In Transit",       color: "#a78bfa" },
+  { key: "pending", label: "Pending", color: "#f59e0b" },
+  { key: "in_transit", label: "In Transit", color: "#a78bfa" },
   { key: "out_for_delivery", label: "Out for Delivery", color: "#38bdf8" },
-  { key: "delivered",        label: "Delivered",        color: "#34d399" },
-  { key: "failed",           label: "Failed",           color: "#f87171" },
+  { key: "delivered", label: "Delivered", color: "#34d399" },
+  { key: "failed", label: "Failed", color: "#f87171" },
 ] as const;
 
 function DeliveryPipeline({ shipments }: { shipments: Shipment[] }) {
@@ -218,9 +248,7 @@ function DeliveryPipeline({ shipments }: { shipments: Shipment[] }) {
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] px-5 py-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-semibold text-white">Delivery Pipeline</p>
-        <span className="text-[10px] text-zinc-600 uppercase tracking-wider">
-          Live status
-        </span>
+        <span className="text-[10px] text-zinc-600 uppercase tracking-wider">Live status</span>
       </div>
 
       <div className="flex items-center gap-0 overflow-x-auto pb-1">
@@ -263,13 +291,7 @@ function DeliveryPipeline({ shipments }: { shipments: Shipment[] }) {
 
 // ─── Shipment status step indicator ──────────────────────────────────────────
 
-const STATUS_ORDER = [
-  "pending",
-  "assigned",
-  "in_transit",
-  "out_for_delivery",
-  "delivered",
-];
+const STATUS_ORDER = ["pending", "assigned", "in_transit", "out_for_delivery", "delivered"];
 
 function ShipmentProgressDots({ status }: { status: string }) {
   const currentIdx = STATUS_ORDER.indexOf(status);
@@ -310,9 +332,7 @@ function RecentShipments({ shipments }: { shipments: Shipment[] }) {
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
         <div>
           <p className="text-sm font-semibold text-white">Recent Shipments</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">
-            {shipments.length} total
-          </p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">{shipments.length} total</p>
         </div>
         <Link
           href={"/business/shipments" as Route}
@@ -325,7 +345,9 @@ function RecentShipments({ shipments }: { shipments: Shipment[] }) {
 
       <div className="divide-y divide-white/[0.04]">
         {recent.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-zinc-600">No shipments yet — create your first one.</p>
+          <p className="px-5 py-8 text-center text-sm text-zinc-600">
+            No shipments yet — create your first one.
+          </p>
         )}
         {recent.map((s) => {
           const meta = STATUS_META[s.status];
@@ -350,14 +372,11 @@ function RecentShipments({ shipments }: { shipments: Shipment[] }) {
               {/* Tracking + route */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-xs font-mono font-semibold text-zinc-200">
-                    {s.trackingId}
-                  </p>
+                  <p className="text-xs font-mono font-semibold text-zinc-200">{s.trackingId}</p>
                   <ShipmentProgressDots status={s.status} />
                 </div>
                 <p className="text-[11px] text-zinc-600 truncate">
-                  {s.pickupAddress.city}{" "}
-                  <span className="text-zinc-700">→</span>{" "}
+                  {s.pickupAddress.city} <span className="text-zinc-700">→</span>{" "}
                   {s.deliveryAddress.city}
                 </p>
               </div>
@@ -423,13 +442,24 @@ function RecentShipments({ shipments }: { shipments: Shipment[] }) {
 
 // ─── Weekly bar chart ─────────────────────────────────────────────────────────
 
-function WeeklyChart({ totalRevenueKobo, deliveredCount, totalShipments }: { totalRevenueKobo: number; deliveredCount: number; totalShipments: number }) {
+function WeeklyChart({
+  totalRevenueKobo,
+  deliveredCount,
+  totalShipments,
+}: {
+  totalRevenueKobo: number;
+  deliveredCount: number;
+  totalShipments: number;
+}) {
   // Generate cosmetic weekly bars based on real totals
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const base = Math.max(1, Math.floor(totalShipments / 7));
   const bars = DAYS.map((day, i) => ({
     day,
-    shipments: i === 6 ? (totalShipments % 7 || base) : Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
+    shipments:
+      i === 6
+        ? totalShipments % 7 || base
+        : Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
   }));
   const max = Math.max(...bars.map((d) => d.shipments), 1);
   const [tooltip, setTooltip] = useState<number | null>(null);
@@ -464,18 +494,28 @@ function WeeklyChart({ totalRevenueKobo, deliveredCount, totalShipments }: { tot
                   {d.shipments} shipments
                 </div>
               )}
-              <div className="w-full flex items-end transition-all duration-300" style={{ height: "60px" }}>
+              <div
+                className="w-full flex items-end transition-all duration-300"
+                style={{ height: "60px" }}
+              >
                 <div
                   className={`w-full rounded-t-md transition-all duration-500 ${isHovered ? "opacity-100" : isLast ? "opacity-90" : "opacity-50"}`}
                   style={{
                     height: `${pct}%`,
                     minHeight: "4px",
-                    background: isLast || isHovered ? "linear-gradient(to top, #0ea5e9, #38bdf8)" : "rgba(255,255,255,0.07)",
-                    boxShadow: (isLast || isHovered) ? "0 0 12px #0ea5e980" : "none",
+                    background:
+                      isLast || isHovered
+                        ? "linear-gradient(to top, #0ea5e9, #38bdf8)"
+                        : "rgba(255,255,255,0.07)",
+                    boxShadow: isLast || isHovered ? "0 0 12px #0ea5e980" : "none",
                   }}
                 />
               </div>
-              <span className={`text-[9px] font-medium ${isLast ? "text-sky-400" : "text-zinc-700"}`}>{d.day}</span>
+              <span
+                className={`text-[9px] font-medium ${isLast ? "text-sky-400" : "text-zinc-700"}`}
+              >
+                {d.day}
+              </span>
             </div>
           );
         })}
@@ -498,9 +538,9 @@ function WeeklyChart({ totalRevenueKobo, deliveredCount, totalShipments }: { tot
 // ─── Fleet panel ──────────────────────────────────────────────────────────────
 
 const DRIVER_STATUS_CONFIG = {
-  available:   { ring: "ring-emerald-400", label: "Available",   bg: "bg-emerald-400" },
-  on_delivery: { ring: "ring-sky-400",     label: "On Delivery", bg: "bg-sky-400"     },
-  offline:     { ring: "ring-zinc-700",    label: "Offline",     bg: "bg-zinc-600"    },
+  available: { ring: "ring-emerald-400", label: "Available", bg: "bg-emerald-400" },
+  on_delivery: { ring: "ring-sky-400", label: "On Delivery", bg: "bg-sky-400" },
+  offline: { ring: "ring-zinc-700", label: "Offline", bg: "bg-zinc-600" },
 } as const;
 
 function FleetPanel({ drivers }: { drivers: Driver[] }) {
@@ -562,17 +602,13 @@ function FleetPanel({ drivers }: { drivers: Driver[] }) {
                 {initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-200 truncate">
-                  {d.user.name}
-                </p>
+                <p className="text-xs font-medium text-zinc-200 truncate">{d.user.name}</p>
                 <p className="text-[10px] text-zinc-600">
                   {d.totalDeliveries} deliveries · ★ {d.rating.toFixed(1)}
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-[11px] font-semibold text-zinc-300 uppercase">
-                  {d.vehicleType}
-                </p>
+                <p className="text-[11px] font-semibold text-zinc-300 uppercase">{d.vehicleType}</p>
                 <p className="text-[9px] text-zinc-700 font-mono">{d.vehiclePlate}</p>
               </div>
             </div>
@@ -586,11 +622,41 @@ function FleetPanel({ drivers }: { drivers: Driver[] }) {
 // ─── Activity feed ────────────────────────────────────────────────────────────
 
 const ACTIVITY = [
-  { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/15", text: "IST-K7X2M9PQ delivered to Ikoyi", time: "2m ago" },
-  { icon: Truck,        color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/15",  text: "Driver Emeka picked up IST-B3N8R4PT", time: "11m ago" },
-  { icon: Package,      color: "text-sky-400",     bg: "bg-sky-500/10 border-sky-500/15",       text: "New shipment IST-R5P1W2JK created", time: "34m ago" },
-  { icon: AlertCircle,  color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/15",     text: "IST-T6Y4Z8RN delivery failed", time: "1h ago" },
-  { icon: ArrowUpRight, color: "text-teal-400",    bg: "bg-teal-500/10 border-teal-500/15",     text: "Driver Amina Yusuf came online", time: "2h ago" },
+  {
+    icon: CheckCircle2,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/15",
+    text: "IST-K7X2M9PQ delivered to Ikoyi",
+    time: "2m ago",
+  },
+  {
+    icon: Truck,
+    color: "text-violet-400",
+    bg: "bg-violet-500/10 border-violet-500/15",
+    text: "Driver Emeka picked up IST-B3N8R4PT",
+    time: "11m ago",
+  },
+  {
+    icon: Package,
+    color: "text-sky-400",
+    bg: "bg-sky-500/10 border-sky-500/15",
+    text: "New shipment IST-R5P1W2JK created",
+    time: "34m ago",
+  },
+  {
+    icon: AlertCircle,
+    color: "text-rose-400",
+    bg: "bg-rose-500/10 border-rose-500/15",
+    text: "IST-T6Y4Z8RN delivery failed",
+    time: "1h ago",
+  },
+  {
+    icon: ArrowUpRight,
+    color: "text-teal-400",
+    bg: "bg-teal-500/10 border-teal-500/15",
+    text: "Driver Amina Yusuf came online",
+    time: "2h ago",
+  },
 ];
 
 function ActivityFeed() {
@@ -639,11 +705,13 @@ export default function BusinessOverviewPage() {
   const shipments = getShipmentList(shipmentsData);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
-  const totalRevenueKobo  = analytics?.totalRevenueKobo ?? 0;
-  const totalShipments    = analytics?.totalShipments   ?? shipments.length;
-  const deliveredCount    = (analytics?.statusBreakdown?.delivered as number | undefined) ?? shipments.filter((s) => s.status === "delivered").length;
-  const availableDrivers  = drivers.filter((d) => d.status === "available").length;
-  const successRate       = totalShipments > 0 ? Math.round((deliveredCount / totalShipments) * 100) : 0;
+  const totalRevenueKobo = analytics?.totalRevenueKobo ?? 0;
+  const totalShipments = analytics?.totalShipments ?? shipments.length;
+  const deliveredCount =
+    (analytics?.statusBreakdown?.delivered as number | undefined) ??
+    shipments.filter((s) => s.status === "delivered").length;
+  const availableDrivers = drivers.filter((d) => d.status === "available").length;
+  const successRate = totalShipments > 0 ? Math.round((deliveredCount / totalShipments) * 100) : 0;
 
   // ── Live tracking — pick first active shipment ────────────────────────────────
   const activeShipment = shipments.find(
@@ -657,23 +725,22 @@ export default function BusinessOverviewPage() {
 
   // ── Animated counters ────────────────────────────────────────────────────────
   const animShipments = useCountUp(totalShipments);
-  const animRevenue   = useCountUp(totalRevenueKobo);
-  const animDrivers   = useCountUp(drivers.length);
-  const animRate      = useCountUp(successRate);
+  const animRevenue = useCountUp(totalRevenueKobo);
+  const animDrivers = useCountUp(drivers.length);
+  const animRate = useCountUp(successRate);
 
   // ── Cosmetic sparkline data (no time-series from backend) ────────────────────
-  const base          = Math.max(1, Math.floor(totalShipments / 7));
+  const base = Math.max(1, Math.floor(totalShipments / 7));
   const shipmentSpark = [0, 1, 2, 3, 4, 5, 6].map((i) =>
     Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
   );
-  const revenueBase   = Math.max(1, Math.floor(totalRevenueKobo / 7));
-  const revenueSpark  = shipmentSpark.map((v) => v * revenueBase);
-  const driverSpark   = [3, 4, 4, 5, 4, 5, availableDrivers];
-  const rateSpark     = [82, 85, 88, 86, 89, 91, successRate];
+  const revenueBase = Math.max(1, Math.floor(totalRevenueKobo / 7));
+  const revenueSpark = shipmentSpark.map((v) => v * revenueBase);
+  const driverSpark = [3, 4, 4, 5, 4, 5, availableDrivers];
+  const rateSpark = [82, 85, 88, 86, 89, 91, successRate];
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
-
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -686,9 +753,7 @@ export default function BusinessOverviewPage() {
               day: "numeric",
               month: "long",
             })}
-            <span className="hidden sm:inline">
-              {" "}· Here&apos;s your fleet at a glance.
-            </span>
+            <span className="hidden sm:inline"> · Here&apos;s your fleet at a glance.</span>
           </p>
         </div>
         <Link
@@ -710,108 +775,174 @@ export default function BusinessOverviewPage() {
           sub="All time"
           sparkData={shipmentSpark}
           sparkColor="#38bdf8"
+          accentClass="border-sky-500/[0.15] bg-sky-500/[0.04]"
+          glowClass="shadow-sky-500/10"
           sparkId="spark-shipments"
-          accentClass="border-sky-500/[0.15] hover:border-sky-500/25 hover:shadow-[0_0_24px_rgba(56,189,248,0.07)]"
-          glowClass="bg-sky-500"
         />
         <KPICard
-          label="Available Drivers"
-          value={`${availableDrivers}/${animDrivers}`}
-          trend={availableDrivers > 0 ? `${availableDrivers} online` : "None online"}
-          trendUp={availableDrivers > 0}
-          sub="Online now"
-          sparkData={driverSpark}
-          sparkColor="#2dd4bf"
-          sparkId="spark-drivers"
-          accentClass="border-teal-500/[0.15] hover:border-teal-500/25 hover:shadow-[0_0_24px_rgba(45,212,191,0.07)]"
-          glowClass="bg-teal-500"
-        />
-        <KPICard
-          label="Revenue (Total)"
+          label="Revenue (MTD)"
           value={formatNaira(animRevenue)}
-          trend="+22%"
+          trend="+12%"
           trendUp={true}
-          sub="All time"
+          sub="This month"
           sparkData={revenueSpark}
-          sparkColor="#a78bfa"
+          sparkColor="#34d399"
+          accentClass="border-emerald-500/[0.15] bg-emerald-500/[0.04]"
+          glowClass="shadow-emerald-500/10"
           sparkId="spark-revenue"
-          accentClass="border-violet-500/[0.15] hover:border-violet-500/25 hover:shadow-[0_0_24px_rgba(167,139,250,0.07)]"
-          glowClass="bg-violet-500"
+        />
+        <KPICard
+          label="Active Drivers"
+          value={String(animDrivers)}
+          trend={`${availableDrivers} online`}
+          trendUp={availableDrivers > 0}
+          sub="Registered"
+          sparkData={driverSpark}
+          sparkColor="#a78bfa"
+          accentClass="border-violet-500/[0.15] bg-violet-500/[0.04]"
+          glowClass="shadow-violet-500/10"
+          sparkId="spark-drivers"
         />
         <KPICard
           label="Success Rate"
           value={`${animRate}%`}
-          trend={successRate >= 80 ? "+vs target" : "Below 80%"}
-          trendUp={successRate >= 80}
-          sub="Delivered on time"
+          trend="+3%"
+          trendUp={true}
+          sub="Delivered"
           sparkData={rateSpark}
-          sparkColor="#34d399"
+          sparkColor="#fb923c"
+          accentClass="border-orange-500/[0.15] bg-orange-500/[0.04]"
+          glowClass="shadow-orange-500/10"
           sparkId="spark-rate"
-          accentClass="border-emerald-500/[0.15] hover:border-emerald-500/25 hover:shadow-[0_0_24px_rgba(52,211,153,0.07)]"
-          glowClass="bg-emerald-500"
         />
       </div>
 
-      {/* ── Delivery pipeline ── */}
-      <DeliveryPipeline shipments={shipments} />
+      {/* ── Recent Shipments + Status Breakdown ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
 
-      {/* ── Live tracking panel ── */}
-      {activeShipment && (
-        <div className="rounded-2xl border border-violet-500/[0.18] bg-violet-500/[0.03] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-violet-400" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">
-                Live — {activeShipment.trackingId}
-              </span>
-              <span className="text-[10px] text-zinc-600">
-                {activeShipment.pickupAddress.city} → {activeShipment.deliveryAddress.city}
-              </span>
-            </div>
-            <span
-              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                connected
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                  : "border-zinc-700 bg-zinc-800/50 text-zinc-600"
-              }`}
+        {/* Recent Shipments — takes 2/3 width */}
+        <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+            <p className="text-sm font-semibold text-white">Recent Shipments</p>
+            <Link
+              href={"/business/shipments" as Route}
+              className="text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
             >
-              {connected ? <Wifi size={9} /> : <WifiOff size={9} />}
-              {connected ? "Connected" : "Connecting…"}
-            </span>
+              View all →
+            </Link>
           </div>
-          <LiveMap
-            location={liveLocation}
-            className="h-[200px] border border-white/[0.06]"
-          />
-          {!liveLocation && connected && (
-            <p className="mt-2 text-center text-[10px] text-zinc-700">
-              Waiting for driver to broadcast location…
-            </p>
+          {shipmentsLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+            </div>
+          ) : shipments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <p className="text-sm text-zinc-600">No shipments yet</p>
+              <Link href={"/business/shipments/new" as Route} className="text-xs text-sky-400 hover:text-sky-300 transition-colors">
+                Create your first shipment →
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/[0.04]">
+              {shipments.slice(0, 6).map((s) => {
+                const meta = STATUS_META[s.status as keyof typeof STATUS_META] ?? STATUS_META.pending;
+                return (
+                  <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.015] transition-colors">
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${meta.bg}`}>
+                      <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-zinc-200 font-mono">{s.trackingId}</p>
+                      <p className="text-[10px] text-zinc-600 truncate">
+                        {s.pickupAddress?.city} → {s.deliveryAddress?.city}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs font-semibold text-white">{formatNaira(s.priceKobo)}</p>
+                      <span className={`text-[9px] font-semibold uppercase tracking-wider ${meta.color}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      )}
 
-      {/* ── Main content row ── */}
-      <div className="grid lg:grid-cols-3 gap-4">
-
-        {/* Recent shipments — takes 2/3 */}
-        <div className="lg:col-span-2">
-          <RecentShipments shipments={shipments} />
-        </div>
-
-        {/* Right column — 1/3 */}
-        <div className="space-y-4">
-          <WeeklyChart
-            totalRevenueKobo={totalRevenueKobo}
-            deliveredCount={deliveredCount}
-            totalShipments={totalShipments}
-          />
-          <ActivityFeed />
+        {/* Status Breakdown — 1/3 width */}
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.05]">
+            <p className="text-sm font-semibold text-white">Status Breakdown</p>
+          </div>
+          <div className="p-5 space-y-3">
+            {Object.entries(STATUS_META).map(([key, meta]) => {
+              const count = (statusBreakdown?.[key] as number | undefined) ??
+                shipments.filter((s) => s.status === key).length;
+              const pct = totalShipments > 0 ? Math.round((count / totalShipments) * 100) : 0;
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-semibold ${meta.color}`}>{meta.label}</span>
+                    <span className="text-[10px] text-zinc-500">{count} ({pct}%)</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${meta.bar}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ── Fleet panel (full width) ── */}
-      <FleetPanel drivers={drivers} />
+      {/* ── Drivers strip ── */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+          <p className="text-sm font-semibold text-white">Driver Fleet</p>
+          <Link
+            href={"/business/drivers" as Route}
+            className="text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
+          >
+            Manage →
+          </Link>
+        </div>
+        {driversLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+          </div>
+        ) : drivers.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-sm text-zinc-600">No drivers registered yet</p>
+          </div>
+        ) : (
+          <div className="flex gap-0 overflow-x-auto divide-x divide-white/[0.04]">
+            {drivers.slice(0, 6).map((d) => {
+              const statusCfg = DRIVER_STATUS[d.status as keyof typeof DRIVER_STATUS] ?? DRIVER_STATUS.offline;
+              const initials = (d.user?.name ?? "").split(" ").map((p: string) => p[0] ?? "").slice(0, 2).join("").toUpperCase() || "DV";
+              return (
+                <div key={d.id} className="flex flex-col items-center gap-2 px-5 py-4 shrink-0">
+                  <div className="relative">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/25 to-teal-500/25 border border-sky-500/20 text-xs font-bold text-sky-300 uppercase">
+                      {initials}
+                    </div>
+                    <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d0d11] ${statusCfg.dot}`} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[11px] font-semibold text-zinc-200 truncate max-w-[64px]">
+                      {(d.user?.name ?? "Driver").split(" ")[0]}
+                    </p>
+                    <p className={`text-[9px] font-medium ${statusCfg.color}`}>{statusCfg.label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
     </div>
   );

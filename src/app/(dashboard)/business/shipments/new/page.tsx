@@ -463,48 +463,45 @@ export default function NewShipmentPage() {
             <Step4 data={data} />
             {serverError && (
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3 text-sm text-rose-400">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{serverError}</span>
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-rose-400" />
+                <p className="text-sm text-rose-400">{serverError}</p>
               </div>
             )}
           </>
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-5 border-t border-white/[0.05]">
-          <button
-            onClick={back}
-            disabled={step === 1}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.07] px-4 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </button>
-
-          {step < 4 ? (
+        <div className="mt-8 flex items-center justify-between gap-3">
+          {step > 1 ? (
             <button
-              onClick={next}
-              className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-colors shadow-lg shadow-sky-500/20"
+              onClick={() => setStep((s) => s - 1)}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all disabled:opacity-50"
+            >
+              Back
+            </button>
+          ) : (
+            <div />
+          )}
+
+          {step < STEPS.length ? (
+            <button
+              onClick={handleNext}
+              className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-all shadow-lg shadow-sky-500/20 active:scale-[0.98]"
             >
               Continue
-              <ChevronRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <button
-              onClick={submit}
-              disabled={createShipment.isPending}
-              className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-60"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-all shadow-lg shadow-sky-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {createShipment.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating…
-                </>
+              {loading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Creating…</>
               ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Create Shipment
-                </>
+                <><Check className="h-4 w-4" />Create Shipment</>
               )}
             </button>
           )}

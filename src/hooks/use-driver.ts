@@ -67,77 +67,30 @@ export function useDrivers() {
 export function useUpdateDriverStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      driverId,
-      status,
-    }: {
-      driverId: string;
-      status: DriverStatus;
-    }) => {
-      const { data } = await api.patch<ApiResponse<Driver>>(
-        `/drivers/${driverId}/status`,
-        { status },
-      );
+    mutationFn: async (status: "available" | "on_delivery" | "offline") => {
+      const { data } = await api.patch<ApiResponse<Driver>>("/drivers/me/status", { status });
       return data.data;
-    },
-    // Optimistic update — flip the status in the cache before the server responds
-    onMutate: async ({ status }) => {
-      await qc.cancelQueries({ queryKey: driverKeys.me() });
-      const previous = qc.getQueryData<Driver>(driverKeys.me());
-      qc.setQueryData<Driver>(driverKeys.me(), (old) =>
-        old ? { ...old, status } : old,
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      // Roll back on error
-      if (ctx?.previous) {
-        qc.setQueryData<Driver>(driverKeys.me(), ctx.previous);
-      }
     },
     onSuccess: (updated) => {
-      qc.setQueryData<Driver>(driverKeys.me(), updated);
+      qc.setQueryData(driverKeys.me(), updated);
+      void qc.invalidateQueries({ queryKey: driverKeys.all });
     },
   });
 }
 
 /**
- * Update the driver's GPS location (called periodically while delivering).
- * No cache invalidation needed — location is a fire-and-forget update.
+ * Update the driver's vehicle type and/or plate number.
+ * Invalidates the driver profile query on success.
  */
-export function useUpdateDriverLocation() {
+export function useUpdateVehicle() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      driverId,
-      lat,
-      lng,
-    }: {
-      driverId: string;
-      lat: number;
-      lng: number;
-    }) => {
-      const { data } = await api.patch<ApiResponse<Driver>>(
-        `/drivers/${driverId}/location`,
-        { lat, lng },
-      );
+    mutationFn: async (input: { vehicleType?: "bike" | "car" | "van" | "truck"; vehiclePlate?: string }) => {
+      const { data } = await api.patch<ApiResponse<Driver>>("/drivers/me", input);
       return data.data;
     },
-  });
-}
-
-// ─── Queries (continued) ──────────────────────────────────────────────────────
-
-/**
- * Returns only drivers whose status is "available" — for shipment assignment.
- */
-export function useAvailableDrivers() {
-  return useQuery({
-    queryKey: driverKeys.available(),
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<Driver[]>>("/drivers/available");
-      return data.data;
+    onSuccess: (updated) => {
+      qc.setQueryData(driverKeys.me(), updated);
     },
-    // Refetch every 20 s so the list stays current while assigning shipments
-    refetchInterval: 20_000,
   });
 }

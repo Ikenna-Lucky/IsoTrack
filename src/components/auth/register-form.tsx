@@ -483,109 +483,51 @@ export function RegisterForm() {
                   autoComplete="new-password"
                   placeholder="Choose a strong password"
                   className={cn(
-                    "w-full rounded-xl border bg-white/[0.03] px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-700",
-                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
-                    "transition-all duration-200",
-                    errors.password
-                      ? "border-red-500/40 bg-red-500/[0.02]"
-                      : "border-white/[0.07] hover:border-white/[0.12]",
+                    "w-full rounded-xl border bg-white/[0.03] pl-4 pr-10 py-3 text-sm text-white placeholder:text-zinc-700",
+                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-all",
+                    errors.password ? "border-rose-500/50" : "border-white/[0.07] focus:border-sky-500/40",
                   )}
                 />
                 <button
                   type="button"
-                  tabIndex={-1}
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <PasswordStrength value={password} />
             </Field>
           </div>
 
-          {/* ── Submit ───────────────────────────────────────────────────── */}
-          <div style={slide("0.42s")}>
+          {/* ── Submit ── */}
+          <div style={slide("0.44s")}>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={cn(
-                "group relative w-full overflow-hidden rounded-xl px-5 py-3.5 text-sm font-semibold text-white",
-                "transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none",
-                "focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
-              )}
-              style={{
-                background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%)",
-                boxShadow: "0 0 0 1px rgba(14,165,233,0.2), 0 4px 20px rgba(14,165,233,0.15)",
-              }}
+              className="relative w-full overflow-hidden rounded-xl bg-sky-500 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 hover:bg-sky-400 active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{
-                  background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 60%, #0284c7 100%)",
-                }}
-              />
-              <span className="relative flex items-center justify-center gap-2">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating your account…
-                  </>
-                ) : (
-                  <>
-                    Create my IsoTrack account
-                    <MoveRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </>
-                )}
-              </span>
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating account…
+                </span>
+              ) : (
+                "Create account"
+              )}
             </button>
-
-            <p className="text-[11px] text-center text-zinc-700 leading-relaxed">
-              By creating an account you agree to our{" "}
-              <Link
-                href={"#" as Route}
-                className="underline underline-offset-2 hover:text-zinc-400 transition-colors"
-              >
-                Terms
-              </Link>{" "}
-              and{" "}
-              <Link
-                href={"#" as Route}
-                className="underline underline-offset-2 hover:text-zinc-400 transition-colors"
-              >
-                Privacy Policy
-              </Link>
-              .
-            </p>
           </div>
-          {/* /submit stagger div */}
+
+          {serverError && (
+            <p className="text-center text-sm text-rose-400">{serverError}</p>
+          )}
+
+          <p className="text-center text-xs text-zinc-600">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-sky-400 hover:text-sky-300 transition-colors">
+              Sign in
+            </Link>
+          </p>
         </form>
-
-        {/* Switch to login */}
-        <div className="mt-8 space-y-4" style={slide("0.5s")}>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/[0.05]" />
-            <span className="text-[11px] text-zinc-700">Already on the grid?</span>
-            <div className="flex-1 h-px bg-white/[0.05]" />
-          </div>
-          <Link
-            href={"/login" as Route}
-            className={cn(
-              "flex items-center justify-center gap-2 w-full rounded-xl border border-white/[0.07] px-5 py-3 text-sm font-medium text-zinc-400",
-              "hover:border-white/[0.12] hover:text-white hover:bg-white/[0.03]",
-              "transition-all duration-200",
-            )}
-          >
-            Sign in to your account
-            <MoveRight className="h-3.5 w-3.5 opacity-60" />
-          </Link>
-        </div>
-
-        {/* Legal */}
-        <p className="mt-8 text-center text-[11px] text-zinc-700" style={slide("0.56s")}>
-          © {new Date().getFullYear()} IsoTrack · Personal portfolio project
-        </p>
       </div>
     </>
   );

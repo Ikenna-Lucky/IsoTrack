@@ -10,7 +10,10 @@ import {
   ArrowDownRight,
   CreditCard,
   Calendar,
+  ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
+import Link from "next/link";
 import { useShipments, getShipmentList } from "@/hooks/use-shipments";
 import { useDriverProfile } from "@/hooks/use-driver";
 import { formatKobo } from "@/types";
@@ -131,13 +134,13 @@ export default function DriverEarningsPage() {
     };
   }, [delivered]);
 
-  // ── Monthly history (last 6 months) ─────────────────────────────────────
+  // ── Monthly history (up to last 6 months that have actual earnings) ──────
   const monthlyHistory = useMemo(() => {
-    const months: { month: string; deliveries: number; earning: number }[] = [];
     const now = new Date();
+    const months: { month: string; deliveries: number; earning: number }[] = [];
 
     for (let m = 0; m < 6; m++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const date  = new Date(now.getFullYear(), now.getMonth() - m, 1);
       const start = new Date(date.getFullYear(), date.getMonth(), 1);
       const end   = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -146,11 +149,14 @@ export default function DriverEarningsPage() {
         return d >= start && d <= end;
       });
 
-      months.push({
-        month: date.toLocaleDateString("en-NG", { month: "short", year: "numeric" }),
-        deliveries: monthShipments.length,
-        earning: monthShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0),
-      });
+      // Only include months where at least one delivery was made
+      if (monthShipments.length > 0) {
+        months.push({
+          month:      date.toLocaleDateString("en-NG", { month: "short", year: "numeric" }),
+          deliveries: monthShipments.length,
+          earning:    monthShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0),
+        });
+      }
     }
     return months;
   }, [delivered]);
@@ -161,6 +167,21 @@ export default function DriverEarningsPage() {
   const avgPerTrip     = totalTrips > 0 ? Math.round(totalAllTime / totalTrips) : 0;
   const rating         = driver?.rating ?? 0;
   const maxEarning     = Math.max(...weeklyData.map((d) => d.earning), 1);
+
+  // ── Payout helpers ────────────────────────────────────────────────────────
+  // Next Friday date (payout day)
+  const nextFriday = useMemo(() => {
+    const d = new Date();
+    const daysUntilFriday = (5 - d.getDay() + 7) % 7 || 7; // 5 = Friday
+    d.setDate(d.getDate() + daysUntilFriday);
+    return d.toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" });
+  }, []);
+
+  // Pending balance = this week's earnings (to be paid out on Friday)
+  const pendingBalance = totalWeekEarnings;
+
+  // Bank account from driver profile (placeholder if not set)
+  const hasBankAccount = false; // extend when bank account endpoint exists
 
   // Sparklines
   const earnSpark    = weeklyData.map((d) => d.earning);
@@ -307,139 +328,92 @@ export default function DriverEarningsPage() {
       <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
         <div className="px-5 py-4 border-b border-white/[0.05]">
           <p className="text-sm font-semibold text-white">Monthly History</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">Last 6 months</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">
+            {monthlyHistory.length > 0
+              ? `${monthlyHistory.length} month${monthlyHistory.length > 1 ? "s" : ""} with earnings`
+              : "Earnings will appear here once you complete deliveries"}
+          </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[320px]">
-            <thead>
-              <tr className="border-b border-white/[0.05]">
-                {[
-                  { label: "Month",      mobile: true  },
-                  { label: "Deliveries", mobile: true  },
-                  { label: "Earnings",   mobile: true  },
-                  { label: "Avg / Trip", mobile: false },
-                  { label: "vs Prev",    mobile: false },
-                ].map(({ label, mobile }) => (
-                  <th
-                    key={label}
-                    className={cn(
-                      "px-3 sm:px-5 py-2.5 sm:py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600",
-                      label === "Month" ? "text-left" : "text-right",
-                      !mobile && "hidden sm:table-cell",
-                    )}
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {monthlyHistory.map(({ month, deliveries, earning }, i) => {
-                const prev  = monthlyHistory[i + 1];
-                const delta = prev && prev.earning > 0
-                  ? ((earning - prev.earning) / prev.earning) * 100
-                  : null;
-                const up    = delta !== null && delta >= 0;
-                return (
-                  <tr key={month} className="hover:bg-white/[0.015] transition-colors">
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-zinc-700 shrink-0" />
-                        <span className="text-sm font-medium text-zinc-200 truncate">{month}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-right text-sm text-zinc-400 tabular-nums">
-                      {deliveries}
-                    </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-right text-sm font-bold text-emerald-400 tabular-nums">
-                      {formatKobo(earning)}
-                    </td>
-                    <td className="hidden sm:table-cell px-5 py-3.5 text-right text-xs text-zinc-500 tabular-nums">
-                      {deliveries > 0 ? formatKobo(Math.round(earning / deliveries)) : "—"}
-                    </td>
-                    <td className="hidden sm:table-cell px-5 py-3.5 text-right">
-                      {delta !== null ? (
-                        <span className={cn(
-                          "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                          up ? "bg-emerald-500/[0.08] text-emerald-400" : "bg-rose-500/[0.08] text-rose-400",
-                        )}>
-                          {up ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
-                          {Math.abs(delta).toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-zinc-700">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-4 sm:px-5 py-3 border-t border-white/[0.05] flex items-center justify-between bg-emerald-500/[0.03]">
-          <span className="text-xs font-medium text-zinc-400">All-time earnings</span>
-          <span className="text-sm font-bold text-emerald-400">{formatKobo(totalAllTime)}</span>
-        </div>
-      </div>
 
-      {/* ── Payout details ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.05]">
-          <p className="text-sm font-semibold text-white">Payout Details</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">Your payment method and schedule</p>
-        </div>
-        <div className="p-4 sm:p-5 grid gap-3 sm:grid-cols-2">
-          {[
-            {
-              icon: CreditCard,
-              iconColor: "text-sky-400",
-              iconBg: "bg-sky-500/10 border-sky-500/20",
-              label: "Bank Account",
-              value: "Link your bank",
-              sub: "Set up in settings",
-            },
-            {
-              icon: Calendar,
-              iconColor: "text-violet-400",
-              iconBg: "bg-violet-500/10 border-violet-500/20",
-              label: "Payout Schedule",
-              value: "Weekly — Fridays",
-              sub: "Automatic transfer",
-            },
-            {
-              icon: DollarSign,
-              iconColor: "text-amber-400",
-              iconBg: "bg-amber-500/10 border-amber-500/20",
-              label: "Pending Balance",
-              value: formatKobo(totalWeekEarnings),
-              sub: "Releases this Friday",
-            },
-            {
-              icon: TrendingUp,
-              iconColor: "text-teal-400",
-              iconBg: "bg-teal-500/10 border-teal-500/20",
-              label: "Commission Rate",
-              value: "40% of shipment",
-              sub: "Standard driver rate",
-            },
-          ].map(({ icon: Icon, iconColor, iconBg, label, value, sub }) => (
-            <div
-              key={label}
-              className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-white/[0.1] hover:bg-white/[0.03] transition-all"
-            >
-              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border", iconBg)}>
-                <Icon className={cn("h-4 w-4", iconColor)} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">{label}</p>
-                <p className="text-sm font-semibold text-zinc-200 truncate">{value}</p>
-                <p className="text-[10px] text-zinc-600 mt-0.5">{sub}</p>
-              </div>
+        {monthlyHistory.length === 0 ? (
+          /* ── Empty state ── */
+          <div className="flex flex-col items-center justify-center py-14 gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+              <Calendar className="h-5 w-5 text-zinc-700" />
             </div>
-          ))}
-        </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-zinc-400">No earnings history yet</p>
+              <p className="text-xs text-zinc-600 mt-1">
+                Complete your first delivery to see monthly stats here
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px]">
+              <thead>
+                <tr className="border-b border-white/[0.05]">
+                  {[
+                    { label: "Month",      mobile: true  },
+                    { label: "Deliveries", mobile: true  },
+                    { label: "Earnings",   mobile: true  },
+                    { label: "Avg / Trip", mobile: false },
+                    { label: "vs Prev",    mobile: false },
+                  ].map(({ label, mobile }) => (
+                    <th
+                      key={label}
+                      className={cn(
+                        "px-3 sm:px-5 py-2.5 sm:py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600",
+                        label === "Month" ? "text-left" : "text-right",
+                        !mobile && "hidden sm:table-cell",
+                      )}
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {monthlyHistory.map(({ month, deliveries, earning }, i) => {
+                  const prev  = monthlyHistory[i + 1];
+                  const delta = prev && prev.earning > 0
+                    ? ((earning - prev.earning) / prev.earning) * 100
+                    : null;
+                  const up = delta !== null && delta >= 0;
+                  return (
+                    <tr key={month} className="hover:bg-white/[0.015] transition-colors">
+                      <td className="px-3 sm:px-5 py-3 sm:py-3.5">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-zinc-700 shrink-0" />
+                          <span className="text-sm font-medium text-zinc-200 truncate">{month}</span>
+                        </div>
+                      </td>
+                       <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-sm text-zinc-300 tabular-nums">
+                         {deliveries}
+                       </td>
+                       <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-sm font-semibold text-white tabular-nums">
+                         {formatNaira(earning)}
+                       </td>
+                       <td className="px-3 sm:px-5 py-3 sm:py-3.5">
+                         {delta !== null ? (
+                           <span className={cn(
+                             "inline-flex items-center gap-1 text-xs font-semibold",
+                             up ? "text-emerald-400" : "text-rose-400",
+                           )}>
+                             {up ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
+                           </span>
+                         ) : (
+                           <span className="text-xs text-zinc-700">—</span>
+                         )}
+                       </td>
+                     </tr>
+                   );
+                 })}
+               </tbody>
+             </table>
+           </div>
+        )}
       </div>
-
     </div>
   );
 }

@@ -18,8 +18,18 @@ import {
 import type { Route } from "next";
 import { Logo } from "@/components/shared/logo";
 import { useAuthStore } from "@/store/auth";
+import { useDrivers } from "@/hooks/use-driver";
+import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { useBusinessAnalytics } from "@/hooks/use-business";
 import { cn } from "@/lib/utils";
-import { MOCK_SHIPMENTS, MOCK_DRIVERS, formatNaira } from "@/lib/mock/business";
+
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -50,12 +60,16 @@ export function BusinessSidebar({ open, onClose }: Props) {
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
 
-  // Derived counts for badge
-  const pendingCount = MOCK_SHIPMENTS.filter(
-    (s) => s.status === "pending" || s.status === "in_transit",
-  ).length;
-  const activeDriverCount = MOCK_DRIVERS.filter((d) => d.status === "active").length;
-  const totalRevenue = MOCK_SHIPMENTS.reduce((s, sh) => s + sh.amount, 0);
+  // Real data for sidebar counts
+  const { data: shipmentsData } = useShipments({ pageSize: 200 });
+  const { data: drivers = [] }  = useDrivers();
+  const { data: analytics }     = useBusinessAnalytics();
+  const shipments                = getShipmentList(shipmentsData);
+
+  const pendingCount      = shipments.filter((s) => s.status === "pending" || s.status === "in_transit").length;
+  const activeDriverCount = drivers.filter((d) => d.status === "available" || d.status === "on_delivery").length;
+  const totalRevenue      = analytics?.totalRevenueKobo ?? 0;
+  const inTransitCount    = shipments.filter((s) => s.status === "in_transit" || s.status === "out_for_delivery").length;
 
   return (
     <>
@@ -205,7 +219,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-zinc-600">In transit</span>
               <span className="text-[10px] font-semibold text-violet-400">
-                {MOCK_SHIPMENTS.filter((s) => s.status === "in_transit").length} shipments
+                {inTransitCount} shipments
               </span>
             </div>
           </div>
