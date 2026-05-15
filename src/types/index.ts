@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   phone?: string | null;
   avatar?: string | null;
+  emergencyContact?: string | null;
   isActive?: boolean;
   isEmailVerified?: boolean;
   createdAt: string;
@@ -110,12 +111,28 @@ export interface ShipmentEvent {
 export type DriverStatus = "available" | "on_delivery" | "offline";
 export type VehicleType = "bike" | "car" | "van" | "truck";
 
+export interface NotificationPreferences {
+  newDelivery:      { push: boolean; email: boolean };
+  pickupReminder:   { push: boolean; email: boolean };
+  deliveryComplete: { push: boolean; email: boolean };
+  deliveryFailed:   { push: boolean; email: boolean };
+  customerMessage:  { push: boolean; email: boolean };
+  ratingReceived:   { push: boolean; email: boolean };
+  payoutProcessed:  { push: boolean; email: boolean };
+  weeklyReport:     { push: boolean; email: boolean };
+}
+
 export interface Driver {
   id: string;
   userId: string;
   user: User;
   vehicleType: VehicleType;
   vehiclePlate: string;
+  vehicleModel?: string | null;
+  vehicleColor?: string | null;
+  vehicleYear?: string | null;
+  vehicleInsurance?: string | null;
+  notificationPreferences?: NotificationPreferences | null;
   status: DriverStatus;
   currentLocation?: Coordinates | null;
   rating: number;
@@ -157,19 +174,19 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
+  status?: string;
+  metadata?: string | null;
   createdAt: string;
 }
 
-// ─── API Response wrappers ────────────────────────────────────────────────────
+// ─── API helpers ──────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
-  success: boolean;
   data: T;
   message?: string;
 }
 
 export interface PaginatedResponse<T> {
-  success: boolean;
   data: T[];
   pagination: {
     page: number;
@@ -180,43 +197,13 @@ export interface PaginatedResponse<T> {
   message?: string;
 }
 
-export interface ApiError {
-  success: false;
-  error: string;
-  message: string;
-  statusCode: number;
-}
+// ─── Formatting helpers ───────────────────────────────────────────────────────
 
-// ─── WebSocket events ─────────────────────────────────────────────────────────
-
-export interface WsLocationUpdate {
-  trackingId: string;
-  lat: number;
-  lng: number;
-  heading?: number;
-  speed?: number;
-  timestamp: number;
-}
-
-export interface WsStatusUpdate {
-  shipmentId: string;
-  status: ShipmentStatus;
-  message: string;
-  timestamp: string;
-}
-
-export type WsEvent =
-  | { event: "location:update"; data: WsLocationUpdate }
-  | { event: "status:update"; data: WsStatusUpdate }
-  | { event: "driver:connected"; data: { driverId: string } }
-  | { event: "driver:disconnected"; data: { driverId: string } };
-
-// ─── Utility ──────────────────────────────────────────────────────────────────
-
-/** Convert kobo to naira string e.g. 150000 → "₦1,500.00" */
+/** Format kobo (1/100 NGN) as a Naira currency string */
 export function formatKobo(kobo: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
+    maximumFractionDigits: 0,
   }).format(kobo / 100);
 }

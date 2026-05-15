@@ -20,8 +20,7 @@ import {
   MapPin,
   Loader2,
 } from "lucide-react";
-import { useDriverProfile } from "@/hooks/use-driver";
-import { useUpdateVehicle }  from "@/hooks/use-driver";
+import { useDriverProfile, useUpdateVehicle, useNotificationPreferences, useUpdateNotificationPreferences, useDeleteAccount } from "@/hooks/use-driver";
 import { useUpdateProfile, useChangePassword } from "@/hooks/use-user";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
@@ -197,8 +196,8 @@ function ProfileTab() {
 
   const [name,      setName]      = useState(user?.name      ?? "");
   const [email,     setEmail]     = useState(user?.email     ?? "");
-  const [phone,     setPhone]     = useState(user?.phone     ?? "");
-  const [emergency, setEmergency] = useState("");
+  const [phone,     setPhone]     = useState(user?.phone          ?? "");
+  const [emergency, setEmergency] = useState(user?.emergencyContact ?? "");
   const [saved,     setSaved]     = useState(false);
   const [apiError,  setApiError]  = useState("");
 
@@ -211,10 +210,11 @@ function ProfileTab() {
   useEffect(() => {
     if (user?.name)  setName(user.name);
     if (user?.email) setEmail(user.email);
-    if (user?.phone) setPhone(user.phone);
+    if (user?.phone)             setPhone(user.phone);
+    if (user?.emergencyContact)  setEmergency(user.emergencyContact);
     if (user?.avatar && !avatarPreview) setAvatarPreview(user.avatar);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.name, user?.email, user?.phone, user?.avatar]);
+  }, [user?.name, user?.email, user?.phone, user?.emergencyContact, user?.avatar]);
 
   const initials = (name || user?.name || "").slice(0, 2).toUpperCase() || "DV";
 
@@ -234,8 +234,9 @@ function ProfileTab() {
     setApiError("");
     try {
       await save({
-        name:   name.trim() || undefined,
-        phone:  phone.trim() || null,
+        name:             name.trim() || undefined,
+        phone:            phone.trim() || null,
+        emergencyContact: emergency.trim() || null,
         // For a real production app you'd upload the file to a storage bucket
         // and send back the URL. Here we send the data-URL directly since the
         // backend stores it as-is in the avatar text column.
@@ -355,14 +356,25 @@ function VehicleTab() {
 
   // Seed from real driver data once loaded
   useEffect(() => {
-    if (driver?.vehicleType)  setVehicleType(driver.vehicleType as "bike" | "car" | "van" | "truck");
-    if (driver?.vehiclePlate) setPlate(driver.vehiclePlate);
-  }, [driver?.vehicleType, driver?.vehiclePlate]);
+    if (driver?.vehicleType)     setVehicleType(driver.vehicleType as "bike" | "car" | "van" | "truck");
+    if (driver?.vehiclePlate)    setPlate(driver.vehiclePlate);
+    if (driver?.vehicleModel)    setModel(driver.vehicleModel);
+    if (driver?.vehicleColor)    setColor(driver.vehicleColor);
+    if (driver?.vehicleYear)     setYear(driver.vehicleYear);
+    if (driver?.vehicleInsurance) setInsurance(driver.vehicleInsurance);
+  }, [driver?.vehicleType, driver?.vehiclePlate, driver?.vehicleModel, driver?.vehicleColor, driver?.vehicleYear, driver?.vehicleInsurance]);
 
   async function handleSave() {
     setApiError("");
     try {
-      await save({ vehicleType, vehiclePlate: plate.trim() || undefined });
+      await save({
+        vehicleType,
+        vehiclePlate:     plate.trim()      || undefined,
+        vehicleModel:     model.trim()      || null,
+        vehicleColor:     color.trim()      || null,
+        vehicleYear:      year.trim()       || null,
+        vehicleInsurance: insurance.trim()  || null,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
@@ -458,29 +470,34 @@ function VehicleTab() {
 
 // ─── Tab: Notifications ───────────────────────────────────────────────────────
 
+const DEFAULT_NOTIF_PREFS = {
+  newDelivery:      { push: true,  email: true  },
+  pickupReminder:   { push: true,  email: false },
+  deliveryComplete: { push: true,  email: true  },
+  deliveryFailed:   { push: true,  email: true  },
+  customerMessage:  { push: true,  email: false },
+  ratingReceived:   { push: true,  email: false },
+  payoutProcessed:  { push: true,  email: true  },
+  weeklyReport:     { push: false, email: true  },
+};
+
 function NotificationsTab() {
-  const [saved,    setSaved]    = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [notifs, setNotifs] = useState({
-    newDelivery:      { push: true,  email: true  },
-    pickupReminder:   { push: true,  email: false },
-    deliveryComplete: { push: true,  email: true  },
-    deliveryFailed:   { push: true,  email: true  },
-    customerMessage:  { push: true,  email: false },
-    ratingReceived:   { push: true,  email: false },
-    payoutProcessed:  { push: true,  email: true  },
-    weeklyReport:     { push: false, email: true  },
-  });
+  const { data: serverPrefs }                         = useNotificationPreferences();
+  const { mutateAsync: savePrefs, isPending: saving } = useUpdateNotificationPreferences();
+
+  const [saved,  setSaved]  = useState(false);
+  const [notifs, setNotifs] = useState(DEFAULT_NOTIF_PREFS);
+
+  // Hydrate from server once loaded
+  useEffect(() => {
+    if (serverPrefs) setNotifs((p) => ({ ...p, ...serverPrefs }));
+  }, [serverPrefs]);
 
   const set = (key: keyof typeof notifs, ch: "push" | "email", val: boolean) =>
     setNotifs((p) => ({ ...p, [key]: { ...p[key], [ch]: val } }));
 
   async function handleSave() {
-    setLoading(true);
-    // Notification preferences endpoint not yet implemented on backend.
-    // Simulate a save with a short delay so the UI feels responsive.
-    await new Promise((r) => setTimeout(r, 600));
-    setLoading(false);
+    await savePrefs(notifs);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -526,7 +543,7 @@ function NotificationsTab() {
         ))}
       </SectionCard>
       <div className="flex justify-end pt-1">
-        <SaveButton saved={saved} loading={loading} onClick={handleSave} />
+        <SaveButton saved={saved} loading={saving} onClick={handleSave} />
       </div>
     </div>
   );
@@ -536,14 +553,18 @@ function NotificationsTab() {
 
 function SecurityTab() {
   const { mutateAsync: changePw, isPending } = useChangePassword();
+  const { mutateAsync: deleteAccount, isPending: deleting } = useDeleteAccount();
+  const logout = useAuthStore((s) => s.logout);
 
-  const [current,     setCurrent]     = useState("");
-  const [newPw,       setNewPw]       = useState("");
-  const [confirm,     setConfirm]     = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew,     setShowNew]     = useState(false);
-  const [saved,       setSaved]       = useState(false);
-  const [error,       setError]       = useState("");
+  const [current,        setCurrent]        = useState("");
+  const [newPw,          setNewPw]          = useState("");
+  const [confirm,        setConfirm]        = useState("");
+  const [showCurrent,    setShowCurrent]    = useState(false);
+  const [showNew,        setShowNew]        = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [error,          setError]          = useState("");
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
+  const [deleteError,    setDeleteError]    = useState("");
 
   async function handleSave() {
     setError("");
@@ -674,15 +695,55 @@ function SecurityTab() {
           <p className="text-sm font-semibold text-rose-400">Danger Zone</p>
           <p className="text-xs text-zinc-600 mt-0.5">These actions are permanent and cannot be undone</p>
         </div>
-        <div className="p-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-300">Delete account</p>
-            <p className="text-xs text-zinc-600 mt-0.5">Permanently delete your driver account and all associated data.</p>
+        <div className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-300">Delete account</p>
+              <p className="text-xs text-zinc-600 mt-0.5">Permanently delete your driver account and all associated data.</p>
+            </div>
+            {!confirmDelete && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/[0.14] hover:border-rose-500/40 transition-all shrink-0"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
           </div>
-          <button className="flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/[0.14] hover:border-rose-500/40 transition-all shrink-0">
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </button>
+          {confirmDelete && (
+            <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.05] p-4 space-y-3">
+              <p className="text-xs font-semibold text-rose-300">
+                Are you sure? This cannot be undone. All your deliveries, earnings history, and account data will be permanently erased.
+              </p>
+              {deleteError && (
+                <p className="text-xs text-rose-400">{deleteError}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setConfirmDelete(false); setDeleteError(""); }}
+                  className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleteError("");
+                    try {
+                      await deleteAccount();
+                      await logout();
+                    } catch {
+                      setDeleteError("Failed to delete account. Please try again.");
+                    }
+                  }}
+                  disabled={deleting}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-60 transition-all"
+                >
+                  {deleting ? <><Loader2 className="h-3 w-3 animate-spin" />Deleting…</> : "Yes, delete my account"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

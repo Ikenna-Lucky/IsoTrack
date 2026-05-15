@@ -8,9 +8,10 @@ import type { User, ApiResponse } from "@/types";
 // ─── Update profile ───────────────────────────────────────────────────────────
 
 export interface UpdateProfileInput {
-  name?:   string;
-  phone?:  string | null;
-  avatar?: string | null;
+  name?:             string;
+  phone?:            string | null;
+  avatar?:           string | null;
+  emergencyContact?: string | null;
 }
 
 /**
