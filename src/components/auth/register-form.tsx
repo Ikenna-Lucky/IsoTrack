@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 import type { UserRole } from "@/types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -219,10 +220,7 @@ export function RegisterForm() {
       });
       router.push(ROLE_ROUTES[values.role] as Route);
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Something went wrong. Please try again.";
-      setServerError(message);
+      setServerError(extractErrorMessage(err));
     }
   };
 

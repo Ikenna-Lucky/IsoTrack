@@ -12,6 +12,7 @@ import {
   EyeOff,
   AlertTriangle,
   Check,
+  Loader2,
   Mail,
   Phone,
   Building2,
@@ -20,8 +21,12 @@ import {
   Clock,
   Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
+import { useChangePassword } from "@/hooks/use-user";
+import { useDeleteAccount } from "@/hooks/use-driver";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
@@ -104,18 +109,24 @@ function SectionCard({
   );
 }
 
-function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void }) {
+function SaveButton({ saved, onClick, loading }: { saved: boolean; onClick: () => void; loading?: boolean }) {
   return (
     <button
       onClick={onClick}
+      disabled={loading}
       className={cn(
-        "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200",
+        "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none",
         saved
           ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
           : "bg-sky-500 text-white hover:bg-sky-400 shadow-lg shadow-sky-500/20 active:scale-[0.98]",
       )}
     >
-      {saved ? (
+      {loading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Saving…
+        </>
+      ) : saved ? (
         <>
           <Check className="h-4 w-4" />
           Saved
@@ -352,6 +363,11 @@ function NotificationsTab() {
 // ─── Tab: Security ────────────────────────────────────────────────────────────
 
 function SecurityTab() {
+  const router        = useRouter();
+  const logout        = useAuthStore((s) => s.logout);
+  const changePassword = useChangePassword();
+  const deleteAccount  = useDeleteAccount();
+
   const [current, setCurrent]   = useState("");
   const [newPw, setNewPw]       = useState("");
   const [confirm, setConfirm]   = useState("");
@@ -359,15 +375,24 @@ function SecurityTab() {
   const [showNew, setShowNew]   = useState(false);
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError]     = useState("");
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!current) { setError("Please enter your current password."); return; }
     if (newPw.length < 8) { setError("New password must be at least 8 characters."); return; }
+    if (!/[A-Z]/.test(newPw)) { setError("New password must contain at least one uppercase letter."); return; }
+    if (!/[0-9]/.test(newPw)) { setError("New password must contain at least one number."); return; }
     if (newPw !== confirm) { setError("Passwords do not match."); return; }
     setError("");
-    setSaved(true);
-    setCurrent(""); setNewPw(""); setConfirm("");
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await changePassword.mutateAsync({ currentPassword: current, newPassword: newPw });
+      setSaved(true);
+      setCurrent(""); setNewPw(""); setConfirm("");
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, "Failed to change password. Please try again."));
+    }
   };
 
   return (
@@ -461,7 +486,7 @@ function SecurityTab() {
         </div>
 
         <div className="flex justify-start mt-5">
-          <SaveButton saved={saved} onClick={handleSave} />
+          <SaveButton saved={saved} onClick={handleSave} loading={changePassword.isPending} />
         </div>
       </SectionCard>
 
@@ -519,17 +544,56 @@ function SecurityTab() {
           <p className="text-sm font-semibold text-rose-400">Danger Zone</p>
           <p className="text-xs text-zinc-600 mt-0.5">These actions are permanent and cannot be undone</p>
         </div>
-        <div className="p-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-300">Delete account</p>
-            <p className="text-xs text-zinc-600 mt-0.5">
-              Permanently delete your account, all shipments, drivers, and data.
-            </p>
+        <div className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-300">Delete account</p>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                Permanently delete your account, all shipments, drivers, and data.
+              </p>
+            </div>
+            {!confirmDelete && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/[0.14] hover:border-rose-500/40 transition-all shrink-0"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
           </div>
-          <button className="flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/[0.14] hover:border-rose-500/40 transition-all shrink-0">
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </button>
+          {confirmDelete && (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-3.5 space-y-3">
+              <p className="text-xs text-rose-300 font-medium">
+                Are you sure? This will permanently delete your account and all associated data. This cannot be undone.
+              </p>
+              {deleteError && <p className="text-xs text-rose-400">{deleteError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setConfirmDelete(false); setDeleteError(""); }}
+                  className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-400 hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={deleteAccount.isPending}
+                  onClick={async () => {
+                    setDeleteError("");
+                    try {
+                      await deleteAccount.mutateAsync();
+                      await logout();
+                      router.push("/login");
+                    } catch (err: unknown) {
+                      setDeleteError(extractErrorMessage(err, "Failed to delete account. Please try again."));
+                    }
+                  }}
+                  className="flex-1 rounded-xl border border-rose-500/40 bg-rose-500/[0.12] px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/[0.2] transition-all disabled:opacity-50"
+                >
+                  {deleteAccount.isPending ? "Deleting…" : "Yes, delete my account"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

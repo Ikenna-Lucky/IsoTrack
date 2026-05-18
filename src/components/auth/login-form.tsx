@@ -11,6 +11,7 @@ import { Eye, EyeOff, Loader2, MoveRight, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 import type { UserRole } from "@/types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -84,10 +85,7 @@ export function LoginForm() {
       const role = useAuthStore.getState().user?.role ?? "customer";
       router.push(ROLE_ROUTES[role] as Route);
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Something went wrong. Please try again.";
-      setServerError(message);
+      setServerError(extractErrorMessage(err));
     }
   };
 

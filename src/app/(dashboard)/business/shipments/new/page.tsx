@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 import { useCreateShipment } from "@/hooks/use-shipments";
 
 function formatNaira(amount: number) {
@@ -361,10 +362,7 @@ export default function NewShipmentPage() {
       });
       setCreatedTrackingId(shipment.trackingId);
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Failed to create shipment. Please try again.";
-      setServerError(message);
+      setServerError(extractErrorMessage(err, "Failed to create shipment. Please try again."));
     }
   };
 

@@ -699,12 +699,13 @@ export default function BusinessOverviewPage() {
 
   // ── Real data hooks ──────────────────────────────────────────────────────────
   const { data: analytics } = useBusinessAnalytics();
-  const { data: shipmentsData } = useShipments({ pageSize: 20 });
-  const { data: drivers = [] } = useDrivers();
+  const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments({ pageSize: 20 });
+  const { data: drivers = [], isLoading: driversLoading } = useDrivers();
 
   const shipments = getShipmentList(shipmentsData);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
+  const statusBreakdown = analytics?.statusBreakdown ?? {};
   const totalRevenueKobo = analytics?.totalRevenueKobo ?? 0;
   const totalShipments = analytics?.totalShipments ?? shipments.length;
   const deliveredCount =
@@ -943,7 +944,6 @@ export default function BusinessOverviewPage() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

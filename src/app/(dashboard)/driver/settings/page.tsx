@@ -24,6 +24,7 @@ import { useDriverProfile, useUpdateVehicle, useNotificationPreferences, useUpda
 import { useUpdateProfile, useChangePassword } from "@/hooks/use-user";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/errors";
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
@@ -246,8 +247,7 @@ function ProfileTab() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setApiError(msg ?? "Failed to save profile. Please try again.");
+      setApiError(extractErrorMessage(err, "Failed to save profile. Please try again."));
     }
   }
 
@@ -378,8 +378,7 @@ function VehicleTab() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setApiError(msg ?? "Failed to save vehicle info. Please try again.");
+      setApiError(extractErrorMessage(err, "Failed to save vehicle info. Please try again."));
     }
   }
 
@@ -579,8 +578,7 @@ function SecurityTab() {
       setCurrent(""); setNewPw(""); setConfirm("");
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Failed to change password. Please try again.");
+      setError(extractErrorMessage(err, "Failed to change password. Please try again."));
     }
   }
 
@@ -732,8 +730,8 @@ function SecurityTab() {
                     try {
                       await deleteAccount();
                       await logout();
-                    } catch {
-                      setDeleteError("Failed to delete account. Please try again.");
+                    } catch (err: unknown) {
+                      setDeleteError(extractErrorMessage(err, "Failed to delete account. Please try again."));
                     }
                   }}
                   disabled={deleting}
