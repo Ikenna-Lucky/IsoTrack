@@ -1,0 +1,27 @@
+<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="36" height="36" rx="9" fill="url(#g)"/>
+  <!--
+    Pin scaled from Lucide MapPin (24×24) → 36×36.
+    Scale factor 1.5 → center shifts from (12,10) to (18,15).
+    Original: M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z
+    Scaled:   M30 15c0 9-12 18-12 18S6 24 6 15a12 12 0 0 1 24 0Z
+    Tip at (18,33) — slightly outside 36px, clip via viewBox.
+    Shift up 3px to centre: subtract 3 from all y values.
+    Result:   M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z
+    Tip at (18,30) — 6px bottom padding. Top: 12-12=0, add 3px → shift +3 up:
+    Final:    M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z
+  -->
+  <path
+    d="M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z"
+    fill="white"
+  />
+  <!-- Inner circle eye of the pin -->
+  <circle cx="18" cy="12" r="4.5" fill="rgba(0,0,0,0.22)"/>
+</svg>

@@ -7,8 +7,11 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  phone?: string;
-  avatar?: string;
+  phone?: string | null;
+  avatar?: string | null;
+  emergencyContact?: string | null;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,13 +45,13 @@ export interface Coordinates {
   lng: number;
 }
 
+// Matches the jsonb shape stored in the backend
 export interface Address {
   street: string;
   city: string;
   state: string;
-  country: string;
+  country?: string;
   postalCode?: string;
-  coordinates?: Coordinates;
 }
 
 export interface Shipment {
@@ -58,39 +61,40 @@ export interface Shipment {
 
   // Parties
   businessId: string;
-  driverId?: string;
-  customerId?: string;
+  driverId?: string | null;
+  customerId?: string | null;
 
   // Package info
   description: string;
-  weight: number; // kg
+  weightKg: number;
   dimensions?: {
     length: number;
     width: number;
     height: number;
-  };
+  } | null;
 
   // Locations
   pickupAddress: Address;
   deliveryAddress: Address;
+  currentLocation?: Coordinates | null;
 
   // Timestamps
-  scheduledPickup?: string;
-  actualPickup?: string;
-  estimatedDelivery?: string;
-  actualDelivery?: string;
+  scheduledPickup?: string | null;
+  actualPickup?: string | null;
+  estimatedDelivery?: string | null;
+  actualDelivery?: string | null;
   createdAt: string;
   updatedAt: string;
 
-  // Financials
-  price: number; // in kobo (NGN smallest unit)
+  // Financials — stored in kobo (1 NGN = 100 kobo)
+  priceKobo: number;
   isPaid: boolean;
-  paymentReference?: string;
 
-  // Relations
-  driver?: Driver;
+  // Populated relations (present when backend joins them)
+  driver?: Driver | null;
+  customer?: User | null;
+  business?: Business | null;
   events?: ShipmentEvent[];
-  currentLocation?: Coordinates;
 }
 
 export interface ShipmentEvent {
@@ -98,24 +102,43 @@ export interface ShipmentEvent {
   shipmentId: string;
   status: ShipmentStatus;
   message: string;
-  location?: Coordinates;
-  timestamp: string;
+  location?: Coordinates | null;
+  createdAt: string;
 }
 
 // ─── Driver ───────────────────────────────────────────────────────────────────
 
 export type DriverStatus = "available" | "on_delivery" | "offline";
+export type VehicleType = "bike" | "car" | "van" | "truck";
+
+export interface NotificationPreferences {
+  newDelivery:      { push: boolean; email: boolean };
+  pickupReminder:   { push: boolean; email: boolean };
+  deliveryComplete: { push: boolean; email: boolean };
+  deliveryFailed:   { push: boolean; email: boolean };
+  customerMessage:  { push: boolean; email: boolean };
+  ratingReceived:   { push: boolean; email: boolean };
+  payoutProcessed:  { push: boolean; email: boolean };
+  weeklyReport:     { push: boolean; email: boolean };
+}
 
 export interface Driver {
   id: string;
   userId: string;
   user: User;
-  vehicleType: "bike" | "car" | "van" | "truck";
+  vehicleType: VehicleType;
   vehiclePlate: string;
+  vehicleModel?: string | null;
+  vehicleColor?: string | null;
+  vehicleYear?: string | null;
+  vehicleInsurance?: string | null;
+  notificationPreferences?: NotificationPreferences | null;
   status: DriverStatus;
-  currentLocation?: Coordinates;
+  currentLocation?: Coordinates | null;
   rating: number;
   totalDeliveries: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Business ─────────────────────────────────────────────────────────────────
@@ -125,9 +148,19 @@ export interface Business {
   userId: string;
   user: User;
   businessName: string;
-  logo?: string;
-  address: Address;
+  logo?: string | null;
+  address?: Address | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Business analytics (returned by GET /business/analytics) ─────────────────
+
+export interface BusinessAnalytics {
+  statusBreakdown: Partial<Record<ShipmentStatus, number>>;
   totalShipments: number;
+  totalRevenueKobo: number;
+  recentShipments: Shipment[];
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -141,19 +174,19 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
+  status?: string;
+  metadata?: string | null;
   createdAt: string;
 }
 
-// ─── API Response wrappers ────────────────────────────────────────────────────
+// ─── API helpers ──────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
-  success: boolean;
   data: T;
   message?: string;
 }
 
 export interface PaginatedResponse<T> {
-  success: boolean;
   data: T[];
   pagination: {
     page: number;
@@ -161,33 +194,16 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+  message?: string;
 }
 
-export interface ApiError {
-  success: false;
-  error: string;
-  message: string;
-  statusCode: number;
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+
+/** Format kobo (1/100 NGN) as a Naira currency string */
+export function formatKobo(kobo: number): string {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
 }
-
-// ─── WebSocket events ─────────────────────────────────────────────────────────
-
-export interface WsLocationUpdate {
-  shipmentId: string;
-  driverId: string;
-  coordinates: Coordinates;
-  timestamp: string;
-}
-
-export interface WsStatusUpdate {
-  shipmentId: string;
-  status: ShipmentStatus;
-  message: string;
-  timestamp: string;
-}
-
-export type WsEvent =
-  | { event: "location:update"; data: WsLocationUpdate }
-  | { event: "status:update"; data: WsStatusUpdate }
-  | { event: "driver:connected"; data: { driverId: string } }
-  | { event: "driver:disconnected"; data: { driverId: string } };

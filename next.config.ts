@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  transpilePackages: ["maplibre-gl"],
 
   images: {
     formats: ["image/avif", "image/webp"],
@@ -13,9 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
 
   // Security headers
   async headers() {

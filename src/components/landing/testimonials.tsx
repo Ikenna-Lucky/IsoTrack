@@ -1,0 +1,220 @@
+"use client";
+
+import { Github, Globe, Zap, ShieldCheck, MapPin, Bell, BarChart3, CreditCard } from "lucide-react";
+import { useInView } from "@/hooks/use-in-view";
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const WHAT_IT_DEMONSTRATES = [
+  {
+    icon: Zap,
+    title: "Real-time architecture",
+    description:
+      "Socket.io rooms scoped per shipment. Driver location events broadcast live to both business and customer dashboards without polling.",
+    color: "text-sky-400",
+    bg: "bg-sky-500/10",
+    border: "border-sky-500/20",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Multi-role JWT auth",
+    description:
+      "Three distinct roles (business, driver, customer) with separate access scopes, refresh token rotation, and route-level guards.",
+    color: "text-teal-400",
+    bg: "bg-teal-500/10",
+    border: "border-teal-500/20",
+  },
+  {
+    icon: MapPin,
+    title: "Map-based tracking",
+    description:
+      "MapLibre GL + OpenStreetMap — fully free, no API key. Live driver marker updates over WebSocket, smooth animation between coordinates.",
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/20",
+  },
+  {
+    icon: Bell,
+    title: "Event-driven notifications",
+    description:
+      "BullMQ job queues trigger Resend emails and Twilio SMS at every shipment milestone — pickup, in transit, out for delivery, delivered.",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+  },
+  {
+    icon: CreditCard,
+    title: "Paystack integration",
+    description:
+      "Shipment payments via Paystack checkout with webhook verification. Built for the Nigerian market — card, bank transfer, USSD.",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+  },
+  {
+    icon: BarChart3,
+    title: "Database design",
+    description:
+      "PostgreSQL on Neon with Drizzle ORM. Enum isolation pattern to prevent circular deps. Indexed queries, paginated results, full seed data.",
+    color: "text-rose-400",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+  },
+];
+
+// ─── Easing ───────────────────────────────────────────────────────────────────
+
+const SPRING = "cubic-bezier(0.22,1,0.36,1)";
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function AboutProject() {
+  const { ref, inView } = useInView({ threshold: 0.06 });
+
+  return (
+    <section
+      id="about"
+      className="py-16 sm:py-20 lg:py-32 border-t border-white/[0.06]"
+      ref={ref as unknown as React.RefObject<HTMLElement>}
+    >
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+
+        {/* Header + builder card */}
+        <div
+          className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start mb-10 lg:mb-16"
+          style={{
+            opacity: inView ? 1 : 0,
+            transform: inView ? "translateY(0)" : "translateY(22px)",
+            transition: `opacity 0.65s ${SPRING}, transform 0.65s ${SPRING}`,
+          }}
+        >
+          {/* Left — copy */}
+          <div>
+            <p className="text-xs uppercase tracking-widest text-sky-400 font-medium mb-3">
+              About this project
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-5">
+              Built by one developer,
+              <br />
+              end to end.
+            </h2>
+            <p className="text-zinc-400 leading-relaxed mb-5">
+              IsoTrack is a personal portfolio project — a production-grade logistics platform
+              built from scratch to push across the full stack. Every layer, from database
+              schema to WebSocket events to payment webhooks, was designed and implemented
+              by one person.
+            </p>
+            <p className="text-zinc-500 leading-relaxed text-sm">
+              The goal was to build something that solves a real problem (shipment tracking in
+              Nigeria) while demonstrating patterns you&apos;d find in an actual production codebase:
+              real-time architecture, event-driven workflows, multi-role access control,
+              and third-party integrations.
+            </p>
+          </div>
+
+          {/* Builder card */}
+          <div className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-8 hover:border-white/[0.11] hover:bg-white/[0.03] transition-all duration-300">
+            <div className="flex items-start gap-5 mb-6">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-teal-500/20 border border-sky-500/20 text-lg font-bold text-sky-300">
+                IK
+                {/* Subtle pulse ring */}
+                <div className="absolute inset-0 rounded-2xl border border-sky-500/15 animate-ping" style={{ animationDuration: "2.5s" }} />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-white mb-0.5">Ikenna</p>
+                <p className="text-sm text-zinc-500">Full-stack Developer</p>
+                <p className="text-xs text-zinc-600 mt-1">
+                  Next.js · Hono · TypeScript · PostgreSQL
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-zinc-400 leading-relaxed mb-6">
+              I built IsoTrack to go deep on real-time systems and API design using a stack
+              that reflects how I&apos;d build a startup product today — Bun, Hono, Drizzle,
+              and Next.js 15 with the App Router.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200 group/link"
+              >
+                <Github className="h-4 w-4 text-zinc-400 group-hover/link:text-white transition-colors" />
+                <span>View source on GitHub</span>
+                <span className="ml-auto text-zinc-600 text-xs">Frontend + Backend</span>
+              </a>
+              <a
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-sm text-zinc-300 hover:text-white hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200 group/link"
+              >
+                <Globe className="h-4 w-4 text-zinc-400 group-hover/link:text-white transition-colors" />
+                <span>Live demo</span>
+                <span className="ml-auto text-zinc-600 text-xs">isotrack.vercel.app</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Demonstrates grid */}
+        <div>
+          <p
+            className="text-xs uppercase tracking-widest text-zinc-600 font-medium mb-6"
+            style={{
+              opacity: inView ? 1 : 0,
+              transform: inView ? "translateY(0)" : "translateY(12px)",
+              transition: `opacity 0.5s ${SPRING} 0.1s, transform 0.5s ${SPRING} 0.1s`,
+            }}
+          >
+            What this demonstrates
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {WHAT_IT_DEMONSTRATES.map(({ icon: Icon, title, description, color, bg, border }, i) => (
+              <div
+                key={title}
+                className="group relative rounded-2xl border border-white/[0.05] bg-white/[0.02] p-5 hover:border-white/[0.09] hover:bg-white/[0.035] transition-all duration-300 overflow-hidden"
+                style={{
+                  opacity: inView ? 1 : 0,
+                  transform: inView ? "translateY(0)" : "translateY(24px)",
+                  transition: [
+                    `opacity 0.5s ${SPRING} ${i * 70 + 180}ms`,
+                    `transform 0.5s ${SPRING} ${i * 70 + 180}ms`,
+                    "border-color 0.3s ease",
+                    "background-color 0.3s ease",
+                  ].join(", "),
+                }}
+              >
+                {/* Icon */}
+                <div
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${bg} border ${border} mb-4`}
+                  style={{ transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
+                >
+                  <Icon className={`h-4 w-4 ${color} group-hover:scale-110 transition-transform duration-300`} />
+                </div>
+
+                <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+                <p className="text-xs text-zinc-500 leading-relaxed">{description}</p>
+
+                {/* Shimmer sweep */}
+                <div
+                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%)",
+                    transition: "transform 0.7s ease",
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

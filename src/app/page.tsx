@@ -1,8 +1,25 @@
-export default function Home() {
+import { Navbar } from "@/components/shared/navbar";
+import { Footer } from "@/components/shared/footer";
+import { Hero } from "@/components/landing/hero";
+import { StatsStrip } from "@/components/landing/stats-strip";
+import { Features } from "@/components/landing/features";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { AboutProject } from "@/components/landing/testimonials";
+import { CtaBanner } from "@/components/landing/cta-banner";
+
+export default function LandingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-      <p className="gradient-text text-4xl font-bold tracking-tight">IsoTrack</p>
-      <p className="mt-3 text-sm text-zinc-500">Phase 1 scaffold — landing page coming next.</p>
-    </main>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <StatsStrip />
+        <Features />
+        <HowItWorks />
+        <AboutProject />
+        <CtaBanner />
+      </main>
+      <Footer />
+    </>
   );
 }
