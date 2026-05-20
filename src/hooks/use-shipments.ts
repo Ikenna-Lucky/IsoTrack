@@ -110,6 +110,21 @@ export function getPagination(
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
+/** Assign a driver to a pending shipment (business only). */
+export function useAssignDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, driverId }: { id: string; driverId: string }) => {
+      const { data } = await api.patch<ApiResponse<Shipment>>(`/shipments/${id}/assign`, { driverId });
+      return data.data;
+    },
+    onSuccess: (updated) => {
+      void qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
+      void qc.invalidateQueries({ queryKey: shipmentKeys.detail(updated.id) });
+    },
+  });
+}
+
 /** Create a new shipment (business only). */
 export function useCreateShipment() {
   const qc = useQueryClient();

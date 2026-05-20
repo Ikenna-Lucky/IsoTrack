@@ -70,3 +70,75 @@ export function useUpdateBusinessProfile() {
     },
   });
 }
+
+// Notification preferences shape
+export interface BusinessNotifPrefs {
+  shipmentCreated: { email: boolean; sms: boolean };
+  driverAssigned:  { email: boolean; sms: boolean };
+  pickedUp:        { email: boolean; sms: boolean };
+  outForDelivery:  { email: boolean; sms: boolean };
+  delivered:       { email: boolean; sms: boolean };
+  failed:          { email: boolean; sms: boolean };
+  driverOnline:    { email: boolean; sms: boolean };
+  weeklyReport:    { email: boolean; sms: boolean };
+}
+
+// Preferences shape
+export interface BusinessPreferences {
+  timezone:    string;
+  currency:    string;
+  language:    string;
+  dateFormat:  string;
+  compactView: boolean;
+  autoRefresh: boolean;
+}
+
+/** GET /business/notifications */
+export function useBusinessNotifPrefs() {
+  return useQuery({
+    queryKey: [...businessKeys.all, "notifications"],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<BusinessNotifPrefs>>("/business/notifications");
+      return data.data;
+    },
+  });
+}
+
+/** PATCH /business/notifications */
+export function useUpdateBusinessNotifPrefs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (prefs: Partial<BusinessNotifPrefs>) => {
+      const { data } = await api.patch<ApiResponse<BusinessNotifPrefs>>("/business/notifications", prefs);
+      return data.data;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData([...businessKeys.all, "notifications"], updated);
+    },
+  });
+}
+
+/** GET /business/preferences */
+export function useBusinessPreferences() {
+  return useQuery({
+    queryKey: [...businessKeys.all, "preferences"],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<BusinessPreferences>>("/business/preferences");
+      return data.data;
+    },
+  });
+}
+
+/** PATCH /business/preferences */
+export function useUpdateBusinessPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (prefs: Partial<BusinessPreferences>) => {
+      const { data } = await api.patch<ApiResponse<BusinessPreferences>>("/business/preferences", prefs);
+      return data.data;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData([...businessKeys.all, "preferences"], updated);
+    },
+  });
+}

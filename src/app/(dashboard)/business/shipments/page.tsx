@@ -14,9 +14,13 @@ import {
   Phone,
   CheckCircle2,
   Loader2,
+  UserCheck,
+  ChevronDown as ChevronDownIcon,
 } from "lucide-react";
-import { useShipments, getShipmentList, getPagination } from "@/hooks/use-shipments";
+import { useShipments, getShipmentList, getPagination, useAssignDriver } from "@/hooks/use-shipments";
+import { useDrivers } from "@/hooks/use-driver";
 import type { Shipment, ShipmentStatus } from "@/types";
+import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -133,6 +137,25 @@ function ShipmentTimeline({ status }: { status: ShipmentStatus }) {
 // ─── Expanded row detail ───────────────────────────────────────────────────────
 
 function ExpandedDetail({ s }: { s: Shipment }) {
+  const { data: drivers = [] } = useDrivers();
+  const assignDriver = useAssignDriver();
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [assignError, setAssignError] = useState("");
+
+  const availableDrivers = drivers.filter((d) => d.status === "available");
+  const canAssign = s.status === "pending" && !s.driver;
+
+  const handleAssign = async () => {
+    if (!selectedDriverId) return;
+    setAssignError("");
+    try {
+      await assignDriver.mutateAsync({ id: s.id, driverId: selectedDriverId });
+      setSelectedDriverId("");
+    } catch (err: unknown) {
+      setAssignError(extractErrorMessage(err, "Failed to assign driver."));
+    }
+  };
+
   return (
     <div className="border-t border-white/[0.05] bg-[#0b0b0f] px-5 py-5 animate-in fade-in slide-in-from-top-1 duration-200">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -174,7 +197,7 @@ function ExpandedDetail({ s }: { s: Shipment }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-zinc-200">{s.driver.user?.name ?? "Driver"}</p>
-                  <p className="text-[10px] text-amber-400">★ {s.driver.rating.toFixed(1)}</p>
+                  <p className="text-[10px] text-amber-400">&#9733; {s.driver.rating.toFixed(1)}</p>
                 </div>
               </div>
             </div>
@@ -183,9 +206,44 @@ function ExpandedDetail({ s }: { s: Shipment }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600 mb-3">
                 Driver
               </p>
-              <div className="rounded-xl border border-amber-500/[0.12] bg-amber-500/[0.04] px-3 py-2.5">
-                <p className="text-[11px] text-amber-500/70">No driver assigned yet</p>
-              </div>
+              {canAssign ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <select
+                      value={selectedDriverId}
+                      onChange={(e) => setSelectedDriverId(e.target.value)}
+                      className="w-full appearance-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 pr-8 text-[11px] text-zinc-300 focus:outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
+                    >
+                      <option value="" className="bg-[#111]">
+                        {availableDrivers.length === 0 ? "No available drivers" : "Select a driver..."}
+                      </option>
+                      {availableDrivers.map((d) => (
+                        <option key={d.id} value={d.id} className="bg-[#111]">
+                          {d.user?.name ?? "Driver"} · {d.vehicleType} · ★{d.rating.toFixed(1)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600" />
+                  </div>
+                  {assignError && <p className="text-[10px] text-rose-400">{assignError}</p>}
+                  <button
+                    onClick={handleAssign}
+                    disabled={!selectedDriverId || assignDriver.isPending || availableDrivers.length === 0}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2.5 text-[11px] font-semibold text-sky-400 hover:bg-sky-500/[0.18] hover:border-sky-500/40 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    {assignDriver.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <UserCheck className="h-3.5 w-3.5" />
+                    )}
+                    {assignDriver.isPending ? "Assigning..." : "Assign Driver"}
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-500/[0.12] bg-amber-500/[0.04] px-3 py-2.5">
+                  <p className="text-[11px] text-amber-500/70">No driver assigned yet</p>
+                </div>
+              )}
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { DriverSidebar } from "@/components/dashboard/driver-sidebar";
 import { DriverTopbar } from "@/components/dashboard/driver-topbar";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 // ─── Page title resolver ──────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const title = usePageTitle();
 
   return (
+    <AuthGuard role="driver">
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <DriverSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="lg:ml-[230px] flex flex-col min-h-screen">
@@ -31,5 +33,6 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

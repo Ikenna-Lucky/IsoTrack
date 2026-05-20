@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BusinessSidebar } from "@/components/dashboard/business-sidebar";
 import { BusinessTopbar } from "@/components/dashboard/business-topbar";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 // ─── Page title map ───────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ export default function BusinessLayout({
   const title = usePageTitle();
 
   return (
+    <AuthGuard role="business">
     <div className="min-h-screen bg-[#09090b]">
       {/* Sidebar */}
       <BusinessSidebar
@@ -47,5 +49,6 @@ export default function BusinessLayout({
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

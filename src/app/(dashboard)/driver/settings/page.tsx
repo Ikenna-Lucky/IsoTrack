@@ -424,32 +424,22 @@ function VehicleTab() {
         </div>
       </SectionCard>
 
-      {/* Document upload placeholders */}
-      <SectionCard title="Documents" description="Upload your licence, insurance, and road-worthiness certificate">
-        <div className="space-y-3">
-          {[
-            { label: "Driver's Licence",             status: "Verified",      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-            { label: "Vehicle Insurance Certificate", status: "Verified",      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-            { label: "Road Worthiness Certificate",   status: "Expires soon",  color: "text-amber-400 bg-amber-500/10 border-amber-500/20"       },
-          ].map(({ label, status, color }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="h-4 w-4 shrink-0 text-zinc-600" />
-                <p className="text-sm text-zinc-300 truncate">{label}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-semibold", color)}>
-                  {status}
-                </span>
-                <button className="text-[11px] font-medium text-teal-400 hover:text-teal-300 transition-colors">
-                  Update
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* Document upload — coming soon */}
+      <SectionCard title="Documents" description="Licence, insurance, and road-worthiness certificate">
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03]">
+            <FileText className="h-5 w-5 text-zinc-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-zinc-300">Document management coming soon</p>
+            <p className="text-xs text-zinc-600 mt-1">
+              You will be able to upload and track your licence, insurance certificate,
+              and road-worthiness certificate here.
+            </p>
+          </div>
+          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold text-amber-400">
+            Coming soon
+          </span>
         </div>
       </SectionCard>
 
@@ -657,34 +647,29 @@ function SecurityTab() {
             <p className="text-sm font-medium text-zinc-200">Authenticator app</p>
             <p className="text-xs text-zinc-600 mt-0.5">Use Google Authenticator or Authy to generate one-time codes.</p>
           </div>
-          <button className="shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all">
-            Set up
-          </button>
+          <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold text-amber-400">
+            Coming soon
+          </span>
         </div>
       </SectionCard>
 
       {/* Active sessions */}
       <SectionCard title="Active Sessions" description="Devices currently signed into your account">
-        {[
-          { device: "IsoTrack Driver App · Android", location: "Lagos, Nigeria", current: true,  time: "Active now" },
-          { device: "Chrome on macOS",               location: "Lagos, Nigeria", current: false, time: "3h ago"     },
-        ].map(({ device, location, current, time }) => (
-          <div key={device} className="flex items-center justify-between gap-3 py-3 border-b border-white/[0.04] last:border-b-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={cn("h-2 w-2 rounded-full shrink-0", current ? "bg-emerald-400 shadow-[0_0_6px_#34d399]" : "bg-zinc-600")} />
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-zinc-200 truncate">{device}</p>
-                <p className="text-[10px] text-zinc-600">{location} · {time}</p>
-              </div>
+        <div className="flex items-center justify-between gap-3 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-zinc-200 truncate">This browser · Current session</p>
+              <p className="text-[10px] text-zinc-600">Active now</p>
             </div>
-            {!current && (
-              <button className="shrink-0 text-[11px] text-rose-400 hover:text-rose-300 transition-colors font-medium">Revoke</button>
-            )}
-            {current && (
-              <span className="shrink-0 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-full px-2 py-0.5">This device</span>
-            )}
           </div>
-        ))}
+          <span className="shrink-0 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-full px-2 py-0.5">
+            This device
+          </span>
+        </div>
+        <p className="text-[10px] text-zinc-700 pt-2 border-t border-white/[0.04] mt-1">
+          Full session management coming soon. To sign out of all devices, change your password.
+        </p>
       </SectionCard>
 
       {/* Danger zone */}

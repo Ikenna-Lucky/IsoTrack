@@ -922,7 +922,7 @@ export default function BusinessOverviewPage() {
         ) : (
           <div className="flex gap-0 overflow-x-auto divide-x divide-white/[0.04]">
             {drivers.slice(0, 6).map((d) => {
-              const statusCfg = DRIVER_STATUS[d.status as keyof typeof DRIVER_STATUS] ?? DRIVER_STATUS.offline;
+              const statusCfg = DRIVER_STATUS_CONFIG[d.status as keyof typeof DRIVER_STATUS_CONFIG] ?? DRIVER_STATUS_CONFIG.offline;
               const initials = (d.user?.name ?? "").split(" ").map((p: string) => p[0] ?? "").slice(0, 2).join("").toUpperCase() || "DV";
               return (
                 <div key={d.id} className="flex flex-col items-center gap-2 px-5 py-4 shrink-0">
@@ -930,13 +930,13 @@ export default function BusinessOverviewPage() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/25 to-teal-500/25 border border-sky-500/20 text-xs font-bold text-sky-300 uppercase">
                       {initials}
                     </div>
-                    <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d0d11] ${statusCfg.dot}`} />
+                    <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d0d11] ${statusCfg.bg}`} />
                   </div>
                   <div className="text-center">
                     <p className="text-[11px] font-semibold text-zinc-200 truncate max-w-[64px]">
                       {(d.user?.name ?? "Driver").split(" ")[0]}
                     </p>
-                    <p className={`text-[9px] font-medium ${statusCfg.color}`}>{statusCfg.label}</p>
+                    <p className={`text-[9px] font-medium ${statusCfg.ring.replace("ring-", "text-")}`}>{statusCfg.label}</p>
                   </div>
                 </div>
               );

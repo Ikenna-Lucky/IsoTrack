@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { CustomerSidebar } from "@/components/dashboard/customer-sidebar";
 import { CustomerTopbar } from "@/components/dashboard/customer-topbar";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 // ─── Page title map ───────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
   const title = usePageTitle();
 
   return (
+    <AuthGuard role="customer">
     <div className="min-h-screen bg-[#09090b]">
       <CustomerSidebar
         open={sidebarOpen}
@@ -38,5 +40,6 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }
