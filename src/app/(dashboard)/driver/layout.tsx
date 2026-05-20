@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { DriverSidebar } from "@/components/dashboard/driver-sidebar";
 import { DriverTopbar } from "@/components/dashboard/driver-topbar";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { ProfileCompletionBanner } from "@/components/dashboard/profile-completion-banner";
+import { useDriverProfileCompletion } from "@/hooks/use-profile-completion";
 
 // ─── Page title resolver ──────────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ function usePageTitle(): string {
 export default function DriverLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const title = usePageTitle();
+  const completion = useDriverProfileCompletion();
 
   return (
     <AuthGuard role="driver">
@@ -30,7 +33,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <DriverSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="lg:ml-[230px] flex flex-col min-h-screen">
         <DriverTopbar title={title} onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8"><ProfileCompletionBanner completion={completion} />{children}</main>
       </div>
     </div>
     </AuthGuard>
