@@ -414,6 +414,50 @@ export default function DriverEarningsPage() {
            </div>
         )}
       </div>
+
+      {/* Payout and Bank Account */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.05]">
+          <p className="text-sm font-semibold text-white">Payout &amp; Bank Account</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">
+            Your earnings are paid out weekly every Friday
+          </p>
+        </div>
+
+        {/* Pending payout summary */}
+        <div className="px-5 py-4 border-b border-white/[0.05]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] text-zinc-600 uppercase tracking-wider font-semibold">Pending payout</p>
+              <p className="text-2xl font-bold text-white tabular-nums mt-1">{formatKobo(pendingBalance)}</p>
+              <p className="text-[11px] text-zinc-600 mt-0.5">
+                Estimated release on <span className="text-zinc-400 font-medium">{nextFriday}</span>
+              </p>
+            </div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-500/10 border border-teal-500/20">
+              <CreditCard className="h-5 w-5 text-teal-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Bank account coming soon */}
+        <div className="flex flex-col items-center justify-center py-12 px-5 gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+            <CreditCard className="h-5 w-5 text-zinc-700" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-zinc-400">Bank account setup</p>
+            <p className="text-xs text-zinc-600 mt-1">
+              Direct bank transfers will be available soon.
+              <br />
+              For now, payouts are processed manually by the IsoTrack team.
+            </p>
+          </div>
+          <span className="mt-1 inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/[0.06] px-3 py-1 text-[11px] font-semibold text-amber-400/70">
+            Coming soon
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

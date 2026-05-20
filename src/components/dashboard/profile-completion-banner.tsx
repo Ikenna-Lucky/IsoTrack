@@ -21,7 +21,7 @@ export function ProfileCompletionBanner({ completion }: Props) {
   return (
     <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
 
-      {/* Progress bar — top accent */}
+      {/* Progress bar top accent */}
       <div className="h-0.5 bg-white/[0.04]">
         <div
           className="h-full bg-sky-500 transition-all duration-500"
@@ -31,9 +31,9 @@ export function ProfileCompletionBanner({ completion }: Props) {
 
       <div className="px-4 sm:px-5 py-4">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center gap-3">
-          {/* Icon — hidden on very small screens to save space */}
+          {/* Icon hidden on very small screens */}
           <div className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/20">
             <ShieldCheck className="h-4 w-4 text-sky-400" />
           </div>
@@ -41,12 +41,12 @@ export function ProfileCompletionBanner({ completion }: Props) {
           {/* Title + subtitle */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              {/* Icon on mobile — inline with title */}
+              {/* Icon on mobile inline with title */}
               <ShieldCheck className="sm:hidden h-3.5 w-3.5 shrink-0 text-sky-400" />
               <p className="text-sm font-semibold text-white leading-tight">
                 Complete your profile
               </p>
-              {/* Progress pill — desktop only */}
+              {/* Progress pill desktop only */}
               <span className="hidden md:inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
                 {completedCount}/{totalCount}
               </span>
@@ -57,14 +57,14 @@ export function ProfileCompletionBanner({ completion }: Props) {
                 {remaining.length} field{remaining.length !== 1 ? "s" : ""} needed for support &amp; tracking
               </span>
               <span className="hidden sm:inline">
-                {remaining.length} detail{remaining.length !== 1 ? "s" : ""} still needed — required for support and delivery tracking
+                {remaining.length} detail{remaining.length !== 1 ? "s" : ""} still needed &mdash; required for support and delivery tracking
               </span>
             </p>
           </div>
 
           {/* CTA button */}
           <Link
-            href={settingsPath}
+            href={settingsPath as import("next").Route}
             className="shrink-0 flex items-center gap-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 transition-colors px-3 py-2 text-[12px] font-semibold text-white"
           >
             {/* Label varies by screen size */}
@@ -74,9 +74,9 @@ export function ProfileCompletionBanner({ completion }: Props) {
           </Link>
         </div>
 
-        {/* ── Checklist ── */}
+        {/* Checklist */}
         <div className="mt-3 space-y-1.5">
-          {/* Incomplete items — always show */}
+          {/* Incomplete items always show */}
           {remaining.map((item) => (
             <div
               key={item.key}
@@ -87,7 +87,7 @@ export function ProfileCompletionBanner({ completion }: Props) {
                 <p className="text-[12px] font-medium text-zinc-300 leading-tight">
                   {item.label}
                 </p>
-                {/* Description — hide on mobile to keep rows compact */}
+                {/* Description hide on mobile */}
                 <p className="hidden sm:block text-[10px] text-zinc-600 mt-0.5 leading-snug">
                   {item.description}
                 </p>
@@ -95,7 +95,7 @@ export function ProfileCompletionBanner({ completion }: Props) {
             </div>
           ))}
 
-          {/* Completed items — collapse to a single summary line on mobile */}
+          {/* Completed items collapse to summary on mobile */}
           {done.length > 0 && (
             <>
               {/* Mobile: one compact summary row */}

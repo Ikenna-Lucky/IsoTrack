@@ -16,9 +16,12 @@ import {
   Loader2,
   UserCheck,
   ChevronDown as ChevronDownIcon,
+  CreditCard,
 } from "lucide-react";
 import { useShipments, getShipmentList, getPagination, useAssignDriver } from "@/hooks/use-shipments";
 import { useDrivers } from "@/hooks/use-driver";
+import { usePayment } from "@/hooks/use-payment";
+import { useAuthStore } from "@/store/auth";
 import type { Shipment, ShipmentStatus } from "@/types";
 import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -142,6 +145,9 @@ function ExpandedDetail({ s }: { s: Shipment }) {
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [assignError, setAssignError] = useState("");
 
+  const userEmail = useAuthStore((st) => st.user?.email ?? "");
+  const { pay, isPaying, verifying, error: payError } = usePayment();
+
   const availableDrivers = drivers.filter((d) => d.status === "available");
   const canAssign = s.status === "pending" && !s.driver;
 
@@ -181,6 +187,34 @@ function ExpandedDetail({ s }: { s: Shipment }) {
                 <span className="text-[11px] font-medium text-zinc-300">{value}</span>
               </div>
             ))}
+          </div>
+
+          {/* ── Payment ── */}
+          <div className="mt-4">
+            {s.isPaid ? (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <p className="text-[11px] font-semibold text-emerald-400">Payment received</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => pay({ shipmentId: s.id, email: userEmail })}
+                  disabled={isPaying || verifying}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2.5 text-[11px] font-semibold text-sky-400 hover:bg-sky-500/[0.18] hover:border-sky-500/40 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {isPaying || verifying ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CreditCard className="h-3.5 w-3.5" />
+                  )}
+                  {isPaying ? "Opening checkout…" : verifying ? "Verifying payment…" : `Pay ${formatNaira(s.priceKobo)}`}
+                </button>
+                {payError && (
+                  <p className="text-[10px] text-rose-400 px-1">{payError}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -564,6 +598,7 @@ export default function ShipmentsPage() {
                           <span className="text-xs font-semibold text-white tabular-nums">
                             {formatNaira(s.priceKobo)}
                           </span>
+
                         </div>
                         <div className="flex items-center">
                           <span className="text-[10px] text-zinc-600">
@@ -591,7 +626,7 @@ export default function ShipmentsPage() {
             disabled={page === 1}
             className="flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            ← Prev
+            &larr; Prev
           </button>
           <span className="text-xs text-zinc-600">
             {page} / {totalPages}
@@ -601,7 +636,7 @@ export default function ShipmentsPage() {
             disabled={page === totalPages}
             className="flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Next →
+            Next &rarr;
           </button>
         </div>
       )}
