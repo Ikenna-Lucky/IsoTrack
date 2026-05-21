@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "IsoTrack — Real-Time Shipment Tracking",
+    default: "IsoTrack - Real-Time Shipment Tracking",
     template: "%s | IsoTrack",
   },
   description:
@@ -64,6 +64,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body>

@@ -4,6 +4,9 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { CustomerSidebar } from "@/components/dashboard/customer-sidebar";
 import { CustomerTopbar } from "@/components/dashboard/customer-topbar";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { ProfileCompletionBanner } from "@/components/dashboard/profile-completion-banner";
+import { useCustomerProfileCompletion } from "@/hooks/use-profile-completion";
 
 // ─── Page title map ───────────────────────────────────────────────────────────
 
@@ -20,8 +23,10 @@ function usePageTitle(): string {
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const title = usePageTitle();
+  const completion = useCustomerProfileCompletion();
 
   return (
+    <AuthGuard role="customer">
     <div className="min-h-screen bg-[#09090b]">
       <CustomerSidebar
         open={sidebarOpen}
@@ -34,9 +39,11 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <ProfileCompletionBanner completion={completion} />
           {children}
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

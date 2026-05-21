@@ -4,6 +4,9 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BusinessSidebar } from "@/components/dashboard/business-sidebar";
 import { BusinessTopbar } from "@/components/dashboard/business-topbar";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { ProfileCompletionBanner } from "@/components/dashboard/profile-completion-banner";
+import { useBusinessProfileCompletion } from "@/hooks/use-profile-completion";
 
 // ─── Page title map ───────────────────────────────────────────────────────────
 
@@ -27,8 +30,10 @@ export default function BusinessLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const title = usePageTitle();
+  const completion = useBusinessProfileCompletion();
 
   return (
+    <AuthGuard role="business">
     <div className="min-h-screen bg-[#09090b]">
       {/* Sidebar */}
       <BusinessSidebar
@@ -43,9 +48,11 @@ export default function BusinessLayout({
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <ProfileCompletionBanner completion={completion} />
           {children}
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

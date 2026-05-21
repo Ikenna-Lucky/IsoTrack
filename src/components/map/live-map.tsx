@@ -5,7 +5,7 @@ import type { LocationUpdate } from "@/hooks/use-socket";
 
 interface LiveMapProps {
   location: LocationUpdate | null;
-  className?: string;
+  className?: string | undefined;
 }
 
 const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
@@ -31,25 +31,31 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
 
     async function initMap() {
       const maplibregl = (await import("maplibre-gl")).default;
+      // @ts-expect-error — CSS import, no type declarations needed
       await import("maplibre-gl/dist/maplibre-gl.css");
 
       const center: [number, number] = location ? [location.lng, location.lat] : DEFAULT_CENTER;
 
+      const maptilerKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+      const mapStyle = maptilerKey
+        ? `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${maptilerKey}`
+        : {
+            version: 8 as const,
+            sources: {
+              "osm-tiles": {
+                type: "raster" as const,
+                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+                attribution: "© OpenStreetMap contributors",
+              },
+            },
+            layers: [{ id: "osm", type: "raster" as const, source: "osm-tiles" }],
+            glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+          };
+
       map = new maplibregl.Map({
         container: containerRef.current!,
-        style: {
-          version: 8,
-          sources: {
-            "osm-tiles": {
-              type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-              tileSize: 256,
-              attribution: "© OpenStreetMap contributors",
-            },
-          },
-          layers: [{ id: "osm", type: "raster", source: "osm-tiles" }],
-          glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-        },
+        style: mapStyle,
         center,
         zoom: DEFAULT_ZOOM,
         attributionControl: false,
@@ -90,6 +96,7 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
       markerRef.current = null;
       initializedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -106,9 +113,9 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
   }, [location]);
 
   return (
-    <div className={`relative overflow-hidden rounded-xl ${className}`}>
-      <div ref={containerRef} className="h-full w-full" />
-      <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-white/10" />
-    </div>
+    <div
+      ref={containerRef}
+      className={["h-full w-full rounded-2xl overflow-hidden", className].filter(Boolean).join(" ")}
+    />
   );
 }

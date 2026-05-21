@@ -97,16 +97,16 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   },
 ];
 
-const SYSTEM_STATUS = [
-  { name: "Driver App (Android/iOS)",   status: "operational" as const, uptime: "99.97%" },
-  { name: "Delivery Assignment Engine", status: "operational" as const, uptime: "99.99%" },
-  { name: "Live GPS Tracking",          status: "operational" as const, uptime: "99.95%" },
-  { name: "Push Notifications",         status: "operational" as const, uptime: "99.88%" },
-  { name: "Payment Processing",         status: "degraded"    as const, uptime: "98.12%" },
-  { name: "In-App Messaging",           status: "operational" as const, uptime: "99.93%" },
-];
-
 type StatusKey = "operational" | "degraded" | "outage";
+
+const SYSTEM_STATUS: { name: string; status: StatusKey; uptime: string }[] = [
+  { name: "Driver App (Android/iOS)",   status: "operational", uptime: "99.97%" },
+  { name: "Delivery Assignment Engine", status: "operational", uptime: "99.99%" },
+  { name: "Live GPS Tracking",          status: "operational", uptime: "99.95%" },
+  { name: "Push Notifications",         status: "operational", uptime: "99.88%" },
+  { name: "Payment Processing",         status: "degraded",    uptime: "98.12%" },
+  { name: "In-App Messaging",           status: "operational", uptime: "99.93%" },
+];
 const STATUS_META: Record<StatusKey, { label: string; dot: string; text: string }> = {
   operational: { label: "Operational", dot: "bg-emerald-400 shadow-[0_0_6px_#34d399]", text: "text-emerald-400" },
   degraded:    { label: "Degraded",    dot: "bg-amber-400  shadow-[0_0_6px_#fbbf24]",  text: "text-amber-400"  },
@@ -175,7 +175,7 @@ function ContactForm() {
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="e.g. My payout hasn't arrived"
+          placeholder="e.g. My payout hasn&apos;t arrived"
           className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] px-3.5 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/[0.12] transition-all"
         />
       </div>
@@ -192,7 +192,7 @@ function ContactForm() {
       {sent ? (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-3">
           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-          <p className="text-sm text-emerald-400 font-medium">Message sent! We'll reply within 2 business hours.</p>
+          <p className="text-sm text-emerald-400 font-medium">Message sent! We&apos;ll reply within 2 business hours.</p>
         </div>
       ) : (
         <button

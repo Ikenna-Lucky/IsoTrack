@@ -170,7 +170,9 @@ function RouteMap() {
         />
 
         {/* City nodes */}
-        {nodes.map(({ cx, cy, label, anchor, lx }, i) => (
+        {nodes.map(({ cx, cy, label, anchor, lx }, i) => {
+          const delay = sonarDelays[i] ?? 0;
+          return (
           <g key={label}>
             {/* Sonar ring A */}
             <circle cx={cx} cy={cy} r="8" fill="none" stroke="url(#rg)" strokeWidth="1.2">
@@ -178,14 +180,14 @@ function RouteMap() {
                 attributeName="r"
                 values="8;42;8"
                 dur="4.5s"
-                begin={`${sonarDelays[i]}s`}
+                begin={`${delay}s`}
                 repeatCount="indefinite"
               />
               <animate
                 attributeName="opacity"
                 values="0.7;0;0.7"
                 dur="4.5s"
-                begin={`${sonarDelays[i]}s`}
+                begin={`${delay}s`}
                 repeatCount="indefinite"
               />
             </circle>
@@ -195,14 +197,14 @@ function RouteMap() {
                 attributeName="r"
                 values="8;42;8"
                 dur="4.5s"
-                begin={`${sonarDelays[i] + 1.5}s`}
+                begin={`${delay + 1.5}s`}
                 repeatCount="indefinite"
               />
               <animate
                 attributeName="opacity"
                 values="0.4;0;0.4"
                 dur="4.5s"
-                begin={`${sonarDelays[i] + 1.5}s`}
+                begin={`${delay + 1.5}s`}
                 repeatCount="indefinite"
               />
             </circle>
@@ -235,7 +237,8 @@ function RouteMap() {
               {label}
             </text>
           </g>
-        ))}
+          );
+        })}
 
         {/* Moving package — 3-layer glowing ball */}
         <g filter="url(#glow)">
@@ -313,7 +316,6 @@ function LiveTicker() {
   // Duplicate events so the loop is seamless
   const all = [...TICKER_EVENTS, ...TICKER_EVENTS];
   const itemH = 36; // px per row
-  const totalH = TICKER_EVENTS.length * itemH;
 
   return (
     <div
@@ -457,7 +459,9 @@ export function BrandPanel() {
               by an African
             </Link>
           </p>
-          <p className="text-[10px] text-zinc-800 uppercase tracking-widest">Portfolio</p>
+          <p className="text-[10px] text-zinc-800 uppercase tracking-widest">
+            Portfolio
+          </p>
         </div>
       </div>
     </aside>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface UseInViewOptions extends IntersectionObserverInit {
   /** Disconnect after first intersection (default: true) */
-  once?: boolean;
+  once?: boolean | undefined;
 }
 
 /**

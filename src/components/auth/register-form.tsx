@@ -11,12 +11,10 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  MoveRight,
   AlertCircle,
   Building2,
   Truck,
   PackageOpen,
-  Check,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { Logo } from "@/components/shared/logo";
@@ -112,8 +110,8 @@ function Field({
   children,
 }: {
   label: string;
-  hint?: string;
-  error?: string;
+  hint?: string | undefined;
+  error?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -129,51 +127,6 @@ function Field({
           {error}
         </p>
       )}
-    </div>
-  );
-}
-
-function PasswordStrength({ value }: { value: string }) {
-  const rules = [
-    { label: "8+ chars", ok: value.length >= 8 },
-    { label: "Uppercase", ok: /[A-Z]/.test(value) },
-    { label: "Number", ok: /[0-9]/.test(value) },
-  ];
-  const score = rules.filter((r) => r.ok).length;
-
-  if (!value) return null;
-
-  const barColor = score === 3 ? "bg-emerald-500" : score === 2 ? "bg-amber-500" : "bg-red-500";
-
-  return (
-    <div className="mt-2 space-y-2">
-      {/* Strength bar */}
-      <div className="flex gap-1">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className={cn(
-              "h-0.5 flex-1 rounded-full transition-all duration-300",
-              i < score ? barColor : "bg-white/[0.07]",
-            )}
-          />
-        ))}
-      </div>
-      {/* Rule chips */}
-      <div className="flex gap-2 flex-wrap">
-        {rules.map(({ label, ok }) => (
-          <span
-            key={label}
-            className={cn(
-              "flex items-center gap-1 text-[10px] transition-colors duration-200",
-              ok ? "text-emerald-500" : "text-zinc-700",
-            )}
-          >
-            <Check className={cn("h-2.5 w-2.5 transition-opacity", !ok && "opacity-0")} />
-            {label}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -198,7 +151,6 @@ export function RegisterForm() {
     defaultValues: { role: "customer" },
   });
 
-  const password = watch("password") ?? "";
   const selectedRole = watch("role");
 
   // Stagger helper
@@ -216,7 +168,8 @@ export function RegisterForm() {
         role: values.role,
         ...(values.phone ? { phone: values.phone } : {}),
         ...(values.role === "business" && values.businessName ? { businessName: values.businessName } : {}),
-        ...(values.role === "driver" ? { vehicleType: values.vehicleType, vehiclePlate: values.vehiclePlate } : {}),
+        ...(values.role === "driver" && values.vehicleType ? { vehicleType: values.vehicleType } : {}),
+        ...(values.role === "driver" && values.vehiclePlate ? { vehiclePlate: values.vehiclePlate } : {}),
       });
       router.push(ROLE_ROUTES[values.role] as Route);
     } catch (err: unknown) {
@@ -521,7 +474,10 @@ export function RegisterForm() {
 
           <p className="text-center text-xs text-zinc-600">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-sky-400 hover:text-sky-300 transition-colors">
+            <Link
+              href="/login"
+              className="font-medium text-sky-400 hover:text-sky-300 transition-colors"
+            >
               Sign in
             </Link>
           </p>

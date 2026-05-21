@@ -8,17 +8,21 @@ import {
   User,
   Package,
   CheckCircle2,
-  ChevronRight,
-  ChevronLeft,
   Loader2,
   AlertCircle,
+  ArrowRight,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
 import { useCreateShipment } from "@/hooks/use-shipments";
 
 function formatNaira(amount: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -61,14 +65,65 @@ const INITIAL: FormData = {
 // ─── Step config ──────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { number: 1, label: "Pickup", icon: MapPin, color: "text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/20" },
-  { number: 2, label: "Delivery", icon: User, color: "text-teal-400", bg: "bg-teal-500/10", border: "border-teal-500/20" },
-  { number: 3, label: "Package", icon: Package, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
-  { number: 4, label: "Confirm", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  {
+    number: 1,
+    label: "Pickup",
+    icon: MapPin,
+    color: "text-sky-400",
+    bg: "bg-sky-500/10",
+    border: "border-sky-500/20",
+  },
+  {
+    number: 2,
+    label: "Delivery",
+    icon: User,
+    color: "text-teal-400",
+    bg: "bg-teal-500/10",
+    border: "border-teal-500/20",
+  },
+  {
+    number: 3,
+    label: "Package",
+    icon: Package,
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/20",
+  },
+  {
+    number: 4,
+    label: "Confirm",
+    icon: CheckCircle2,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+  },
 ];
 
-const PACKAGE_TYPES = ["Document", "Parcel", "Food", "Electronics", "Clothing", "Furniture", "Other"];
-const LAGOS_CITIES = ["Lekki", "Ikeja", "Victoria Island", "Surulere", "Ikoyi", "Yaba", "Gbagada", "Maryland", "Ojota", "Ketu", "Ajah", "Berger", "Apapa", "Oshodi"];
+const PACKAGE_TYPES = [
+  "Document",
+  "Parcel",
+  "Food",
+  "Electronics",
+  "Clothing",
+  "Furniture",
+  "Other",
+];
+const LAGOS_CITIES = [
+  "Lekki",
+  "Ikeja",
+  "Victoria Island",
+  "Surulere",
+  "Ikoyi",
+  "Yaba",
+  "Gbagada",
+  "Maryland",
+  "Ojota",
+  "Ketu",
+  "Ajah",
+  "Berger",
+  "Apapa",
+  "Oshodi",
+];
 
 // ─── Field component ──────────────────────────────────────────────────────────
 
@@ -79,8 +134,8 @@ function Field({
   children,
 }: {
   label: string;
-  required?: boolean;
-  error?: string;
+  required?: boolean | undefined;
+  error?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -109,9 +164,9 @@ function Input({
 }: {
   value: string;
   onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  error?: boolean;
+  placeholder?: string | undefined;
+  type?: string | undefined;
+  error?: boolean | undefined;
 }) {
   return (
     <input
@@ -156,42 +211,96 @@ function Select({
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
-function Step1({ data, set, errors }: { data: FormData; set: (k: keyof FormData, v: string) => void; errors: Partial<FormData> }) {
+function Step1({
+  data,
+  set,
+  errors,
+}: {
+  data: FormData;
+  set: (k: keyof FormData, v: string) => void;
+  errors: Partial<FormData>;
+}) {
   return (
     <div className="space-y-4">
       <Field label="Pickup Address" required error={errors.pickupAddress}>
-        <Input value={data.pickupAddress} onChange={(v) => set("pickupAddress", v)} placeholder="e.g. 14 Admiralty Way" error={!!errors.pickupAddress} />
+        <Input
+          value={data.pickupAddress}
+          onChange={(v) => set("pickupAddress", v)}
+          placeholder="e.g. 14 Admiralty Way"
+          error={!!errors.pickupAddress}
+        />
       </Field>
       <Field label="City" required error={errors.pickupCity}>
-        <Select value={data.pickupCity || LAGOS_CITIES[0]!} onChange={(v) => set("pickupCity", v)} options={LAGOS_CITIES} />
+        <Select
+          value={data.pickupCity || LAGOS_CITIES[0]!}
+          onChange={(v) => set("pickupCity", v)}
+          options={LAGOS_CITIES}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Contact Name" required error={errors.pickupContact}>
-          <Input value={data.pickupContact} onChange={(v) => set("pickupContact", v)} placeholder="Full name" error={!!errors.pickupContact} />
+          <Input
+            value={data.pickupContact}
+            onChange={(v) => set("pickupContact", v)}
+            placeholder="Full name"
+            error={!!errors.pickupContact}
+          />
         </Field>
         <Field label="Phone Number" required error={errors.pickupPhone}>
-          <Input value={data.pickupPhone} onChange={(v) => set("pickupPhone", v)} placeholder="+2348012345678" error={!!errors.pickupPhone} />
+          <Input
+            value={data.pickupPhone}
+            onChange={(v) => set("pickupPhone", v)}
+            placeholder="+2348012345678"
+            error={!!errors.pickupPhone}
+          />
         </Field>
       </div>
     </div>
   );
 }
 
-function Step2({ data, set, errors }: { data: FormData; set: (k: keyof FormData, v: string) => void; errors: Partial<FormData> }) {
+function Step2({
+  data,
+  set,
+  errors,
+}: {
+  data: FormData;
+  set: (k: keyof FormData, v: string) => void;
+  errors: Partial<FormData>;
+}) {
   return (
     <div className="space-y-4">
       <Field label="Delivery Address" required error={errors.deliveryAddress}>
-        <Input value={data.deliveryAddress} onChange={(v) => set("deliveryAddress", v)} placeholder="e.g. 5 Bourdillon Road" error={!!errors.deliveryAddress} />
+        <Input
+          value={data.deliveryAddress}
+          onChange={(v) => set("deliveryAddress", v)}
+          placeholder="e.g. 5 Bourdillon Road"
+          error={!!errors.deliveryAddress}
+        />
       </Field>
       <Field label="City" required error={errors.deliveryCity}>
-        <Select value={data.deliveryCity || LAGOS_CITIES[0]!} onChange={(v) => set("deliveryCity", v)} options={LAGOS_CITIES} />
+        <Select
+          value={data.deliveryCity || LAGOS_CITIES[0]!}
+          onChange={(v) => set("deliveryCity", v)}
+          options={LAGOS_CITIES}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Recipient Name" required error={errors.deliveryContact}>
-          <Input value={data.deliveryContact} onChange={(v) => set("deliveryContact", v)} placeholder="Full name" error={!!errors.deliveryContact} />
+          <Input
+            value={data.deliveryContact}
+            onChange={(v) => set("deliveryContact", v)}
+            placeholder="Full name"
+            error={!!errors.deliveryContact}
+          />
         </Field>
         <Field label="Recipient Phone" required error={errors.deliveryPhone}>
-          <Input value={data.deliveryPhone} onChange={(v) => set("deliveryPhone", v)} placeholder="+2348012345678" error={!!errors.deliveryPhone} />
+          <Input
+            value={data.deliveryPhone}
+            onChange={(v) => set("deliveryPhone", v)}
+            placeholder="+2348012345678"
+            error={!!errors.deliveryPhone}
+          />
         </Field>
       </div>
     </div>
@@ -203,10 +312,19 @@ function Step3({ data, set }: { data: FormData; set: (k: keyof FormData, v: stri
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <Field label="Package Type" required>
-          <Select value={data.packageType} onChange={(v) => set("packageType", v)} options={PACKAGE_TYPES} />
+          <Select
+            value={data.packageType}
+            onChange={(v) => set("packageType", v)}
+            options={PACKAGE_TYPES}
+          />
         </Field>
         <Field label="Weight (kg)" required>
-          <Input value={data.weight} onChange={(v) => set("weight", v)} placeholder="e.g. 2.5" type="number" />
+          <Input
+            value={data.weight}
+            onChange={(v) => set("weight", v)}
+            placeholder="e.g. 2.5"
+            type="number"
+          />
         </Field>
       </div>
       <Field label="Description">
@@ -219,7 +337,12 @@ function Step3({ data, set }: { data: FormData; set: (k: keyof FormData, v: stri
         />
       </Field>
       <Field label="Delivery Fee (₦)" required>
-        <Input value={data.amount} onChange={(v) => set("amount", v)} placeholder="e.g. 3500" type="number" />
+        <Input
+          value={data.amount}
+          onChange={(v) => set("amount", v)}
+          placeholder="e.g. 3500"
+          type="number"
+        />
       </Field>
       {/* Priority selector */}
       <Field label="Delivery Priority">
@@ -276,10 +399,20 @@ function Step4({ data }: { data: FormData }) {
           ],
         },
       ].map(({ title, lines }) => (
-        <div key={title} className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1.5">{title}</p>
+        <div
+          key={title}
+          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1.5">
+            {title}
+          </p>
           {lines.map((l, i) => (
-            <p key={i} className={cn("text-sm", i === 0 ? "text-zinc-200" : "text-zinc-500 text-xs")}>{l}</p>
+            <p
+              key={i}
+              className={cn("text-sm", i === 0 ? "text-zinc-200" : "text-zinc-500 text-xs")}
+            >
+              {l}
+            </p>
           ))}
         </div>
       ))}
@@ -314,7 +447,7 @@ export default function NewShipmentPage() {
     setErrors((prev) => ({ ...prev, [k]: undefined }));
   };
 
-  const validate = (): boolean => {
+  const _validate = (): boolean => {
     const e: Partial<FormData> = {};
     if (step === 1) {
       if (!data.pickupAddress) e.pickupAddress = "Required";
@@ -334,10 +467,11 @@ export default function NewShipmentPage() {
     return Object.keys(e).length === 0;
   };
 
-  const next = () => { if (validate()) setStep((s) => s + 1); };
-  const back = () => setStep((s) => s - 1);
+  const handleNext = () => {
+    if (_validate()) setStep((s) => s + 1);
+  };
 
-  const submit = async () => {
+  const handleSubmit = async () => {
     setServerError(null);
     const baseAmount = Number(data.amount);
     const expressExtra = data.priority === "express" ? 500 : 0;
@@ -386,7 +520,12 @@ export default function NewShipmentPage() {
             View All Shipments
           </button>
           <button
-            onClick={() => { setStep(1); setData(INITIAL); setCreatedTrackingId(null); setServerError(null); }}
+            onClick={() => {
+              setStep(1);
+              setData(INITIAL);
+              setCreatedTrackingId(null);
+              setServerError(null);
+            }}
             className="rounded-xl border border-white/[0.07] px-6 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] transition-all"
           >
             Create Another
@@ -398,7 +537,6 @@ export default function NewShipmentPage() {
 
   return (
     <div className="max-w-xl mx-auto">
-
       {/* ── Progress steps ── */}
       <div className="flex items-center gap-0 mb-8">
         {STEPS.map(({ number, label, icon: Icon, color, bg, border }, i) => {
@@ -420,10 +558,7 @@ export default function NewShipmentPage() {
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                   ) : (
                     <Icon
-                      className={cn(
-                        "h-4 w-4",
-                        state === "current" ? color : "text-zinc-700",
-                      )}
+                      className={cn("h-4 w-4", state === "current" ? color : "text-zinc-700")}
                     />
                   )}
                 </div>
@@ -437,7 +572,10 @@ export default function NewShipmentPage() {
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className="flex-1 h-px mx-2 mb-4" style={{ background: number < step ? "#10b981" : "rgba(255,255,255,0.07)" }} />
+                <div
+                  className="flex-1 h-px mx-2 mb-4"
+                  style={{ background: number < step ? "#10b981" : "rgba(255,255,255,0.07)" }}
+                />
               )}
             </div>
           );
@@ -447,10 +585,10 @@ export default function NewShipmentPage() {
       {/* ── Form card ── */}
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 sm:p-8">
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-white">
-            {STEPS[step - 1]!.label} Details
-          </h2>
-          <p className="text-sm text-zinc-500 mt-0.5">Step {step} of {STEPS.length}</p>
+          <h2 className="text-lg font-bold text-white">{STEPS[step - 1]!.label} Details</h2>
+          <p className="text-sm text-zinc-500 mt-0.5">
+            Step {step} of {STEPS.length}
+          </p>
         </div>
 
         {step === 1 && <Step1 data={data} set={set} errors={errors} />}
@@ -473,7 +611,7 @@ export default function NewShipmentPage() {
           {step > 1 ? (
             <button
               onClick={() => setStep((s) => s - 1)}
-              disabled={loading}
+              disabled={createShipment.isPending}
               className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all disabled:opacity-50"
             >
               Back
@@ -485,22 +623,23 @@ export default function NewShipmentPage() {
           {step < STEPS.length ? (
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-all shadow-lg shadow-sky-500/20 active:scale-[0.98]"
+              className="flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
             >
-              Continue
+              Next
               <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-all shadow-lg shadow-sky-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={createShipment.isPending}
+              className="flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
             >
-              {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Creating…</>
+              {createShipment.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <><Check className="h-4 w-4" />Create Shipment</>
+                <Check className="h-4 w-4" />
               )}
+              {createShipment.isPending ? "Creating…" : "Create Shipment"}
             </button>
           )}
         </div>

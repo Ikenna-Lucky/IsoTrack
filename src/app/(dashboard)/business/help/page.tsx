@@ -186,16 +186,16 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   },
 ];
 
-const SYSTEM_STATUS = [
-  { name: "API & Core Services",     status: "operational" as const, uptime: "99.98%" },
-  { name: "Live Tracking (WS)",      status: "operational" as const, uptime: "99.95%" },
-  { name: "SMS Notifications",       status: "operational" as const, uptime: "99.91%" },
-  { name: "Email Notifications",     status: "operational" as const, uptime: "99.99%" },
-  { name: "Payment Processing",      status: "degraded"    as const, uptime: "98.12%" },
-  { name: "Driver App (iOS/Android)",status: "operational" as const, uptime: "99.97%" },
-];
-
 type StatusKey = "operational" | "degraded" | "outage";
+
+const SYSTEM_STATUS: { name: string; status: StatusKey; uptime: string }[] = [
+  { name: "API & Core Services",      status: "operational", uptime: "99.98%" },
+  { name: "Live Tracking (WS)",       status: "operational", uptime: "99.95%" },
+  { name: "SMS Notifications",        status: "operational", uptime: "99.91%" },
+  { name: "Email Notifications",      status: "operational", uptime: "99.99%" },
+  { name: "Payment Processing",       status: "degraded",    uptime: "98.12%" },
+  { name: "Driver App (iOS/Android)", status: "operational", uptime: "99.97%" },
+];
 
 const STATUS_META: Record<StatusKey, { label: string; dot: string; text: string }> = {
   operational: { label: "Operational",    dot: "bg-emerald-400 shadow-[0_0_6px_#34d399]", text: "text-emerald-400" },
@@ -303,7 +303,7 @@ function ContactForm() {
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-3">
           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
           <p className="text-sm text-emerald-400 font-medium">
-            Message sent! We'll reply within 2 business hours.
+            Message sent! We&apos;ll reply within 2 business hours.
           </p>
         </div>
       ) : (

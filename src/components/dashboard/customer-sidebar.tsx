@@ -9,6 +9,7 @@ import {
   LogOut,
   MapPin,
   Clock,
+  Settings,
 } from "lucide-react";
 import type { Route } from "next";
 import { Logo } from "@/components/shared/logo";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/customer",           label: "Overview",      icon: LayoutDashboard, exact: true },
   { href: "/customer/shipments", label: "My Shipments",  icon: Package },
   { href: "/customer/track",     label: "Track Package", icon: Search },
+  { href: "/customer/settings",  label: "Settings",      icon: Settings },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -199,8 +201,7 @@ export function CustomerSidebar({ open, onClose }: Props) {
             onClick={() => logout()}
             className="group flex w-full items-center gap-2.5 rounded-xl border border-white/[0.04] px-3 py-2 text-[12px] font-medium text-zinc-600 hover:border-rose-500/20 hover:bg-rose-500/[0.06] hover:text-rose-400 transition-all duration-200"
           >
-            <LogOut className="h-3.5 w-3.5 shrink-0 transition-colors" />
-            Sign out
+            <LogOut className="h-3.5 w-3.5 shrink-0 transition-colors" />            Sign out
           </button>
         </div>
       </aside>

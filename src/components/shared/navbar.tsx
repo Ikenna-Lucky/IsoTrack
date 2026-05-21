@@ -7,10 +7,10 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 
-const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How it Works", href: "#how-it-works" },
-  { label: "Testimonials", href: "#testimonials" },
+const NAV_LINKS: { label: string; href: Route }[] = [
+  { label: "Features", href: "/#features" as Route },
+  { label: "How it Works", href: "/#how-it-works" as Route },
+  { label: "Testimonials", href: "/#testimonials" as Route },
 ];
 
 export function Navbar() {
@@ -36,12 +36,12 @@ export function Navbar() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-500",
-          scrolled ? "border-b border-white/[0.06] bg-black/80 backdrop-blur-xl py-3" : "py-5",
+          scrolled ? "border-b border-white/[0.06] bg-black/80 backdrop-blur-xl py-4" : "py-5",
         )}
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-8">
           {/* Logo */}
-          <Logo href="/" size={45} />
+          <Logo href="/" size={35} />
 
           {/* Desktop links */}
           <ul className="hidden md:flex items-center gap-8">
