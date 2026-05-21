@@ -6,7 +6,6 @@ import { type NextRequest, NextResponse } from "next/server";
 const PROTECTED_PREFIXES = ["/business", "/driver", "/customer", "/account"];
 
 /** Routes only for unauthenticated users (redirect away if already logged in) */
-const AUTH_ROUTES = ["/login", "/register"];
 
 /** Cookie name — must match the backend constant */
 const REFRESH_COOKIE = "iso_refresh_token";

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -15,7 +16,6 @@ import {
   Loader2,
   ArrowRight,
   Search,
-  Phone,
   Bike,
   AlertTriangle,
   Radio,
@@ -101,7 +101,7 @@ function VehicleIcon({ type, className }: { type: string; className?: string }) 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusHero({ info }: { info: TrackingInfo }) {
-  const meta = STATUS_META[info.status] ?? STATUS_META.pending;
+  const meta = (STATUS_META[info.status] ?? STATUS_META["pending"])!;
   const isActive =
     info.status === "in_transit" ||
     info.status === "out_for_delivery" ||
@@ -479,12 +479,12 @@ export default function PublicTrackingPage() {
       <header className="border-b border-white/[0.05] bg-[#08080a]/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="mx-auto max-w-2xl px-4 py-3 flex items-center justify-between gap-4">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 shrink-0">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600">
               <Navigation className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="font-bold text-sm text-white tracking-tight">IsoTrack</span>
-          </a>
+          </Link>
 
           {/* Live badge */}
           {isActive && (

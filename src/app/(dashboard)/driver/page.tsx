@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -52,13 +52,6 @@ const STATUS_META: Record<ShipmentStatus, { dot: string }> = {
 
 // ─── Route waypoints (for location simulation) ────────────────────────────────
 
-const ROUTE_WAYPOINTS = [
-  { lat: 6.4355, lng: 3.4197 },
-  { lat: 6.4398, lng: 3.4289 },
-  { lat: 6.4441, lng: 3.4312 },
-  { lat: 6.4478, lng: 3.4389 },
-  { lat: 6.4512, lng: 3.4401 },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,22 +87,6 @@ function notifMeta(n: Notification) {
 }
 
 // ─── useCountUp ───────────────────────────────────────────────────────────────
-
-function useCountUp(target: number, duration = 1200) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    let cur = 0;
-    const inc = target / (duration / 16);
-    const t = setInterval(() => {
-      cur += inc;
-      if (cur >= target) { setCount(target); clearInterval(t); }
-      else setCount(Math.floor(cur));
-    }, 16);
-    return () => clearInterval(t);
-  }, [target, duration]);
-  return count;
-}
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -386,7 +363,7 @@ function WeeklyChart({
         </div>
         <div className="text-right">
           <p className="text-xs font-bold text-emerald-400">{formatKobo(todayStats.earning)}</p>
-          <p className="text-[10px] text-zinc-600">Today's earnings</p>
+          <p className="text-[10px] text-zinc-600">Today&apos;s earnings</p>
         </div>
       </div>
     </div>
@@ -526,8 +503,6 @@ function PageSkeleton() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriverOverviewPage() {
-  const waypointIdxRef = useRef(0);
-  const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Data fetching ──
   const { data: driver, isLoading: driverLoading } = useDriverProfile();
@@ -544,7 +519,7 @@ export default function DriverOverviewPage() {
   const isOnline = driver?.status !== "offline";
 
   // ── Socket (location broadcasting) ──
-  const { connected, emitLocation } = useSocket({
+  const { connected } = useSocket({
     trackingId: activeDelivery?.trackingId ?? null,
   });
 

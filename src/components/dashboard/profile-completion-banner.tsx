@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProfileCompletion } from "@/hooks/use-profile-completion";
@@ -64,7 +65,7 @@ export function ProfileCompletionBanner({ completion }: Props) {
 
           {/* CTA button */}
           <Link
-            href={settingsPath as import("next").Route}
+            href={settingsPath as Route}
             className="shrink-0 flex items-center gap-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 transition-colors px-3 py-2 text-[12px] font-semibold text-white"
           >
             {/* Label varies by screen size */}

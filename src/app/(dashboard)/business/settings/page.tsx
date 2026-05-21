@@ -32,8 +32,8 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 function TextInput({ value, onChange, placeholder, type = "text", icon: Icon, disabled }: {
-  value: string; onChange?: (v: string) => void; placeholder?: string;
-  type?: string; icon?: React.ElementType; disabled?: boolean;
+  value: string; onChange?: (v: string) => void; placeholder?: string | undefined;
+  type?: string | undefined; icon?: React.ElementType | undefined; disabled?: boolean | undefined;
 }) {
   return (
     <div className="relative">
@@ -52,7 +52,7 @@ function TextInput({ value, onChange, placeholder, type = "text", icon: Icon, di
   );
 }
 
-function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function SectionCard({ title, description, children }: { title: string; description?: string | undefined; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
       <div className="px-5 py-4 border-b border-white/[0.05]">
@@ -159,7 +159,7 @@ function ProfileTab() {
   // Keep avatar preview in sync if auth store changes (e.g. another tab)
   useEffect(() => {
     if (!avatarFile) setAvatarPreview(user?.avatar ?? null);
-  }, [user?.avatar]);
+  }, [user?.avatar, avatarFile]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -202,7 +202,7 @@ function ProfileTab() {
     try {
       await updateBusiness.mutateAsync({
         businessName: bizName.trim(),
-        address: street.trim() ? { street: street.trim(), city: city.trim(), state: state.trim() } : undefined,
+        ...(street.trim() ? { address: { street: street.trim(), city: city.trim(), state: state.trim() } } : {}),
       });
       setBusinessSaved(true);
       setTimeout(() => setBusinessSaved(false), 2500);
@@ -217,6 +217,7 @@ function ProfileTab() {
         <div className="flex items-start gap-5">
           <div className="relative shrink-0">
             {avatarPreview
+              // eslint-disable-next-line @next/next/no-img-element
               ? <img src={avatarPreview} alt="Profile" className="h-16 w-16 rounded-2xl object-cover border border-white/[0.08]" />
               : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/25 to-teal-500/25 border border-sky-500/20 text-xl font-bold text-sky-300 uppercase select-none">{initials}</div>
             }

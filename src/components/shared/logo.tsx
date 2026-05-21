@@ -1,16 +1,17 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LogoProps {
   /** Icon size in px — wordmark scales proportionally */
-  size?: number;
+  size?: number | undefined;
   /** Show "IsoTrack" wordmark next to the mark */
-  showWordmark?: boolean;
+  showWordmark?: boolean | undefined;
   /** Wrap the whole logo in a Next.js Link */
-  href?: string;
-  className?: string;
+  href?: Route | undefined;
+  className?: string | undefined;
 }
 
 // ─── Brand mark ───────────────────────────────────────────────────────────────

@@ -1,32 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import type { Route } from "next";
 import {
-  Package,
   TrendingUp,
   TrendingDown,
-  CheckCircle2,
   Plus,
-  ArrowRight,
-  Truck,
   Clock,
-  Wifi,
-  WifiOff,
-  Eye,
+  UserCheck,
+  Package,
+  Truck,
   MapPin,
-  ChevronRight,
-  AlertCircle,
-  Circle,
-  ArrowUpRight,
+  CheckCircle2,
+  XCircle,
+  Ban,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useShipments, getShipmentList } from "@/hooks/use-shipments";
 import { useDrivers } from "@/hooks/use-driver";
 import { useBusinessAnalytics } from "@/hooks/use-business";
-import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
-import type { Shipment, Driver, ShipmentStatus } from "@/types";
+import { useSocket } from "@/hooks/use-socket";
+import type { ShipmentStatus } from "@/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,7 +34,7 @@ function formatNaira(kobo: number) {
 
 const STATUS_META: Record<
   ShipmentStatus,
-  { label: string; dot: string; color: string; bg: string; border: string }
+  { label: string; dot: string; color: string; bg: string; border: string; bar: string; Icon: React.ElementType }
 > = {
   pending: {
     label: "Pending",
@@ -48,6 +42,8 @@ const STATUS_META: Record<
     color: "text-amber-400",
     bg: "bg-amber-400/10",
     border: "border-amber-400/20",
+    bar: "bg-amber-400",
+    Icon: Clock,
   },
   assigned: {
     label: "Assigned",
@@ -55,6 +51,8 @@ const STATUS_META: Record<
     color: "text-sky-400",
     bg: "bg-sky-400/10",
     border: "border-sky-400/20",
+    bar: "bg-sky-400",
+    Icon: UserCheck,
   },
   picked_up: {
     label: "Picked Up",
@@ -62,6 +60,8 @@ const STATUS_META: Record<
     color: "text-violet-400",
     bg: "bg-violet-400/10",
     border: "border-violet-400/20",
+    bar: "bg-violet-400",
+    Icon: Package,
   },
   in_transit: {
     label: "In Transit",
@@ -69,6 +69,8 @@ const STATUS_META: Record<
     color: "text-blue-400",
     bg: "bg-blue-400/10",
     border: "border-blue-400/20",
+    bar: "bg-blue-400",
+    Icon: Truck,
   },
   out_for_delivery: {
     label: "Out for Delivery",
@@ -76,6 +78,8 @@ const STATUS_META: Record<
     color: "text-cyan-400",
     bg: "bg-cyan-400/10",
     border: "border-cyan-400/20",
+    bar: "bg-cyan-400",
+    Icon: MapPin,
   },
   delivered: {
     label: "Delivered",
@@ -83,6 +87,8 @@ const STATUS_META: Record<
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     border: "border-emerald-400/20",
+    bar: "bg-emerald-400",
+    Icon: CheckCircle2,
   },
   failed: {
     label: "Failed",
@@ -90,6 +96,8 @@ const STATUS_META: Record<
     color: "text-rose-400",
     bg: "bg-rose-400/10",
     border: "border-rose-400/20",
+    bar: "bg-rose-400",
+    Icon: XCircle,
   },
   cancelled: {
     label: "Cancelled",
@@ -97,13 +105,11 @@ const STATUS_META: Record<
     color: "text-zinc-500",
     bg: "bg-zinc-500/10",
     border: "border-zinc-500/20",
+    bar: "bg-zinc-500",
+    Icon: Ban,
   },
 };
 
-const LiveMap = dynamic(() => import("@/components/map/live-map").then((m) => m.LiveMap), {
-  ssr: false,
-  loading: () => <div className="h-[200px] w-full animate-pulse rounded-xl bg-zinc-800/40" />,
-});
 
 // ─── useCountUp ───────────────────────────────────────────────────────────────
 
@@ -160,7 +166,7 @@ function Sparkline({ data, color, id }: { data: number[]; color: string; id: str
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={last[0]} cy={last[1]} r="2.5" fill={color} />
+      {last && <circle cx={last[0]} cy={last[1]} r="2.5" fill={color} />}
     </svg>
   );
 }
@@ -233,307 +239,9 @@ function KPICard({
   );
 }
 
-// ─── Delivery Pipeline ────────────────────────────────────────────────────────
-
-const PIPELINE_STAGES = [
-  { key: "pending", label: "Pending", color: "#f59e0b" },
-  { key: "in_transit", label: "In Transit", color: "#a78bfa" },
-  { key: "out_for_delivery", label: "Out for Delivery", color: "#38bdf8" },
-  { key: "delivered", label: "Delivered", color: "#34d399" },
-  { key: "failed", label: "Failed", color: "#f87171" },
-] as const;
-
-function DeliveryPipeline({ shipments }: { shipments: Shipment[] }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] px-5 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-white">Delivery Pipeline</p>
-        <span className="text-[10px] text-zinc-600 uppercase tracking-wider">Live status</span>
-      </div>
-
-      <div className="flex items-center gap-0 overflow-x-auto pb-1">
-        {PIPELINE_STAGES.map((stage, idx) => {
-          const count = shipments.filter((s) => s.status === stage.key).length;
-          const isLast = idx === PIPELINE_STAGES.length - 1;
-          return (
-            <div key={stage.key} className="flex items-center flex-shrink-0">
-              <div className="flex flex-col items-center px-4 first:pl-0">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full border text-base font-bold mb-2 transition-all"
-                  style={{
-                    borderColor: count > 0 ? stage.color : "rgba(255,255,255,0.06)",
-                    color: count > 0 ? stage.color : "#52525b",
-                    background: count > 0 ? `${stage.color}14` : "transparent",
-                    boxShadow: count > 0 ? `0 0 14px ${stage.color}30` : "none",
-                  }}
-                >
-                  {count}
-                </div>
-                <p
-                  className="text-[10px] font-medium whitespace-nowrap"
-                  style={{ color: count > 0 ? stage.color : "#52525b" }}
-                >
-                  {stage.label}
-                </p>
-              </div>
-              {!isLast && (
-                <div className="flex items-center mb-4 mx-1">
-                  <ChevronRight className="h-3.5 w-3.5 text-zinc-700" />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Shipment status step indicator ──────────────────────────────────────────
-
-const STATUS_ORDER = ["pending", "assigned", "in_transit", "out_for_delivery", "delivered"];
-
-function ShipmentProgressDots({ status }: { status: string }) {
-  const currentIdx = STATUS_ORDER.indexOf(status);
-  const isFailed = status === "failed" || status === "cancelled";
-
-  return (
-    <div className="flex items-center gap-1">
-      {STATUS_ORDER.map((s, i) => {
-        const done = !isFailed && i <= currentIdx;
-        const active = !isFailed && i === currentIdx;
-        return (
-          <div
-            key={s}
-            className={`rounded-full transition-all duration-300 ${
-              isFailed
-                ? "h-1 w-1 bg-rose-500/40"
-                : done
-                  ? active
-                    ? "h-2 w-2 bg-sky-400"
-                    : "h-1.5 w-1.5 bg-emerald-400/70"
-                  : "h-1 w-1 bg-zinc-700"
-            }`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Shipments table ──────────────────────────────────────────────────────────
 
-function RecentShipments({ shipments }: { shipments: Shipment[] }) {
-  const [hovered, setHovered] = useState<string | null>(null);
-  const recent = shipments.slice(0, 6);
-
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
-        <div>
-          <p className="text-sm font-semibold text-white">Recent Shipments</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">{shipments.length} total</p>
-        </div>
-        <Link
-          href={"/business/shipments" as Route}
-          className="flex items-center gap-1 rounded-lg border border-white/[0.06] px-3 py-1.5 text-[11px] font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.03] transition-all duration-200"
-        >
-          View all
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-
-      <div className="divide-y divide-white/[0.04]">
-        {recent.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-zinc-600">
-            No shipments yet — create your first one.
-          </p>
-        )}
-        {recent.map((s) => {
-          const meta = STATUS_META[s.status];
-          const isHovered = hovered === s.id;
-          const driverName = s.driver?.user?.name ?? null;
-          return (
-            <div
-              key={s.id}
-              className="group relative flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.015] transition-colors cursor-pointer"
-              onMouseEnter={() => setHovered(s.id)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              {/* Status glow dot */}
-              <div
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{
-                  backgroundColor: meta.dot,
-                  boxShadow: `0 0 6px ${meta.dot}80`,
-                }}
-              />
-
-              {/* Tracking + route */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-xs font-mono font-semibold text-zinc-200">{s.trackingId}</p>
-                  <ShipmentProgressDots status={s.status} />
-                </div>
-                <p className="text-[11px] text-zinc-600 truncate">
-                  {s.pickupAddress.city} <span className="text-zinc-700">→</span>{" "}
-                  {s.deliveryAddress.city}
-                </p>
-              </div>
-
-              {/* Driver — desktop only */}
-              {driverName && (
-                <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-                  {!isHovered && (
-                    <>
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-sky-500/20 border border-teal-500/20 text-[8px] font-bold text-teal-300 uppercase">
-                        {driverName.slice(0, 2)}
-                      </div>
-                      <p className="text-[11px] text-zinc-500 max-w-[80px] truncate">
-                        {driverName.split(" ")[0]}
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Status badge — desktop only, hidden on hover */}
-              {!isHovered && (
-                <span
-                  className={`hidden sm:flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium shrink-0 ${meta.color} ${meta.bg} ${meta.border}`}
-                >
-                  {meta.label}
-                </span>
-              )}
-
-              {/* Amount — always visible */}
-              {!isHovered && (
-                <p className="text-xs font-semibold text-zinc-300 shrink-0 tabular-nums">
-                  {formatNaira(s.priceKobo)}
-                </p>
-              )}
-
-              {/* Hover actions — desktop only */}
-              {isHovered && (
-                <div className="hidden sm:flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
-                  <Link
-                    href={`/business/shipments` as Route}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:text-white hover:border-white/[0.15] transition-all"
-                  >
-                    <Eye className="h-3 w-3" />
-                    View
-                  </Link>
-                  <Link
-                    href={`/customer/track` as Route}
-                    className="flex items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2.5 py-1.5 text-[11px] font-medium text-sky-400 hover:bg-sky-500/[0.15] transition-all"
-                  >
-                    <MapPin className="h-3 w-3" />
-                    Track
-                  </Link>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Weekly bar chart ─────────────────────────────────────────────────────────
-
-function WeeklyChart({
-  totalRevenueKobo,
-  deliveredCount,
-  totalShipments,
-}: {
-  totalRevenueKobo: number;
-  deliveredCount: number;
-  totalShipments: number;
-}) {
-  // Generate cosmetic weekly bars based on real totals
-  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const base = Math.max(1, Math.floor(totalShipments / 7));
-  const bars = DAYS.map((day, i) => ({
-    day,
-    shipments:
-      i === 6
-        ? totalShipments % 7 || base
-        : Math.max(0, base + (i % 3 === 0 ? 1 : i % 2 === 0 ? -1 : 0)),
-  }));
-  const max = Math.max(...bars.map((d) => d.shipments), 1);
-  const [tooltip, setTooltip] = useState<number | null>(null);
-
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-5">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <p className="text-sm font-semibold text-white">Weekly Volume</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">Shipments per day</p>
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-sky-400">{totalShipments}</p>
-          <p className="text-[10px] text-zinc-600">total</p>
-        </div>
-      </div>
-
-      <div className="relative flex items-end gap-2 h-[72px]">
-        {bars.map((d, i) => {
-          const pct = (d.shipments / max) * 100;
-          const isLast = i === bars.length - 1;
-          const isHovered = tooltip === i;
-          return (
-            <div
-              key={d.day}
-              className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer"
-              onMouseEnter={() => setTooltip(i)}
-              onMouseLeave={() => setTooltip(null)}
-            >
-              {isHovered && (
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/[0.1] bg-[#16161d] px-2 py-1 text-[10px] font-semibold text-white shadow-xl z-10">
-                  {d.shipments} shipments
-                </div>
-              )}
-              <div
-                className="w-full flex items-end transition-all duration-300"
-                style={{ height: "60px" }}
-              >
-                <div
-                  className={`w-full rounded-t-md transition-all duration-500 ${isHovered ? "opacity-100" : isLast ? "opacity-90" : "opacity-50"}`}
-                  style={{
-                    height: `${pct}%`,
-                    minHeight: "4px",
-                    background:
-                      isLast || isHovered
-                        ? "linear-gradient(to top, #0ea5e9, #38bdf8)"
-                        : "rgba(255,255,255,0.07)",
-                    boxShadow: isLast || isHovered ? "0 0 12px #0ea5e980" : "none",
-                  }}
-                />
-              </div>
-              <span
-                className={`text-[9px] font-medium ${isLast ? "text-sky-400" : "text-zinc-700"}`}
-              >
-                {d.day}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center justify-between">
-        <div>
-          <p className="text-xs font-bold text-white">{formatNaira(totalRevenueKobo)}</p>
-          <p className="text-[10px] text-zinc-600">Total revenue</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs font-bold text-emerald-400">{deliveredCount}</p>
-          <p className="text-[10px] text-zinc-600">Delivered</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Fleet panel ──────────────────────────────────────────────────────────────
 
@@ -543,160 +251,9 @@ const DRIVER_STATUS_CONFIG = {
   offline: { ring: "ring-zinc-700", label: "Offline", bg: "bg-zinc-600" },
 } as const;
 
-function FleetPanel({ drivers }: { drivers: Driver[] }) {
-  const top5 = drivers.slice(0, 5);
-
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-sm font-semibold text-white">Fleet</p>
-          <p className="text-[10px] text-zinc-600 mt-0.5">
-            {drivers.length} driver{drivers.length !== 1 ? "s" : ""} total
-          </p>
-        </div>
-        <Link
-          href={"/business/drivers" as Route}
-          className="flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
-        >
-          Manage
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-
-      {/* Status summary pills */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {(["available", "on_delivery", "offline"] as const).map((s) => {
-          const count = drivers.filter((d) => d.status === s).length;
-          const cfg = DRIVER_STATUS_CONFIG[s];
-          return (
-            <div
-              key={s}
-              className="flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1"
-            >
-              <div className={`h-1.5 w-1.5 rounded-full ${cfg.bg}`} />
-              <span className="text-[10px] font-medium text-zinc-400">
-                {count} {cfg.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Driver list */}
-      <div className="space-y-2.5">
-        {top5.length === 0 && (
-          <p className="py-4 text-center text-sm text-zinc-600">No drivers assigned yet.</p>
-        )}
-        {top5.map((d) => {
-          const cfg = DRIVER_STATUS_CONFIG[d.status];
-          const initials = d.user.name.slice(0, 2).toUpperCase();
-          return (
-            <div
-              key={d.id}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.04] bg-white/[0.015] px-3 py-2.5 hover:border-white/[0.08] hover:bg-white/[0.03] transition-all duration-200"
-            >
-              <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-[1.5px] ring-offset-1 ring-offset-[#0d0d11] text-[10px] font-bold text-white uppercase bg-gradient-to-br from-zinc-700 to-zinc-800 ${cfg.ring}`}
-              >
-                {initials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-200 truncate">{d.user.name}</p>
-                <p className="text-[10px] text-zinc-600">
-                  {d.totalDeliveries} deliveries · ★ {d.rating.toFixed(1)}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-[11px] font-semibold text-zinc-300 uppercase">{d.vehicleType}</p>
-                <p className="text-[9px] text-zinc-700 font-mono">{d.vehiclePlate}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Activity feed ────────────────────────────────────────────────────────────
-
-const ACTIVITY = [
-  {
-    icon: CheckCircle2,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/15",
-    text: "IST-K7X2M9PQ delivered to Ikoyi",
-    time: "2m ago",
-  },
-  {
-    icon: Truck,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10 border-violet-500/15",
-    text: "Driver Emeka picked up IST-B3N8R4PT",
-    time: "11m ago",
-  },
-  {
-    icon: Package,
-    color: "text-sky-400",
-    bg: "bg-sky-500/10 border-sky-500/15",
-    text: "New shipment IST-R5P1W2JK created",
-    time: "34m ago",
-  },
-  {
-    icon: AlertCircle,
-    color: "text-rose-400",
-    bg: "bg-rose-500/10 border-rose-500/15",
-    text: "IST-T6Y4Z8RN delivery failed",
-    time: "1h ago",
-  },
-  {
-    icon: ArrowUpRight,
-    color: "text-teal-400",
-    bg: "bg-teal-500/10 border-teal-500/15",
-    text: "Driver Amina Yusuf came online",
-    time: "2h ago",
-  },
-];
-
-function ActivityFeed() {
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-white">Activity</p>
-        <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[10px] text-zinc-600">Live</span>
-        </div>
-      </div>
-
-      <div className="space-y-2.5">
-        {ACTIVITY.map((a, i) => {
-          const Icon = a.icon;
-          return (
-            <div key={i} className="flex items-start gap-3">
-              <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border mt-0.5 ${a.bg}`}
-              >
-                <Icon className={`h-3 w-3 ${a.color}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-zinc-300 leading-snug">{a.text}</p>
-                <p className="text-[10px] text-zinc-700 mt-0.5">{a.time}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BusinessOverviewPage() {
-  const [liveLocation, setLiveLocation] = useState<LocationUpdate | null>(null);
-
   // ── Real data hooks ──────────────────────────────────────────────────────────
   const { data: analytics } = useBusinessAnalytics();
   const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments({ pageSize: 20 });
@@ -719,9 +276,8 @@ export default function BusinessOverviewPage() {
     (s) => s.status === "in_transit" || s.status === "out_for_delivery",
   );
 
-  const { connected } = useSocket({
+  useSocket({
     trackingId: activeShipment?.trackingId ?? null,
-    onLocation: (update) => setLiveLocation(update),
   });
 
   // ── Animated counters ────────────────────────────────────────────────────────

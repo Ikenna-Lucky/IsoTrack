@@ -7,10 +7,10 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 
-const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How it Works", href: "#how-it-works" },
-  { label: "Testimonials", href: "#testimonials" },
+const NAV_LINKS: { label: string; href: Route }[] = [
+  { label: "Features", href: "/#features" as Route },
+  { label: "How it Works", href: "/#how-it-works" as Route },
+  { label: "Testimonials", href: "/#testimonials" as Route },
 ];
 
 export function Navbar() {

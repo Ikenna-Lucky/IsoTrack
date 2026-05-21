@@ -42,8 +42,7 @@ function isActiveStatus(s: ShipmentStatus) {
 }
 
 // Filter config
-const FILTER_VALUES = ["all", "active", "delivered", "failed"] as const;
-type FilterValue = (typeof FILTER_VALUES)[number];
+type FilterValue = "all" | "active" | "delivered" | "failed";
 
 const FILTERS: { label: string; value: FilterValue }[] = [
   { label: "All",       value: "all"       },

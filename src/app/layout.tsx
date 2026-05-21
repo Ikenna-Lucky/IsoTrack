@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "IsoTrack — Real-Time Shipment Tracking",
+    default: "IsoTrack - Real-Time Shipment Tracking",
     template: "%s | IsoTrack",
   },
   description:

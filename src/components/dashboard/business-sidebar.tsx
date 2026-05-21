@@ -230,6 +230,7 @@ export function BusinessSidebar({ open, onClose }: Props) {
         <div className="px-4 pb-4 border-t border-white/[0.04] pt-3">
           <div className="flex items-center gap-3 rounded-xl bg-white/[0.025] border border-white/[0.05] px-3 py-2.5 mb-2">
             {user?.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.avatar}
                 alt={user.name}

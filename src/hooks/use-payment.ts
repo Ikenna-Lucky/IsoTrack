@@ -16,8 +16,8 @@ interface InitializeResponse {
 
 interface VerifyResponse {
   paid: boolean;
-  channel?: string;
-  status?: string;
+  channel?: string | undefined;
+  status?: string | undefined;
   reference: string;
 }
 

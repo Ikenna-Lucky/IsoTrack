@@ -1,27 +1,39 @@
 <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0ea5e9"/>
-      <stop offset="100%" stop-color="#14b8a6"/>
+    <!-- Diagonal gradient: deep violet (bottom-left) to sky (top-right) -->
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6d28d9"/>
+      <stop offset="55%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#0284c7"/>
     </linearGradient>
+    <!-- Radial shine on the dots -->
+    <radialGradient id="dot" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#c4b5fd" stop-opacity="0.85"/>
+    </radialGradient>
   </defs>
+
   <!-- Rounded square background -->
-  <rect width="36" height="36" rx="9" fill="url(#g)"/>
-  <!--
-    Pin scaled from Lucide MapPin (24×24) → 36×36.
-    Scale factor 1.5 → center shifts from (12,10) to (18,15).
-    Original: M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z
-    Scaled:   M30 15c0 9-12 18-12 18S6 24 6 15a12 12 0 0 1 24 0Z
-    Tip at (18,33) — slightly outside 36px, clip via viewBox.
-    Shift up 3px to centre: subtract 3 from all y values.
-    Result:   M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z
-    Tip at (18,30) — 6px bottom padding. Top: 12-12=0, add 3px → shift +3 up:
-    Final:    M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z
-  -->
+  <rect width="36" height="36" rx="9" fill="url(#bg)"/>
+
+  <!-- Subtle inner highlight edge -->
+  <rect width="36" height="36" rx="9" stroke="rgba(255,255,255,0.14)" stroke-width="0.8" fill="none"/>
+
+  <!-- Route line connecting the three waypoints -->
   <path
-    d="M30 12c0 9-12 18-12 18S6 21 6 12a12 12 0 0 1 24 0Z"
-    fill="white"
+    d="M11 25 Q18 18 25 11"
+    stroke="rgba(255,255,255,0.28)"
+    stroke-width="2.2"
+    stroke-linecap="round"
+    fill="none"
   />
-  <!-- Inner circle eye of the pin -->
-  <circle cx="18" cy="12" r="4.5" fill="rgba(0,0,0,0.22)"/>
+
+  <!-- Origin dot (bottom-left) -->
+  <circle cx="11" cy="25" r="3.6" fill="url(#dot)"/>
+
+  <!-- Transit dot (center) -->
+  <circle cx="18" cy="18" r="2.3" fill="rgba(255,255,255,0.52)"/>
+
+  <!-- Destination dot (top-right) -->
+  <circle cx="25" cy="11" r="3.6" fill="url(#dot)"/>
 </svg>

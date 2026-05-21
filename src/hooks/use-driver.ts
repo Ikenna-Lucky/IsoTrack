@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Driver, DriverStatus, NotificationPreferences, ApiResponse } from "@/types";
+import type { Driver, NotificationPreferences, ApiResponse } from "@/types";
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -87,11 +87,11 @@ export function useUpdateVehicle() {
   return useMutation({
     mutationFn: async (input: {
       vehicleType?:      "bike" | "car" | "van" | "truck";
-      vehiclePlate?:     string;
-      vehicleModel?:     string | null;
-      vehicleColor?:     string | null;
-      vehicleYear?:      string | null;
-      vehicleInsurance?: string | null;
+      vehiclePlate?:     string | undefined;
+      vehicleModel?:     string | null | undefined;
+      vehicleColor?:     string | null | undefined;
+      vehicleYear?:      string | null | undefined;
+      vehicleInsurance?: string | null | undefined;
     }) => {
       const { data } = await api.patch<ApiResponse<Driver>>("/drivers/me", input);
       return data.data;

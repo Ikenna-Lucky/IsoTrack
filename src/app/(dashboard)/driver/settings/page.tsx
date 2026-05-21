@@ -17,7 +17,6 @@ import {
   UserCheck,
   FileText,
   Trash2,
-  MapPin,
   Loader2,
 } from "lucide-react";
 import { useDriverProfile, useUpdateVehicle, useNotificationPreferences, useUpdateNotificationPreferences, useDeleteAccount } from "@/hooks/use-driver";
@@ -52,10 +51,10 @@ function Input({
 }: {
   value: string;
   onChange?: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  icon?: React.ElementType;
-  disabled?: boolean;
+  placeholder?: string | undefined;
+  type?: string | undefined;
+  icon?: React.ElementType | undefined;
+  disabled?: boolean | undefined;
 }) {
   return (
     <div className="relative">
@@ -83,7 +82,7 @@ function Input({
 function SectionCard({
   title, description, children,
 }: {
-  title: string; description?: string; children: React.ReactNode;
+  title: string; description?: string | undefined; children: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
@@ -99,7 +98,7 @@ function SectionCard({
 function SaveButton({
   saved, loading, onClick, disabled,
 }: {
-  saved: boolean; loading?: boolean; onClick: () => void; disabled?: boolean;
+  saved: boolean; loading?: boolean | undefined; onClick: () => void; disabled?: boolean | undefined;
 }) {
   return (
     <button
@@ -174,6 +173,7 @@ function NotifRow({
 function AvatarDisplay({ src, initials }: { src?: string | null; initials: string }) {
   if (src) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt="Profile"

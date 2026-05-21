@@ -12,8 +12,8 @@ export interface CreateShipmentInput {
   pickupAddress: { street: string; city: string; state: string };
   deliveryAddress: { street: string; city: string; state: string };
   priceKobo: number;
-  customerId?: string;
-  scheduledPickup?: string; // ISO datetime
+  customerId?: string | undefined;
+  scheduledPickup?: string | undefined; // ISO datetime
 }
 
 // ─── Query key factory ────────────────────────────────────────────────────────
@@ -28,9 +28,9 @@ export const shipmentKeys = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface UseShipmentsParams {
-  page?: number;
-  pageSize?: number;
-  enabled?: boolean;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+  enabled?: boolean | undefined;
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ export function useUpdateShipmentStatus() {
     }: {
       id: string;
       status: ShipmentStatus;
-      note?: string;
+      note?: string | undefined;
     }) => {
       const { data } = await api.patch<ApiResponse<Shipment>>(
         `/shipments/${id}/status`,

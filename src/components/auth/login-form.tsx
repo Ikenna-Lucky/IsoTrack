@@ -40,8 +40,8 @@ function Field({
   children,
 }: {
   label: string;
-  error?: string;
-  action?: React.ReactNode;
+  error?: string | undefined;
+  action?: React.ReactNode | undefined;
   children: React.ReactNode;
 }) {
   return (

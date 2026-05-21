@@ -5,7 +5,7 @@ import type { LocationUpdate } from "@/hooks/use-socket";
 
 interface LiveMapProps {
   location: LocationUpdate | null;
-  className?: string;
+  className?: string | undefined;
 }
 
 const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
@@ -96,6 +96,7 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
       markerRef.current = null;
       initializedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -114,7 +115,7 @@ export function LiveMap({ location, className = "" }: LiveMapProps) {
   return (
     <div
       ref={containerRef}
-      className="h-full w-full rounded-2xl overflow-hidden"
+      className={["h-full w-full rounded-2xl overflow-hidden", className].filter(Boolean).join(" ")}
     />
   );
 }

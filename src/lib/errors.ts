@@ -14,8 +14,8 @@ import type { AxiosError } from "axios";
  */
 export function extractErrorMessage(err: unknown, fallback = "Something went wrong. Please try again."): string {
   const axiosErr = err as AxiosError<{
-    message?: string;
-    error?: string;
+    message?: string | undefined;
+    error?: string | undefined;
     errors?: Array<{ message: string }>;
   }>;
 
@@ -31,7 +31,7 @@ export function extractErrorMessage(err: unknown, fallback = "Something went wro
 
   // 2. First Zod validation issue
   if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
-    return responseData.errors[0].message;
+    return (responseData.errors[0] as { message: string }).message;
   }
 
   // 3. HTTP status fallbacks

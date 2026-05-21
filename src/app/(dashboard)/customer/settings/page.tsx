@@ -47,11 +47,11 @@ function Input({
 }: {
   value: string;
   onChange?: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  icon?: React.ElementType;
-  disabled?: boolean;
-  suffix?: React.ReactNode;
+  placeholder?: string | undefined;
+  type?: string | undefined;
+  icon?: React.ElementType | undefined;
+  disabled?: boolean | undefined;
+  suffix?: React.ReactNode | undefined;
 }) {
   return (
     <div className="relative">
@@ -119,7 +119,7 @@ function Card({
   children,
 }: {
   title: string;
-  description?: string;
+  description?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -150,6 +150,7 @@ function ProfileTab() {
   useEffect(() => {
     setName(user?.name ?? "");
     setPhone(user?.phone ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   async function handleSave() {

@@ -7,16 +7,11 @@ import {
   Search,
   ChevronDown,
   MapPin,
-  Star,
-  Phone,
   Package,
-  Clock,
-  Calendar,
-  ArrowRight,
   Loader2,
 } from "lucide-react";
 import { useShipments, getShipmentList } from "@/hooks/use-shipments";
-import type { Shipment, ShipmentStatus } from "@/types";
+import type { ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,39 +41,10 @@ const STATUS_META: Record<
 
 // ─── Timeline from events ─────────────────────────────────────────────────────
 
-const STATUS_STEPS = [
-  { status: "pending",          label: "Order placed",      sub: "Shipment request received"      },
-  { status: "assigned",         label: "Driver assigned",   sub: "A driver accepted the order"    },
-  { status: "picked_up",        label: "Package picked up", sub: "Driver collected the package"   },
-  { status: "out_for_delivery", label: "Out for delivery",  sub: "Driver near delivery area"       },
-  { status: "delivered",        label: "Delivered",         sub: "Package delivered successfully" },
-] as const;
-
-function deriveTimeline(s: Shipment) {
-  const ORDER = STATUS_STEPS.map((st) => st.status as string);
-  const currentIdx = Math.max(ORDER.indexOf(s.status), 0);
-  const isFailed = s.status === "failed" || s.status === "cancelled";
-
-  return STATUS_STEPS.map(({ status, label, sub }, i) => {
-    const event = s.events?.find((e) => e.status === status);
-    const time = event
-      ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      : "—";
-
-    let state: "done" | "current" | "pending";
-    if (isFailed)              state = i < currentIdx ? "done" : "pending";
-    else if (i < currentIdx)   state = "done";
-    else if (i === currentIdx) state = "current";
-    else                       state = "pending";
-
-    return { label, sub: event?.message ?? sub, time, state };
-  });
-}
 
 // ─── Filter config ────────────────────────────────────────────────────────────
 
-const FILTER_VALUES = ["all", "out_for_delivery", "pending", "delivered", "failed"] as const;
-type FilterValue = (typeof FILTER_VALUES)[number];
+type FilterValue = "all" | "pending" | "out_for_delivery" | "delivered" | "failed";
 
 const FILTERS: { label: string; value: FilterValue }[] = [
   { label: "All",       value: "all"              },
@@ -89,44 +55,6 @@ const FILTERS: { label: string; value: FilterValue }[] = [
 ];
 
 // ─── Timeline step ────────────────────────────────────────────────────────────
-
-function TimelineStep({
-  label, sub, time, state, isLast,
-}: {
-  label: string; sub: string; time: string;
-  state: "done" | "current" | "pending"; isLast?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex flex-col items-center shrink-0 pt-0.5">
-        <div className={cn(
-          "relative z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[7px] font-bold",
-          state === "done"
-            ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-            : state === "current"
-            ? "border-violet-500 bg-violet-500/20 text-violet-400 animate-pulse"
-            : "border-zinc-800 bg-zinc-900 text-zinc-700",
-        )}>
-          {state === "done" ? "✓" : state === "current" ? "●" : ""}
-        </div>
-        {!isLast && (
-          <div className={cn("w-px flex-1 mt-1", state === "done" ? "bg-emerald-500/20" : "bg-zinc-800")} style={{ minHeight: 20 }} />
-        )}
-      </div>
-      <div className="pb-3 min-w-0">
-        <p className={cn(
-          "text-[11px] font-semibold leading-tight",
-          state === "done" ? "text-zinc-300" : state === "current" ? "text-violet-300" : "text-zinc-700",
-        )}>{label}</p>
-        <p className="mt-0.5 text-[10px] text-zinc-600">{sub}</p>
-        <p className={cn(
-          "mt-0.5 text-[10px] font-medium",
-          state === "done" ? "text-emerald-500/60" : state === "current" ? "text-violet-400/70" : "text-zinc-800",
-        )}>{time}</p>
-      </div>
-    </div>
-  );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -228,7 +156,6 @@ export default function CustomerShipmentsPage() {
             const meta       = STATUS_META[s.status];
             const isExpanded = expanded === s.id;
             const isLive     = s.status === "out_for_delivery" || s.status === "in_transit";
-            const timeline   = deriveTimeline(s);
 
             return (
               <li

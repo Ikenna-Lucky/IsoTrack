@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { io, Socket } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -34,7 +34,7 @@ export interface DriverPosition {
 
 interface UseDriverLocationOptions {
   trackingIds: string[];
-  enabled?: boolean;
+  enabled?: boolean | undefined;
 }
 
 interface UseDriverLocationResult {

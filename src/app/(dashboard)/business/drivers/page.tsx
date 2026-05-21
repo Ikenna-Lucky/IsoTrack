@@ -9,12 +9,9 @@ import {
   Car,
   TrendingUp,
   Search,
-  LayoutGrid,
-  List,
   Trophy,
   Medal,
   Award,
-  Package,
   Loader2,
 } from "lucide-react";
 import { useDrivers } from "@/hooks/use-driver";
@@ -429,10 +426,6 @@ export default function DriversPage() {
 
   const isLoading = driversLoading || shipmentsLoading;
 
-  const maxDeliveries = useMemo(
-    () => Math.max(1, ...drivers.map((d) => d.totalDeliveries)),
-    [drivers],
-  );
 
   const filtered = useMemo(
     () =>

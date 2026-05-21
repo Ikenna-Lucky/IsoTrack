@@ -217,6 +217,7 @@ export function BusinessTopbar({ title, onMenuClick }: Props) {
         {/* User avatar */}
         <div className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/[0.04] transition-all cursor-pointer">
           {user?.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={user.avatar}
               alt={user?.name ?? ""}

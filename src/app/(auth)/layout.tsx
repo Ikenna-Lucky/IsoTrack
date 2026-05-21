@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#09090b] flex">
+    <div className="min-h-screen bg-surface-0 flex">
       {/* Left — brand panel — exactly half on lg+ */}
       <div className="hidden lg:flex lg:w-1/2 shrink-0">
         <BrandPanel />

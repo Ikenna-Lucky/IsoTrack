@@ -59,7 +59,7 @@ export function useUpdateBusinessProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
-      businessName?: string;
+      businessName?: string | undefined;
       address?: { street: string; city: string; state: string };
     }) => {
       const { data } = await api.patch<ApiResponse<unknown>>("/business/profile", input);
