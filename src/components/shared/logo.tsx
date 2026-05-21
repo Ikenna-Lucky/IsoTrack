@@ -51,8 +51,14 @@ function IsoMark({ size }: { size: number }) {
 
       {/* Subtle inner highlight edge — top-left catch-light */}
       <rect
-        x="1" y="1" width="22" height="22" rx="6.5"
-        stroke="rgba(255,255,255,0.14)" strokeWidth="0.6" fill="none"
+        x="1"
+        y="1"
+        width="22"
+        height="22"
+        rx="6.5"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="0.6"
+        fill="none"
       />
 
       {/* ── Route line connecting the three waypoints ── */}
@@ -82,10 +88,7 @@ function IsoWordmark({ size }: { size: number }) {
   const fontSize = Math.round(size * 0.46);
 
   return (
-    <span
-      className="font-bold tracking-tight leading-none select-none"
-      style={{ fontSize }}
-    >
+    <span className="font-bold tracking-tight leading-none select-none" style={{ fontSize }}>
       <span className="text-white">Iso</span>
       <span
         style={{
@@ -103,12 +106,7 @@ function IsoWordmark({ size }: { size: number }) {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-export function Logo({
-  size = 32,
-  showWordmark = true,
-  href,
-  className,
-}: LogoProps) {
+export function Logo({ size = 32, showWordmark = true, href, className }: LogoProps) {
   const inner = (
     <span className={cn("flex items-center gap-2.5", className)}>
       <IsoMark size={size} />
