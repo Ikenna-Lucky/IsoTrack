@@ -11,7 +11,7 @@ import {
   CreditCard,
   Calendar,
 } from "lucide-react";
-import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { useDriverHistory } from "@/hooks/use-shipments";
 import { useDriverProfile } from "@/hooks/use-driver";
 import { formatKobo } from "@/types";
 import { cn } from "@/lib/utils";
@@ -136,10 +136,9 @@ export default function DriverEarningsPage() {
   const activeBar = hoveredBar ?? touchedBar;
 
   const { data: driver } = useDriverProfile();
-  const { data: shipmentsData } = useShipments({ pageSize: 200 });
-  const shipments = getShipmentList(shipmentsData);
+  const { data: allShipments = [] } = useDriverHistory({ pageSize: 200 });
 
-  const delivered = shipments.filter((s) => s.status === "delivered");
+  const delivered = allShipments.filter((s) => s.status === "delivered");
 
   // ── Weekly breakdown (Mon–Sun of current week) ────────────────────────────
   const { weeklyData, totalWeekEarnings, totalWeekDeliveries } = useMemo(() => {

@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import {
   Search,
   ChevronDown,
   MapPin,
   Package,
   Loader2,
+  Navigation,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Truck,
+  XCircle,
+  CircleDot,
 } from "lucide-react";
+import { useState } from "react";
 import { useShipments, getShipmentList } from "@/hooks/use-shipments";
-import type { ShipmentStatus } from "@/types";
+import { usePayment } from "@/hooks/use-payment";
+import { useAuthStore } from "@/store/auth";
+import type { Route } from "next";
+import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatNaira(kobo: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -39,10 +47,24 @@ const STATUS_META: Record<
   cancelled:        { label: "Cancelled",        color: "text-zinc-400",    bg: "bg-zinc-500/10",    border: "border-zinc-500/20",    dot: "#71717a" },
 };
 
-// ─── Timeline from events ─────────────────────────────────────────────────────
-
-
-// ─── Filter config ────────────────────────────────────────────────────────────
+function StatusIcon({ status }: { status: ShipmentStatus }) {
+  switch (status) {
+    case "delivered":
+      return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
+    case "cancelled":
+      return <XCircle className="h-5 w-5 text-zinc-500" />;
+    case "failed":
+      return <XCircle className="h-5 w-5 text-rose-400" />;
+    case "out_for_delivery":
+    case "in_transit":
+      return <Truck className="h-5 w-5 text-violet-400" />;
+    case "picked_up":
+    case "assigned":
+      return <CircleDot className="h-5 w-5 text-sky-400" />;
+    default:
+      return <Clock className="h-5 w-5 text-amber-400" />;
+  }
+}
 
 type FilterValue = "all" | "pending" | "out_for_delivery" | "delivered" | "failed";
 
@@ -54,7 +76,62 @@ const FILTERS: { label: string; value: FilterValue }[] = [
   { label: "Failed",    value: "failed"           },
 ];
 
-// ─── Timeline step ────────────────────────────────────────────────────────────
+// ─── Payment button sub-component ─────────────────────────────────────────────
+
+function PaymentSection({ shipment }: { shipment: Shipment }) {
+  const user = useAuthStore((s) => s.user);
+  const [justPaid, setJustPaid] = useState(false);
+
+  const { pay, isPaying, verifying, error, clearError } = usePayment({
+    onSuccess: () => setJustPaid(true),
+  });
+
+  const isPaid = shipment.isPaid || justPaid;
+  const isCancelled = shipment.status === "cancelled" || shipment.status === "failed";
+
+  if (isCancelled) return null;
+
+  if (isPaid) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
+        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+        <div>
+          <p className="text-xs font-semibold text-emerald-400">Payment received</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">Thank you for your payment</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-3 py-2">
+          <AlertCircle className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+          <p className="text-[11px] text-rose-300 flex-1">{error}</p>
+          <button onClick={clearError} className="text-[10px] text-zinc-600 hover:text-zinc-400">Dismiss</button>
+        </div>
+      )}
+      <button
+        onClick={() =>
+          pay({ shipmentId: shipment.id, email: user?.email ?? "" })
+        }
+        disabled={isPaying || verifying}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20"
+      >
+        {isPaying || verifying ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <CreditCard className="h-4 w-4" />
+        )}
+        {isPaying ? "Opening payment..." : verifying ? "Verifying..." : `Pay ${formatNaira(shipment.priceKobo)}`}
+      </button>
+      <p className="text-center text-[10px] text-zinc-600">
+        Secured by Paystack · Card, bank transfer & USSD
+      </p>
+    </div>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -81,7 +158,6 @@ export default function CustomerShipmentsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
 
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">My Shipments</h2>
@@ -91,7 +167,7 @@ export default function CustomerShipmentsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search ID, city, description…"
+            placeholder="Search ID, city, description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] pl-9 pr-3.5 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/[0.1] transition-all"
@@ -99,7 +175,6 @@ export default function CustomerShipmentsPage() {
         </div>
       </div>
 
-      {/* Filter tabs */}
       <div className="flex items-center gap-0 border-b border-white/[0.05] overflow-x-auto">
         {FILTERS.map(({ label, value }) => {
           const count = value === "all"
@@ -112,9 +187,7 @@ export default function CustomerShipmentsPage() {
               onClick={() => setFilter(value)}
               className={cn(
                 "flex items-center gap-1.5 px-3.5 py-2.5 text-[13px] font-medium border-b-2 transition-all whitespace-nowrap shrink-0",
-                active
-                  ? "border-violet-400 text-violet-400"
-                  : "border-transparent text-zinc-500 hover:text-zinc-200 hover:border-white/[0.15]",
+                active ? "border-violet-400 text-violet-400" : "border-transparent text-zinc-500 hover:text-zinc-200 hover:border-white/[0.15]",
               )}
             >
               {label}
@@ -129,16 +202,36 @@ export default function CustomerShipmentsPage() {
         })}
       </div>
 
-      {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
         </div>
       )}
 
-      {/* Empty */}
-      {!isLoading && filtered.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
+      {!isLoading && allShipments.length === 0 && (
+        <div className="flex flex-col items-center gap-4 py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] text-3xl">
+            📦
+          </div>
+          <div className="max-w-xs">
+            <p className="text-base font-semibold text-zinc-200">No shipments here yet</p>
+            <p className="text-sm text-zinc-500 mt-1.5">
+              Shipments sent to you will appear here once a business links your account.
+              In the meantime, use your tracking ID to follow your package.
+            </p>
+          </div>
+          <Link
+            href="/customer/track"
+            className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20"
+          >
+            <Navigation className="h-4 w-4" />
+            Track with ID
+          </Link>
+        </div>
+      )}
+
+      {!isLoading && allShipments.length > 0 && filtered.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
             <Package className="h-5 w-5 text-zinc-700" />
           </div>
@@ -149,7 +242,6 @@ export default function CustomerShipmentsPage() {
         </div>
       )}
 
-      {/* List */}
       {!isLoading && filtered.length > 0 && (
         <ul className="space-y-2">
           {filtered.map((s) => {
@@ -165,7 +257,6 @@ export default function CustomerShipmentsPage() {
                   isLive ? "border-violet-500/[0.22] bg-[#0d0d11]" : "border-white/[0.06] bg-[#0d0d11]",
                 )}
               >
-                {/* Row */}
                 <button
                   onClick={() => setExpanded(isExpanded ? null : s.id)}
                   className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-white/[0.015] transition-colors group"
@@ -174,8 +265,8 @@ export default function CustomerShipmentsPage() {
                     className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}80` }}
                   />
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.02]">
-                    <Package className="h-3.5 w-3.5 text-zinc-600" />
+                  <div className="shrink-0">
+                    <StatusIcon status={s.status} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
@@ -185,10 +276,15 @@ export default function CustomerShipmentsPage() {
                           Live
                         </span>
                       )}
+                      {!s.isPaid && s.status !== "cancelled" && s.status !== "failed" && (
+                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">
+                          Unpaid
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-zinc-500 truncate">
-                      {s.pickupAddress.city}<span className="text-zinc-700"> → </span>{s.deliveryAddress.city}
-                      {s.description ? `  · ${s.description}` : ""}
+                      {s.pickupAddress.city}<span className="text-zinc-700"> to </span>{s.deliveryAddress.city}
+                      {s.description ? "  · " + s.description : ""}
                     </p>
                   </div>
                   <div className="shrink-0 text-right mr-1">
@@ -201,11 +297,8 @@ export default function CustomerShipmentsPage() {
                   )} />
                 </button>
 
-                {/* Expanded panel */}
                 {isExpanded && (
                   <div className="border-t border-white/[0.05] bg-white/[0.008] p-4 space-y-4">
-
-                    {/* Route + meta */}
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
                         <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Route</p>
@@ -232,20 +325,28 @@ export default function CustomerShipmentsPage() {
                         </div>
                       </div>
 
-                      {/* Footer */}
-                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-                        <span className="text-[10px] text-zinc-600">
+                      <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3.5 space-y-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Details</p>
+                        {s.description && <p className="text-xs text-zinc-400">{s.description}</p>}
+                        <p className="text-xs text-zinc-600">
                           {new Date(s.createdAt).toLocaleDateString("en-NG", {
                             day: "numeric", month: "short", year: "numeric",
                           })}
-                        </span>
-                        <Link
-                          href={`/customer/track?id=${s.trackingId}` as Route}
-                          className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
-                        >
-                          Track →
-                        </Link>
+                        </p>
                       </div>
+                    </div>
+
+                    {/* Payment section */}
+                    <PaymentSection shipment={s} />
+
+                    <div className="flex justify-end pt-1">
+                      <Link
+                        href={("/customer/track?id=" + s.trackingId) as Route}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                      >
+                        <Navigation className="h-3 w-3" />
+                        Track live
+                      </Link>
                     </div>
                   </div>
                 )}

@@ -12,6 +12,8 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
+  Copy,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
@@ -38,6 +40,7 @@ interface FormData {
   deliveryCity: string;
   deliveryContact: string;
   deliveryPhone: string;
+  recipientEmail: string;   // optional — links shipment to customer account
   // Step 3 — Package
   packageType: string;
   weight: string;
@@ -55,6 +58,7 @@ const INITIAL: FormData = {
   deliveryCity: "",
   deliveryContact: "",
   deliveryPhone: "",
+  recipientEmail: "",
   packageType: "Parcel",
   weight: "",
   description: "",
@@ -131,11 +135,13 @@ function Field({
   label,
   required,
   error,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean | undefined;
   error?: string | undefined;
+  hint?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -145,6 +151,9 @@ function Field({
         {required && <span className="text-rose-400 ml-0.5">*</span>}
       </label>
       {children}
+      {hint && !error && (
+        <p className="text-[11px] text-zinc-600">{hint}</p>
+      )}
       {error && (
         <p className="flex items-center gap-1 text-[11px] text-rose-400">
           <AlertCircle className="h-3 w-3 shrink-0" />
@@ -303,6 +312,17 @@ function Step2({
           />
         </Field>
       </div>
+      <Field
+        label="Recipient IsoTrack Email"
+        hint="Optional — if the recipient has an IsoTrack account, the shipment will appear on their dashboard automatically."
+      >
+        <Input
+          value={data.recipientEmail}
+          onChange={(v) => set("recipientEmail", v)}
+          placeholder="customer@email.com"
+          type="email"
+        />
+      </Field>
     </div>
   );
 }
@@ -431,6 +451,166 @@ function Step4({ data }: { data: FormData }) {
   );
 }
 
+// ─── Success view ─────────────────────────────────────────────────────────────
+
+function SuccessView({
+  trackingId,
+  fromCity,
+  toCity,
+  packageType,
+  onViewAll,
+  onCreateAnother,
+}: {
+  trackingId: string;
+  fromCity: string;
+  toCity: string;
+  packageType: string;
+  onViewAll: () => void;
+  onCreateAnother: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    void navigator.clipboard.writeText(trackingId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    });
+  };
+
+  return (
+    <div className="max-w-md mx-auto pt-6 pb-16 px-4">
+      {/* ── Header ── */}
+      <div className="mb-7 text-center">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600 mb-2 font-medium">
+          Shipment dispatched
+        </p>
+        <h2 className="text-2xl font-bold text-white leading-snug">
+          Your package is on the board
+        </h2>
+        <p className="text-[13px] text-zinc-500 mt-1.5">
+          A driver will be matched shortly
+        </p>
+      </div>
+
+      {/* ── Route arc SVG ── */}
+      <div className="mb-7 select-none" aria-hidden="true">
+        <svg viewBox="0 0 360 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+          <defs>
+            <linearGradient id="sg-line" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#14b8a6" />
+            </linearGradient>
+            <radialGradient id="sg-dot" cx="38%" cy="32%" r="68%">
+              <stop offset="0%" stopColor="#7dd3fc" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </radialGradient>
+            <filter id="sg-glow" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="3" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <line x1="52" y1="26" x2="308" y2="26"
+            stroke="url(#sg-line)" strokeWidth="1.5" strokeDasharray="5 4"
+            strokeOpacity="0.25" strokeLinecap="round"
+          />
+          <circle cx="46" cy="26" r="10" fill="#0ea5e9" fillOpacity="0.12" />
+          <circle cx="46" cy="26" r="5.5" fill="url(#sg-dot)" filter="url(#sg-glow)" />
+          <circle cx="44.2" cy="24.2" r="1.8" fill="white" fillOpacity="0.55" />
+          <circle cx="314" cy="26" r="10" fill="#14b8a6" fillOpacity="0.12" />
+          <circle cx="314" cy="26" r="5.5" fill="url(#sg-dot)" filter="url(#sg-glow)" />
+          <circle cx="312.2" cy="24.2" r="1.8" fill="white" fillOpacity="0.55" />
+          <circle cx={46} cy={26} r={4} fill="white" fillOpacity={0} filter="url(#sg-glow)">
+            <animate attributeName="cx" values="46;314;314;46" keyTimes="0;0.7;0.85;1" dur="3.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.05;0.8;1" dur="3.2s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+        {/* City labels as HTML — avoids SVG text parsing issues */}
+        <div className="flex justify-between px-[11%] -mt-0.5">
+          <span className="text-[10px] text-zinc-600 tracking-wide">{fromCity}</span>
+          <span className="text-[10px] text-zinc-600 tracking-wide">{toCity}</span>
+        </div>
+      </div>
+
+      {/* ── Waybill card ── */}
+      <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)" }}
+        />
+
+        {/* Status bar */}
+        <div className="flex items-center gap-2.5 px-5 pt-5 pb-3.5 border-b border-white/[0.05]">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute h-2 w-2 rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          <span className="text-[12px] text-zinc-400 font-medium">Awaiting driver assignment</span>
+          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-zinc-700 border border-white/[0.06] rounded-md px-2 py-0.5">
+            {packageType}
+          </span>
+        </div>
+
+        {/* Tracking ID — the hero */}
+        <div className="px-5 py-4 border-b border-dashed border-white/[0.06]">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600 mb-2.5 font-medium">
+            Tracking reference
+          </p>
+          <button
+            onClick={copy}
+            className="group flex items-center justify-between w-full text-left rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 hover:border-sky-500/25 hover:bg-sky-500/[0.04] transition-all duration-200"
+          >
+            <span className="font-mono text-[1.35rem] font-bold tracking-widest text-white group-hover:text-sky-300 transition-colors">
+              {trackingId}
+            </span>
+            <span className={cn(
+              "flex items-center gap-1.5 text-[11px] font-semibold rounded-lg px-3 py-1.5 shrink-0 ml-3 transition-all duration-200",
+              copied
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                : "bg-white/[0.05] text-zinc-500 border border-white/[0.08] group-hover:text-sky-400 group-hover:border-sky-500/20 group-hover:bg-sky-500/[0.06]",
+            )}>
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copied!" : "Copy"}
+            </span>
+          </button>
+          <p className="text-[11px] text-zinc-700 mt-2 pl-1">
+            Share this ID with your recipient so they can track delivery
+          </p>
+        </div>
+
+        {/* Route row */}
+        <div className="px-5 py-4 flex items-center gap-3">
+          <div className="min-w-0">
+            <p className="text-[9px] uppercase tracking-[0.18em] text-zinc-700 mb-0.5 font-medium">From</p>
+            <p className="text-sm font-semibold text-zinc-200 truncate">{fromCity}</p>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-zinc-700 shrink-0 mx-1" />
+          <div className="min-w-0">
+            <p className="text-[9px] uppercase tracking-[0.18em] text-zinc-700 mb-0.5 font-medium">To</p>
+            <p className="text-sm font-semibold text-zinc-200 truncate">{toCity}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Actions ── */}
+      <div className="mt-4 flex gap-2.5">
+        <button
+          onClick={onViewAll}
+          className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-zinc-400 hover:text-white hover:border-white/[0.14] hover:bg-white/[0.05] transition-all"
+        >
+          View shipments
+        </button>
+        <button
+          onClick={onCreateAnother}
+          className="flex items-center gap-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors shadow-lg shadow-sky-500/20"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New shipment
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NewShipmentPage() {
@@ -493,6 +673,9 @@ export default function NewShipmentPage() {
           state: "Lagos",
         },
         priceKobo: totalKobo,
+        ...(data.recipientEmail.trim()
+          ? { customerEmail: data.recipientEmail.trim().toLowerCase() }
+          : {}),
       });
       setCreatedTrackingId(shipment.trackingId);
     } catch (err: unknown) {
@@ -501,43 +684,26 @@ export default function NewShipmentPage() {
   };
 
   if (createdTrackingId) {
-    const trackingId = createdTrackingId;
     return (
-      <div className="max-w-md mx-auto mt-16 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 mx-auto mb-5">
-          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Shipment Created!</h2>
-        <p className="text-sm text-zinc-400 mb-2">
-          Your shipment has been created and is awaiting driver assignment.
-        </p>
-        <p className="font-mono text-lg font-bold text-sky-400 mb-8">{trackingId}</p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={() => router.push("/business/shipments" as Route)}
-            className="rounded-xl bg-sky-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition-colors"
-          >
-            View All Shipments
-          </button>
-          <button
-            onClick={() => {
-              setStep(1);
-              setData(INITIAL);
-              setCreatedTrackingId(null);
-              setServerError(null);
-            }}
-            className="rounded-xl border border-white/[0.07] px-6 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] transition-all"
-          >
-            Create Another
-          </button>
-        </div>
-      </div>
+      <SuccessView
+        trackingId={createdTrackingId}
+        fromCity={data.pickupCity || LAGOS_CITIES[0]!}
+        toCity={data.deliveryCity || LAGOS_CITIES[0]!}
+        packageType={data.packageType}
+        onViewAll={() => router.push("/business/shipments" as Route)}
+        onCreateAnother={() => {
+          setStep(1);
+          setData(INITIAL);
+          setCreatedTrackingId(null);
+          setServerError(null);
+        }}
+      />
     );
   }
 
   return (
     <div className="max-w-xl mx-auto">
-      {/* ── Progress steps ── */}
+      {/* Progress steps */}
       <div className="flex items-center gap-0 mb-8">
         {STEPS.map(({ number, label, icon: Icon, color, bg, border }, i) => {
           const state = number < step ? "done" : number === step ? "current" : "pending";
@@ -582,7 +748,7 @@ export default function NewShipmentPage() {
         })}
       </div>
 
-      {/* ── Form card ── */}
+      {/* Form card */}
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 sm:p-8">
         <div className="mb-6">
           <h2 className="text-lg font-bold text-white">{STEPS[step - 1]!.label} Details</h2>
@@ -598,7 +764,7 @@ export default function NewShipmentPage() {
           <>
             <Step4 data={data} />
             {serverError && (
-              <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3 text-sm text-rose-400">
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-3">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-rose-400" />
                 <p className="text-sm text-rose-400">{serverError}</p>
               </div>
@@ -623,7 +789,7 @@ export default function NewShipmentPage() {
           {step < STEPS.length ? (
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold text-white transition-all"
             >
               Next
               <ArrowRight className="h-4 w-4" />
@@ -632,14 +798,14 @@ export default function NewShipmentPage() {
             <button
               onClick={handleSubmit}
               disabled={createShipment.isPending}
-              className="flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
             >
               {createShipment.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Check className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4" />
               )}
-              {createShipment.isPending ? "Creating…" : "Create Shipment"}
+              {createShipment.isPending ? "Creating..." : "Create Shipment"}
             </button>
           )}
         </div>

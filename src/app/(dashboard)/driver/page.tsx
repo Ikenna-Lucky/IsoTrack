@@ -23,6 +23,7 @@ import { useDriverProfile, useUpdateDriverStatus } from "@/hooks/use-driver";
 import {
   useShipments,
   useActiveDelivery,
+  useDriverHistory,
   getShipmentList,
   useUpdateShipmentStatus,
 } from "@/hooks/use-shipments";
@@ -507,6 +508,7 @@ export default function DriverOverviewPage() {
   // ── Data fetching ──
   const { data: driver, isLoading: driverLoading } = useDriverProfile();
   const shipmentsQuery = useShipments();
+  const { data: allShipments = [] } = useDriverHistory();
   const shipments      = getShipmentList(shipmentsQuery.data);
   const { activeDelivery } = useActiveDelivery();
   const { notifications }  = useNotifications();
@@ -523,7 +525,7 @@ export default function DriverOverviewPage() {
     trackingId: activeDelivery?.trackingId ?? null,
   });
 
-  // ── Weekly earnings (computed from shipments) ──
+  // ── Weekly earnings (computed from full history) ──
   const weeklyData = useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const now   = new Date();
@@ -539,7 +541,7 @@ export default function DriverOverviewPage() {
       const dayEnd = new Date(dayStart);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const dayShipments = shipments.filter((s) => {
+      const dayShipments = allShipments.filter((s) => {
         if (s.status !== "delivered") return false;
         if (!s.actualDelivery) return false;
         const d = new Date(s.actualDelivery);
@@ -549,13 +551,13 @@ export default function DriverOverviewPage() {
       const earning = dayShipments.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
       return { day, earning, deliveries: dayShipments.length };
     });
-  }, [shipments]);
+  }, [allShipments]);
 
   const maxEarning = Math.max(...weeklyData.map((d) => d.earning), 1);
 
   // ── Derived stats ──
   const today = new Date().toDateString();
-  const todayDeliveries = shipments.filter(
+  const todayDeliveries = allShipments.filter(
     (s) => s.status === "delivered" && s.actualDelivery && new Date(s.actualDelivery).toDateString() === today
   );
   const todayEarnings = todayDeliveries.reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
@@ -566,7 +568,7 @@ export default function DriverOverviewPage() {
   const monday2 = new Date(now2);
   monday2.setDate(now2.getDate() - dow2);
   monday2.setHours(0, 0, 0, 0);
-  const weekEarnings = shipments
+  const weekEarnings = allShipments
     .filter((s) => s.status === "delivered" && s.actualDelivery && new Date(s.actualDelivery) >= monday2)
     .reduce((sum, s) => sum + Math.round(s.priceKobo * 0.4), 0);
 
@@ -633,7 +635,7 @@ export default function DriverOverviewPage() {
         <div className="lg:col-span-2">
           <WeeklyChart weeklyData={weeklyData} todayStats={todayStats} weekEarnings={weekEarnings} maxEarning={maxEarning} />
         </div>
-        <RecentDeliveries shipments={shipments} />
+        <RecentDeliveries shipments={allShipments} />
       </div>
 
       {/* ── Activity feed ── */}

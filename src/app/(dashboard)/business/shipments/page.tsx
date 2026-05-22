@@ -17,11 +17,10 @@ import {
   UserCheck,
   ChevronDown as ChevronDownIcon,
   CreditCard,
+  Trash2,
 } from "lucide-react";
-import { useShipments, getShipmentList, getPagination, useAssignDriver } from "@/hooks/use-shipments";
+import { useShipments, getShipmentList, getPagination, useAssignDriver, useCancelShipment } from "@/hooks/use-shipments";
 import { useDrivers } from "@/hooks/use-driver";
-import { usePayment } from "@/hooks/use-payment";
-import { useAuthStore } from "@/store/auth";
 import type { Shipment, ShipmentStatus } from "@/types";
 import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -142,14 +141,24 @@ function ShipmentTimeline({ status }: { status: ShipmentStatus }) {
 function ExpandedDetail({ s }: { s: Shipment }) {
   const { data: drivers = [] } = useDrivers();
   const assignDriver = useAssignDriver();
+  const cancelShipment = useCancelShipment();
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [assignError, setAssignError] = useState("");
-
-  const userEmail = useAuthStore((st) => st.user?.email ?? "");
-  const { pay, isPaying, verifying, error: payError } = usePayment();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const availableDrivers = drivers.filter((d) => d.status === "available");
   const canAssign = s.status === "pending" && !s.driver;
+
+  const handleCancel = async () => {
+    setCancelError("");
+    try {
+      await cancelShipment.mutateAsync(s.id);
+    } catch (err: unknown) {
+      setCancelError(extractErrorMessage(err, "Failed to cancel shipment."));
+      setConfirmCancel(false);
+    }
+  };
 
   const handleAssign = async () => {
     if (!selectedDriverId) return;
@@ -189,7 +198,7 @@ function ExpandedDetail({ s }: { s: Shipment }) {
             ))}
           </div>
 
-          {/* ── Payment ── */}
+          {/* ── Payment status (read-only — customer initiates payment) ── */}
           <div className="mt-4">
             {s.isPaid ? (
               <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
@@ -197,25 +206,55 @@ function ExpandedDetail({ s }: { s: Shipment }) {
                 <p className="text-[11px] font-semibold text-emerald-400">Payment received</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <button
-                  onClick={() => pay({ shipmentId: s.id, email: userEmail })}
-                  disabled={isPaying || verifying}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2.5 text-[11px] font-semibold text-sky-400 hover:bg-sky-500/[0.18] hover:border-sky-500/40 transition-all disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  {isPaying || verifying ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-3.5 w-3.5" />
-                  )}
-                  {isPaying ? "Opening checkout…" : verifying ? "Verifying payment…" : `Pay ${formatNaira(s.priceKobo)}`}
-                </button>
-                {payError && (
-                  <p className="text-[10px] text-rose-400 px-1">{payError}</p>
-                )}
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
+                <CreditCard className="h-3.5 w-3.5 text-amber-500/60 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-amber-500/80">Awaiting payment</p>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">Customer pays via tracking page</p>
+                </div>
               </div>
             )}
           </div>
+
+          {/* ── Cancel shipment (pending only) ── */}
+          {s.status === "pending" && (
+            <div className="mt-4">
+              {cancelError && (
+                <p className="text-[10px] text-rose-400 mb-2">{cancelError}</p>
+              )}
+              {confirmCancel ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCancel}
+                    disabled={cancelShipment.isPending}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/[0.12] px-3 py-2.5 text-[11px] font-semibold text-rose-400 hover:bg-rose-500/[0.2] transition-all disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    {cancelShipment.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                    {cancelShipment.isPending ? "Cancelling…" : "Yes, cancel it"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    disabled={cancelShipment.isPending}
+                    className="flex items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[11px] font-medium text-zinc-500 hover:text-zinc-300 hover:border-white/[0.15] transition-all disabled:opacity-40"
+                  >
+                    Keep
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmCancel(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/15 bg-rose-500/[0.04] px-3 py-2.5 text-[11px] font-medium text-rose-500/60 hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/[0.1] transition-all"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Cancel shipment
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Driver + customer */}
@@ -453,7 +492,7 @@ export default function ShipmentsPage() {
       <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] overflow-hidden">
 
         {/* Table header */}
-        <div className="hidden sm:grid grid-cols-[auto_1fr_1.2fr_1.2fr_auto_auto_auto_auto] gap-3 px-5 py-3 border-b border-white/[0.05]">
+        <div className="hidden sm:grid grid-cols-[minmax(180px,1.6fr)_minmax(120px,1fr)_minmax(140px,1.2fr)_minmax(120px,1fr)_130px_110px_72px_36px] gap-x-4 px-6 py-3.5 border-b border-white/[0.05]">
           {(["Tracking ID", "Customer", "Route", "Driver", "Status", "Amount", "Date", ""] as const).map((h, i) => {
             const isSortable = h === "Amount" || h === "Date";
             const colKey: SortKey = h === "Amount" ? "amount" : h === "Date" ? "date" : null;
@@ -461,8 +500,10 @@ export default function ShipmentsPage() {
               <div
                 key={h || i}
                 className={cn(
-                  "flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600",
+                  "flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-600",
                   isSortable && "cursor-pointer hover:text-zinc-400 transition-colors select-none",
+                  h === "Amount" && "justify-end",
+                  h === "Date" && "justify-end",
                 )}
                 onClick={() => isSortable && handleSort(colKey)}
               >
@@ -551,37 +592,45 @@ export default function ShipmentsPage() {
                     <div key={s.id}>
                       <div
                         className={cn(
-                          "group grid grid-cols-[auto_1fr_1.2fr_1.2fr_auto_auto_auto_auto] gap-3 px-5 py-3.5 cursor-pointer transition-all duration-150",
+                          "group grid grid-cols-[minmax(180px,1.6fr)_minmax(120px,1fr)_minmax(140px,1.2fr)_minmax(120px,1fr)_130px_110px_72px_36px] gap-x-4 items-center px-6 py-4 cursor-pointer transition-all duration-150",
                           isExpanded ? "bg-white/[0.025]" : "hover:bg-white/[0.015]",
                         )}
                         onClick={() => setExpandedId(isExpanded ? null : s.id)}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        {/* Tracking ID */}
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <div
                             className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: meta.dot, boxShadow: `0 0 5px ${meta.dot}80` }}
+                            style={{ backgroundColor: meta.dot, boxShadow: `0 0 6px ${meta.dot}90` }}
                           />
-                          <span className="text-xs font-mono font-semibold text-zinc-200 group-hover:text-white transition-colors whitespace-nowrap">
+                          <span className="text-[11px] font-mono font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
                             {s.trackingId}
                           </span>
                         </div>
+
+                        {/* Customer */}
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-zinc-300 truncate">{s.customer?.name ?? "—"}</p>
-                          {s.customer?.phone && <p className="text-[10px] text-zinc-600">{s.customer.phone}</p>}
+                          <p className="text-[11px] font-medium text-zinc-300 truncate">{s.customer?.name ?? <span className="text-zinc-700">—</span>}</p>
+                          {s.customer?.phone && <p className="text-[10px] text-zinc-600 truncate">{s.customer.phone}</p>}
                         </div>
+
+                        {/* Route */}
                         <div className="min-w-0">
-                          <p className="text-[11px] text-zinc-400 truncate">{s.pickupAddress.city}</p>
-                          <p className="text-[11px] text-zinc-600 truncate flex items-center gap-1">
-                            <span className="text-zinc-700">→</span> {s.deliveryAddress.city}
+                          <p className="text-[11px] font-medium text-zinc-300 truncate">{s.pickupAddress.city}</p>
+                          <p className="text-[10px] text-zinc-600 truncate flex items-center gap-1 mt-0.5">
+                            <span className="text-zinc-700 text-[9px]">&#8594;</span>
+                            {s.deliveryAddress.city}
                           </p>
                         </div>
-                        <div className="flex items-center gap-1.5 min-w-0">
+
+                        {/* Driver */}
+                        <div className="flex items-center gap-2 min-w-0">
                           {s.driver ? (
                             <>
-                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/20 text-[8px] font-bold text-teal-300 uppercase">
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/20 text-[9px] font-bold text-teal-300 uppercase">
                                 {(s.driver.user?.name ?? "DR").slice(0, 2)}
                               </div>
-                              <p className="text-[11px] text-zinc-500 truncate max-w-[70px]">
+                              <p className="text-[11px] font-medium text-zinc-400 truncate">
                                 {(s.driver.user?.name ?? "Driver").split(" ")[0]}
                               </p>
                             </>
@@ -589,23 +638,36 @@ export default function ShipmentsPage() {
                             <p className="text-[10px] text-zinc-700 italic">Unassigned</p>
                           )}
                         </div>
+
+                        {/* Status */}
                         <div className="flex items-center">
-                          <span className={cn("flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium whitespace-nowrap", meta.color, meta.bg, meta.border)}>
+                          <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap", meta.color, meta.bg, meta.border)}>
                             {meta.label}
                           </span>
                         </div>
-                        <div className="flex items-center">
-                          <span className="text-xs font-semibold text-white tabular-nums">
+
+                        {/* Amount */}
+                        <div className="flex items-center justify-end">
+                          <span className="text-[11px] font-semibold text-zinc-200 tabular-nums">
                             {formatNaira(s.priceKobo)}
                           </span>
-
                         </div>
-                        <div className="flex items-center">
-                          <span className="text-[10px] text-zinc-600">
+
+                        {/* Date */}
+                        <div className="flex items-center justify-end">
+                          <span className="text-[10px] text-zinc-600 tabular-nums whitespace-nowrap">
                             {new Date(s.createdAt).toLocaleDateString("en-NG", {
                               day: "numeric", month: "short",
                             })}
                           </span>
+                        </div>
+
+                        {/* Expand chevron */}
+                        <div className="flex items-center justify-center">
+                          <ChevronDown className={cn(
+                            "h-3.5 w-3.5 text-zinc-700 group-hover:text-zinc-500 transition-all duration-200",
+                            isExpanded && "rotate-180 text-sky-400 group-hover:text-sky-400",
+                          )} />
                         </div>
                       </div>
                       {isExpanded && <ExpandedDetail s={s} />}
