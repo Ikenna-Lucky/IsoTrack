@@ -405,9 +405,7 @@ export default function BusinessOverviewPage() {
                 const meta = STATUS_META[s.status as keyof typeof STATUS_META] ?? STATUS_META.pending;
                 return (
                   <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.015] transition-colors">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${meta.bg}`}>
-                      <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />
-                    </div>
+                    <meta.Icon className={`h-4 w-4 shrink-0 ${meta.color}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-zinc-200 font-mono">{s.trackingId}</p>
                       <p className="text-[10px] text-zinc-600 truncate">

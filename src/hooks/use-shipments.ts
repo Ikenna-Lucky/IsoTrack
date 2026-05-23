@@ -13,6 +13,7 @@ export interface CreateShipmentInput {
   deliveryAddress: { street: string; city: string; state: string };
   priceKobo: number;
   customerId?: string | undefined;
+  customerEmail?: string | undefined;   // links shipment to customer's account by email
   scheduledPickup?: string | undefined; // ISO datetime
 }
 
@@ -67,6 +68,22 @@ export function useShipment(id: string | null | undefined) {
       return data.data;
     },
     enabled: !!id,
+  });
+}
+
+/**
+ * Fetches ALL shipments ever assigned to the current driver, including
+ * delivered, failed, and cancelled ones. Used for earnings calculations.
+ */
+export function useDriverHistory({ pageSize = 200 }: { pageSize?: number } = {}) {
+  return useQuery({
+    queryKey: [...shipmentKeys.all, "driver-history", { pageSize }],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<Shipment[]>>("/shipments", {
+        params: { includeCompleted: "true", pageSize },
+      });
+      return (data as unknown as { data: Shipment[] }).data ?? [];
+    },
   });
 }
 
@@ -139,6 +156,19 @@ export function useCreateShipment() {
   });
 }
 
+/** Cancel (soft-delete) a pending shipment (business only). */
+export function useCancelShipment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/shipments/${id}`);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
+    },
+  });
+}
+
 /** Update the status of a shipment (driver / business). */
 export function useUpdateShipmentStatus() {
   const qc = useQueryClient();
@@ -160,7 +190,7 @@ export function useUpdateShipmentStatus() {
     },
     onSuccess: (updated) => {
       void qc.invalidateQueries({ queryKey: shipmentKeys.lists() });
-      void qc.invalidateQueries({ queryKey: shipmentKeys.detail(updated.id) });
+            void qc.invalidateQueries({ queryKey: shipmentKeys.detail(updated.id) });
     },
   });
 }
