@@ -230,3 +230,130 @@ body {
   color: #6b7280 !important;
   font-size: 10px !important;
 }
+
+@keyframes motionRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motionSoftPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes motionLiveRing {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.55);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.9);
+  }
+}
+
+@keyframes motionProgress {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 28px 0;
+  }
+}
+
+@keyframes motionShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes motionSlowZoom {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+.motion-rise {
+  animation: motionRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.motion-soft-pulse {
+  animation: motionSoftPulse 2.8s ease-in-out infinite;
+}
+
+.motion-live-dot {
+  position: relative;
+}
+
+.motion-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: motionLiveRing 2.4s ease-out infinite;
+}
+
+.motion-progress {
+  background-image: linear-gradient(
+    90deg,
+    rgb(20 184 166 / 0.25) 0,
+    rgb(20 184 166 / 0.25) 45%,
+    transparent 45%,
+    transparent 100%
+  );
+  background-size: 28px 100%;
+  animation: motionProgress 1.4s linear infinite;
+}
+
+.motion-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.motion-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.18), transparent);
+  animation: motionShimmer 1.7s ease-in-out infinite;
+}
+
+.motion-slow-zoom {
+  animation: motionSlowZoom 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in-down,
+  .animate-sonar,
+  .motion-rise,
+  .motion-soft-pulse,
+  .motion-live-dot::after,
+  .motion-progress,
+  .motion-shimmer::after,
+  .motion-slow-zoom {
+    animation: none !important;
+  }
+}

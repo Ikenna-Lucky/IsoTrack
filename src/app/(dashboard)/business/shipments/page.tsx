@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -10,7 +11,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Package,
   Phone,
   CheckCircle2,
   Loader2,
@@ -516,7 +516,8 @@ export default function ShipmentsPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20 gap-2 text-zinc-600">
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-zinc-600">
+            <div className="motion-shimmer h-2 w-32 rounded-full bg-white/[0.06]" />
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">Loading shipments…</span>
           </div>
@@ -534,7 +535,13 @@ export default function ShipmentsPage() {
         {!isLoading && !isError && (
           filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-zinc-700">
-              <Package className="h-10 w-10 mb-4 opacity-20" />
+              <Image
+                src="/images/empty-img.jpg"
+                alt="Prepared packages waiting for shipment"
+                width={220}
+                height={150}
+                className="mb-5 h-28 w-44 rounded-lg object-cover opacity-80"
+              />
               <p className="text-sm font-medium text-zinc-600">No shipments found</p>
               <p className="text-xs text-zinc-700 mt-1">Try adjusting your filters or create a new shipment</p>
             </div>

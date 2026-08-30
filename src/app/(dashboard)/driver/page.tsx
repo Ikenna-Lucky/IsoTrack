@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -21,10 +22,8 @@ import {
 import { formatKobo } from "@/types";
 import { useDriverProfile, useUpdateDriverStatus } from "@/hooks/use-driver";
 import {
-  useShipments,
   useActiveDelivery,
   useDriverHistory,
-  getShipmentList,
   useUpdateShipmentStatus,
 } from "@/hooks/use-shipments";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -393,8 +392,15 @@ function RecentDeliveries({ shipments }: { shipments: Shipment[] }) {
       </div>
 
       {recent.length === 0 ? (
-        <div className="px-5 py-10 text-center">
-          <p className="text-sm text-zinc-600">No completed deliveries yet</p>
+        <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
+          <Image
+            src="/images/empty-img.jpg"
+            alt="Prepared packages waiting for delivery"
+            width={160}
+            height={120}
+            className="h-24 w-32 rounded-lg object-cover opacity-80"
+          />
+          <p className="text-sm font-medium text-zinc-300">No completed deliveries yet</p>
         </div>
       ) : (
         <div className="divide-y divide-white/[0.04]">
@@ -507,9 +513,7 @@ export default function DriverOverviewPage() {
 
   // ── Data fetching ──
   const { data: driver, isLoading: driverLoading } = useDriverProfile();
-  const shipmentsQuery = useShipments();
   const { data: allShipments = [] } = useDriverHistory();
-  const shipments      = getShipmentList(shipmentsQuery.data);
   const { activeDelivery } = useActiveDelivery();
   const { notifications }  = useNotifications();
 

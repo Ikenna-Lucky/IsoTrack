@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2, MoveRight, AlertCircle } from "lucide-react";
-import { useAuthStore } from "@/store/auth";
-import { Logo } from "@/components/shared/logo";
-import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth";
 import type { UserRole } from "@/types";
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
+import { Logo } from "@/components/shared/logo";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -23,15 +21,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// ─── Role → dashboard route ───────────────────────────────────────────────────
-
 const ROLE_ROUTES: Record<UserRole, string> = {
   business: "/business",
   driver: "/driver",
   customer: "/customer",
 };
-
-// ─── Reusable field wrapper ───────────────────────────────────────────────────
 
 function Field({
   label,
@@ -45,23 +39,21 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <label className="text-[13px] font-medium text-zinc-400">{label}</label>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm font-semibold text-slate-800">{label}</label>
         {action}
       </div>
       {children}
       {error && (
-        <p className="flex items-center gap-1.5 text-[11px] text-red-400">
-          <AlertCircle className="h-3 w-3 shrink-0" />
+        <p className="flex items-center gap-1.5 text-xs font-medium text-red-600">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
       )}
     </div>
   );
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function LoginForm() {
   const router = useRouter();
@@ -89,180 +81,114 @@ export function LoginForm() {
     }
   };
 
-  // Stagger helper
-  const slide = (delay: string) => ({
-    animation: `authSlideUp 0.55s cubic-bezier(0.22,1,0.36,1) ${delay} both`,
-  });
-
   return (
-    <>
-      <style>{`
-        @keyframes authSlideUp {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+    <div className="w-full max-w-[460px]">
+      <div className="mb-6 flex items-center justify-between lg:hidden">
+        <Logo href="/" size={32} tone="dark" />
+        <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
+          Home
+        </Link>
+      </div>
 
-      <div className="w-full max-w-[420px]">
-        {/* Mobile-only logo */}
-        <div className="lg:hidden mb-10 flex justify-center" style={slide("0s")}>
-          <Logo size={30} />
-        </div>
-
-        {/* Heading */}
-        <div className="mb-9" style={slide("0s")}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-500 mb-3">
-            Sign in
+      <div className="motion-rise rounded-lg border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/70 sm:p-7">
+        <div className="mb-7">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">
+            Secure access
           </p>
-          <h1 className="text-[2.1rem] font-bold leading-tight tracking-tight text-white">
-            Back on the map.
+          <h1 className="text-3xl font-black tracking-tight text-slate-950">
+            Welcome back
           </h1>
-          <p className="mt-3 text-[13.5px] text-zinc-500 leading-relaxed">
-            Your dashboard is waiting. Enter your credentials to continue.
+          <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
+            Sign in to manage shipments, monitor drivers, and confirm delivery activity.
           </p>
         </div>
 
-        {/* Server error */}
         {serverError && (
-          <div
-            className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3.5 text-sm text-red-400"
-            style={slide("0.05s")}
-          >
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{serverError}</span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          {/* Email */}
-          <div style={slide("0.1s")}>
-            <Field label="Email address" error={errors.email?.message}>
-              <input
-                {...register("email")}
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@company.com"
-                className={cn(
-                  "w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-zinc-700",
-                  "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
-                  "transition-all duration-200",
-                  errors.email
-                    ? "border-red-500/40 bg-red-500/[0.02]"
-                    : "border-white/[0.07] hover:border-white/[0.12]",
-                )}
-              />
-            </Field>
-          </div>
-
-          {/* Password */}
-          <div className="mt-5" style={slide("0.18s")}>
-            <Field
-              label="Password"
-              error={errors.password?.message}
-              action={
-                <Link
-                  href={"#" as Route}
-                  className="text-[11px] text-zinc-600 hover:text-sky-400 transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              }
-            >
-              <div className="relative">
-                <input
-                  {...register("password")}
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  className={cn(
-                    "w-full rounded-xl border bg-white/[0.03] px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-700",
-                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40",
-                    "transition-all duration-200",
-                    errors.password
-                      ? "border-red-500/40 bg-red-500/[0.02]"
-                      : "border-white/[0.07] hover:border-white/[0.12]",
-                  )}
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </Field>
-          </div>
-
-          {/* Submit */}
-          <div className="mt-7" style={slide("0.26s")}>
-            <button
-              type="submit"
-              disabled={isSubmitting}
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+          <Field label="Email address" error={errors.email?.message}>
+            <input
+              {...register("email")}
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@company.com"
               className={cn(
-                "group relative w-full overflow-hidden rounded-xl px-5 py-3.5 text-sm font-semibold text-white",
-                "transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none",
-                "focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
+                "h-12 w-full rounded-lg border bg-white px-4 text-sm text-slate-950 outline-none transition",
+                "placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100",
+                errors.email ? "border-red-300" : "border-slate-300 hover:border-slate-400",
               )}
-              style={{
-                background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%)",
-                boxShadow: "0 0 0 1px rgba(14,165,233,0.25), 0 6px 24px rgba(14,165,233,0.18)",
-              }}
-            >
-              {/* Hover shimmer layer */}
-              <span
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{
-                  background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 60%, #0284c7 100%)",
-                }}
-              />
-              <span className="relative flex items-center justify-center gap-2">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Signing in…
-                  </>
-                ) : (
-                  <>
-                    Sign in to IsoTrack
-                    <MoveRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </>
+            />
+          </Field>
+
+          <Field
+            label="Password"
+            error={errors.password?.message}
+            action={
+              <Link href={"#" as Route} className="text-sm font-semibold text-teal-700 hover:text-teal-800">
+                Forgot password?
+              </Link>
+            }
+          >
+            <div className="relative">
+              <input
+                {...register("password")}
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                className={cn(
+                  "h-12 w-full rounded-lg border bg-white px-4 pr-12 text-sm text-slate-950 outline-none transition",
+                  "placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100",
+                  errors.password ? "border-red-300" : "border-slate-300 hover:border-slate-400",
                 )}
-              </span>
-            </button>
-          </div>
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </Field>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200 disabled:pointer-events-none disabled:opacity-60"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in
+              </>
+            ) : (
+              <>
+                Sign in
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </button>
         </form>
 
-        {/* Switch to register */}
-        <div className="mt-8" style={slide("0.34s")}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-white/[0.05]" />
-            <span className="text-[11px] text-zinc-700">New here?</span>
-            <div className="flex-1 h-px bg-white/[0.05]" />
-          </div>
-          <Link
-            href={"/register" as Route}
-            className={cn(
-              "flex items-center justify-center gap-2 w-full rounded-xl border border-white/[0.07] px-5 py-3 text-sm font-medium text-zinc-400",
-              "hover:border-white/[0.12] hover:text-white hover:bg-white/[0.03]",
-              "transition-all duration-200",
-            )}
-          >
-            Create a free account
-            <MoveRight className="h-3.5 w-3.5 opacity-60" />
+        <div className="mt-7 border-t border-slate-200 pt-6 text-center text-sm text-slate-600">
+          New to IsoTrack?{" "}
+          <Link href={"/register" as Route} className="font-bold text-slate-950 hover:text-teal-700">
+            Create an account
           </Link>
         </div>
-
-        {/* Legal */}
-        <p className="mt-8 text-center text-[11px] text-zinc-700" style={slide("0.4s")}>
-          © {new Date().getFullYear()} IsoTrack · Personal portfolio project
-        </p>
       </div>
-    </>
+
+      <p className="mt-5 text-center text-xs font-medium text-slate-500">
+        Protected access for delivery teams and customers.
+      </p>
+    </div>
   );
 }
