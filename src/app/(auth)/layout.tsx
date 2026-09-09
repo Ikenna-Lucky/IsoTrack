@@ -10,29 +10,27 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-surface-0 flex">
-      {/* Left — brand panel — exactly half on lg+ */}
-      <div className="hidden lg:flex lg:w-1/2 shrink-0">
-        <BrandPanel />
-      </div>
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-950">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-35"
+        style={{
+          backgroundImage:
+            "linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)",
+          backgroundSize: "72px 72px",
+        }}
+        aria-hidden="true"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-white via-white to-transparent" />
 
-      {/* Right — form area — exactly half, independently scrollable */}
-      <div className="flex w-full lg:w-1/2 flex-col min-h-screen overflow-y-auto">
-        {/* Subtle ambient glow in the top-right corner */}
-        <div
-          className="pointer-events-none fixed right-0 top-0 w-[50%] h-[55vh]"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 90% 0%, rgba(14,165,233,0.05) 0%, transparent 70%)",
-          }}
-          aria-hidden="true"
-        />
+      <main className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[0.96fr_1.04fr] lg:px-8">
+        <div className="hidden lg:block">
+          <BrandPanel />
+        </div>
 
-        {/* Form — vertically centered with comfortable padding */}
-        <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-14 sm:px-12">
+        <div className="flex min-h-[calc(100vh-48px)] items-center justify-center lg:min-h-0">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

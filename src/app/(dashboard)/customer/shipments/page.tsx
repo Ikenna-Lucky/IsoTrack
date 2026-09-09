@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   Search,
@@ -203,14 +204,22 @@ export default function CustomerShipmentsPage() {
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center justify-center gap-3 py-16">
+          <div className="motion-shimmer h-2 w-32 rounded-full bg-white/[0.06]" />
           <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
         </div>
       )}
 
       {!isLoading && allShipments.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] text-3xl">
+          <Image
+            src="/images/empty-img.jpg"
+            alt="Prepared packages waiting for shipment"
+            width={240}
+            height={170}
+            className="h-32 w-48 rounded-xl object-cover opacity-85"
+          />
+          <div className="hidden h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] text-3xl">
             📦
           </div>
           <div className="max-w-xs">

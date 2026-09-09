@@ -99,7 +99,7 @@ function Sparkline({ data, color, id }: { data: number[]; color: string; id: str
 function KPICard({
   label, value, trend, trendUp, sub, sparkData, sparkColor, sparkId, accentClass, glowClass,
 }: {
-  label: string; value: string; trend?: string; trendUp?: boolean; sub: string;
+  label: string; value: string; trend?: string | undefined; trendUp?: boolean | undefined; sub: string;
   sparkData: number[]; sparkColor: string; sparkId: string; accentClass: string; glowClass: string;
 }) {
   return (

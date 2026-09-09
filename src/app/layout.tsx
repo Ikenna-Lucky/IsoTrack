@@ -20,14 +20,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: process.env.NEXT_PUBLIC_APP_URL,
-    title: "IsoTrack — Real-Time Shipment Tracking",
+    title: "IsoTrack - Real-Time Shipment Tracking",
     description:
       "Enterprise-grade logistics and shipment tracking platform. Track deliveries in real time.",
     siteName: "IsoTrack",
   },
   twitter: {
     card: "summary_large_image",
-    title: "IsoTrack — Real-Time Shipment Tracking",
+    title: "IsoTrack - Real-Time Shipment Tracking",
     description: "Enterprise-grade logistics and shipment tracking platform.",
   },
   icons: {
@@ -49,8 +49,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
-  colorScheme: "dark",
+  themeColor: "#ffffff",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };

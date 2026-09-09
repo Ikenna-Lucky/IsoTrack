@@ -108,12 +108,13 @@ function StatusHero({ info }: { info: TrackingInfo }) {
     info.status === "picked_up";
 
   return (
-    <div className="text-center space-y-4">
+    <div className="motion-rise text-center space-y-4">
       {/* Big status icon */}
       <div className="flex justify-center">
         <div
           className={cn(
             "flex h-20 w-20 items-center justify-center rounded-[28px] border-2 text-4xl",
+            isActive && "motion-soft-pulse",
             meta.bg,
           )}
         >
@@ -131,7 +132,7 @@ function StatusHero({ info }: { info: TrackingInfo }) {
         </h1>
         {isActive && (
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <span className="motion-live-dot h-1.5 w-1.5 rounded-full bg-violet-400 text-violet-400" />
             <span className="text-[11px] font-semibold text-violet-400 uppercase tracking-wide">
               Live tracking active
             </span>
@@ -155,7 +156,7 @@ function StatusHero({ info }: { info: TrackingInfo }) {
 
 function RouteCard({ info }: { info: TrackingInfo }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4">
+    <div className="motion-rise rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4">
       <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-3">
         Route
       </p>
@@ -265,7 +266,7 @@ function TimelineCard({ info }: { info: TrackingInfo }) {
                   <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
                 ) : state === "current" ? (
                   <div className="h-5 w-5 rounded-full border-2 border-teal-400 bg-teal-400/10 flex items-center justify-center">
-                    <div className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
+                    <div className="motion-live-dot h-1.5 w-1.5 rounded-full bg-teal-400 text-teal-400" />
                   </div>
                 ) : (
                   <Circle className="h-5 w-5 text-zinc-800 shrink-0" />
@@ -371,16 +372,13 @@ function DriverCard({ driver }: { driver: NonNullable<TrackingInfo["driver"]> })
   );
 }
 
-function LiveMapCard({
-  driverLocation,
-}: {
-  driverLocation: LocationUpdate | null;
-}) {
+function LiveMapCard({ driverLocation }: { driverLocation: LocationUpdate | null }) {
   return (
-    <div className="rounded-2xl border border-violet-500/[0.15] bg-[#0d0d11] overflow-hidden">
+    <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.15] bg-[#0d0d11]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
         <div className="flex items-center gap-2">
-          <Radio className="h-3.5 w-3.5 text-violet-400 animate-pulse" />
+          <span className="motion-live-dot flex h-2 w-2 rounded-full bg-violet-400 text-violet-400" />
+          <Radio className="h-3.5 w-3.5 text-violet-400" />
           <p className="text-xs font-semibold text-violet-400">Live Driver Location</p>
         </div>
         {driverLocation && (
@@ -396,7 +394,8 @@ function LiveMapCard({
       </div>
       <LiveMap location={driverLocation} className="h-56" />
       {!driverLocation && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d11]/60 rounded-2xl">
+        <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/[0.06] bg-[#0d0d11]/85 p-3 text-center backdrop-blur">
+          <div className="motion-shimmer mx-auto mb-2 h-1.5 w-28 rounded-full bg-white/[0.06]" />
           <p className="text-xs text-zinc-600">Waiting for driver location…</p>
         </div>
       )}
@@ -504,6 +503,7 @@ export default function PublicTrackingPage() {
         {/* ── Loading ── */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="motion-shimmer h-2 w-40 rounded-full bg-white/[0.06]" />
             <Loader2 className="h-7 w-7 animate-spin text-zinc-600" />
             <p className="text-sm text-zinc-600">Looking up shipment…</p>
           </div>
@@ -532,7 +532,7 @@ export default function PublicTrackingPage() {
 
             {/* Live map (active shipments only) */}
             {isActive && (
-              <div className="relative">
+              <div className="motion-rise relative">
                 <LiveMapCard driverLocation={driverLocation} />
               </div>
             )}
@@ -547,7 +547,7 @@ export default function PublicTrackingPage() {
             <TimelineCard info={info} />
 
             {/* Footer note */}
-            <p className="text-center text-xs text-zinc-700 pb-4">
+            <p className="motion-rise text-center text-xs text-zinc-700 pb-4">
               Powered by{" "}
               <span className="text-zinc-600 font-medium">IsoTrack</span> · Updates
               every 15 seconds when your order is active

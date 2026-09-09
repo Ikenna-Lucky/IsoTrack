@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import {
   TrendingUp,
@@ -389,12 +390,20 @@ export default function BusinessOverviewPage() {
             </Link>
           </div>
           {shipmentsLoading ? (
-            <div className="flex items-center justify-center py-10">
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <div className="motion-shimmer h-2 w-28 rounded-full bg-white/[0.06]" />
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
             </div>
           ) : shipments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <p className="text-sm text-zinc-600">No shipments yet</p>
+            <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+              <Image
+                src="/images/empty-img.jpg"
+                alt="Prepared packages waiting for shipment"
+                width={160}
+                height={120}
+                className="h-24 w-32 rounded-lg object-cover opacity-80"
+              />
+              <p className="text-sm font-medium text-zinc-300">No shipments yet</p>
               <Link href={"/business/shipments/new" as Route} className="text-xs text-sky-400 hover:text-sky-300 transition-colors">
                 Create your first shipment →
               </Link>
@@ -466,12 +475,20 @@ export default function BusinessOverviewPage() {
           </Link>
         </div>
         {driversLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center justify-center gap-3 py-8">
+            <div className="motion-shimmer h-2 w-28 rounded-full bg-white/[0.06]" />
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
           </div>
         ) : drivers.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-sm text-zinc-600">No drivers registered yet</p>
+          <div className="flex flex-col items-center justify-center gap-3 px-5 py-10 text-center">
+            <Image
+              src="/images/empty-img.jpg"
+              alt="Prepared packages waiting for dispatch"
+              width={160}
+              height={120}
+              className="h-24 w-32 rounded-lg object-cover opacity-80"
+            />
+            <p className="text-sm font-medium text-zinc-300">No drivers registered yet</p>
           </div>
         ) : (
           <div className="flex gap-0 overflow-x-auto divide-x divide-white/[0.04]">
