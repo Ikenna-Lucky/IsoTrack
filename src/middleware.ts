@@ -1,35 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-// ─── Route groups ─────────────────────────────────────────────────────────────
-
-/** Routes that require authentication */
-const PROTECTED_PREFIXES = ["/business", "/driver", "/customer", "/account"];
-
-/** Routes only for unauthenticated users (redirect away if already logged in) */
-
-/** Cookie name — must match the backend constant */
-const REFRESH_COOKIE = "iso_refresh_token";
-
-// ─── Middleware ───────────────────────────────────────────────────────────────
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(REFRESH_COOKIE);
-
-  // 1. Visiting a protected route without a session → /login
-  if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    if (!hasSession) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("next", pathname); // preserve intended destination
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  // 2. Visiting auth routes while already logged in → block (let client-side handle redirect)
-  // We deliberately don't redirect here — the client AuthProvider will push the user
-  // to their dashboard once the session bootstraps. This avoids a flash of the auth page.
-
+export function middleware(_request: NextRequest) {
+  // Dashboard auth is handled by AuthGuard/AuthProvider on the client.
+  // In production the refresh cookie can belong to the API domain, so Next
+  // middleware may not see it and would incorrectly redirect after login.
   return NextResponse.next();
 }
 

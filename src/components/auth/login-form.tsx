@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -25,6 +25,16 @@ const ROLE_ROUTES: Record<UserRole, string> = {
   driver: "/driver",
   customer: "/customer",
 };
+
+function getLoginDestination(next: string | null, role: UserRole) {
+  const fallback = ROLE_ROUTES[role];
+
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return fallback;
+  }
+
+  return next.startsWith(fallback) ? next : fallback;
+}
 
 function Field({
   label,
@@ -56,6 +66,7 @@ function Field({
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -74,7 +85,7 @@ export function LoginForm() {
     try {
       await login(values.email, values.password);
       const role = useAuthStore.getState().user?.role ?? "customer";
-      router.push(ROLE_ROUTES[role] as Route);
+      router.replace(getLoginDestination(searchParams.get("next"), role) as Route);
     } catch (err: unknown) {
       setServerError(extractErrorMessage(err));
     }
