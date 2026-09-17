@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import type { UserRole } from "@/types";
 
@@ -28,17 +28,18 @@ export function AuthGuard({ role, children }: Props) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userRole        = useAuthStore((s) => s.user?.role);
   const router          = useRouter();
+  const pathname        = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.replace("/login");
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
     if (role && userRole !== role) {
       router.replace("/login");
     }
-  }, [isLoading, isAuthenticated, userRole, role, router]);
+  }, [isLoading, isAuthenticated, userRole, role, router, pathname]);
 
   // While the refresh call is in flight, render a full-page skeleton so
   // no child hook can fire an API request with a missing token.
