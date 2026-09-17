@@ -36,18 +36,18 @@ export function Navbar() {
       <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5">
         <nav
           className={cn(
-            "mx-auto flex h-16 max-w-7xl items-center justify-between rounded-xl border border-slate-200 bg-white/[0.92] px-3 shadow-sm backdrop-blur-xl transition-shadow sm:px-4 lg:px-5",
-            scrolled && "shadow-md shadow-slate-200/70",
+            "mx-auto flex h-16 max-w-7xl items-center justify-between rounded-md border border-stone-700/80 bg-[#0c0b08]/90 px-3 shadow-sm shadow-black/30 backdrop-blur-xl transition-shadow sm:px-4 lg:px-5",
+            scrolled && "shadow-lg shadow-black/40",
           )}
         >
-          <Logo href="/" size={45} tone="dark" />
+          <Logo href="/" size={45} tone="light" />
 
-          <div className="hidden items-center rounded-lg border border-slate-200 bg-slate-50 p-1 md:flex">
+          <div className="hidden items-center rounded-md border border-stone-700 bg-stone-950/70 p-1 md:flex">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-950"
+                className="rounded px-3 py-1.5 text-sm font-medium text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-100"
               >
                 {link.label}
               </Link>
@@ -57,20 +57,20 @@ export function Navbar() {
           <div className="hidden items-center gap-2 md:flex">
             <Link
               href={"/track/IST-K7X2M9PQ" as Route}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-950"
+              className="inline-flex items-center gap-2 rounded-md border border-stone-700 bg-stone-950 px-3.5 py-2 text-sm font-semibold text-stone-200 transition-colors hover:border-amber-500/50 hover:bg-stone-900"
             >
-              <PackageSearch className="h-4 w-4 text-sky-700" />
+              <PackageSearch className="h-4 w-4 text-amber-400" />
               Track shipment
             </Link>
             <Link
               href={"/login" as Route}
-              className="px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950"
+              className="px-3 py-2 text-sm font-medium text-stone-400 transition-colors hover:text-stone-100"
             >
               Log in
             </Link>
             <Link
               href={"/register" as Route}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-800"
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-400 px-4 py-2 text-sm font-bold text-stone-950 transition-colors hover:bg-amber-300"
             >
               Create shipment
               <ArrowRight className="h-3.5 w-3.5" />
@@ -79,7 +79,7 @@ export function Navbar() {
 
           <button
             onClick={() => setMobileOpen((open) => !open)}
-            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-950 md:hidden"
+            className="rounded-md border border-stone-700 bg-stone-950 p-2 text-stone-200 transition-colors hover:bg-stone-900 md:hidden"
             aria-label="Toggle menu"
             aria-expanded={mobileOpen}
           >
@@ -90,29 +90,29 @@ export function Navbar() {
 
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-white/[0.98] px-5 pt-24 backdrop-blur-xl transition-all duration-200 md:hidden",
+          "fixed inset-0 z-40 bg-[#0c0b08]/[0.98] px-5 pt-24 backdrop-blur-xl transition-all duration-200 md:hidden",
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
         )}
       >
         <div className="mx-auto max-w-sm">
-          <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-2">
+          <div className="mb-5 rounded-md border border-stone-700 bg-stone-950 p-2">
             <Link
               href={"/track/IST-K7X2M9PQ" as Route}
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded-md bg-white px-3 py-3 text-sm font-semibold text-slate-800 shadow-sm"
+              className="flex items-center gap-3 rounded bg-stone-900 px-3 py-3 text-sm font-semibold text-stone-100 shadow-sm"
             >
-              <PackageSearch className="h-4 w-4 text-sky-700" />
+              <PackageSearch className="h-4 w-4 text-amber-400" />
               Track sample shipment
             </Link>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-md border border-stone-700 bg-stone-950">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="block border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 last:border-b-0 hover:bg-slate-50 hover:text-slate-950"
+                className="block border-b border-stone-800 px-4 py-3 text-sm font-medium text-stone-300 last:border-b-0 hover:bg-stone-900 hover:text-stone-100"
               >
                 {link.label}
               </Link>
@@ -123,7 +123,7 @@ export function Navbar() {
             <Link
               href={"/register" as Route}
               onClick={() => setMobileOpen(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-800"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-amber-400 px-5 py-3 text-sm font-bold text-stone-950 transition-colors hover:bg-amber-300"
             >
               Create shipment
               <ArrowRight className="h-4 w-4" />
@@ -131,7 +131,7 @@ export function Navbar() {
             <Link
               href={"/login" as Route}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              className="rounded-md border border-stone-700 bg-stone-950 px-5 py-3 text-center text-sm font-semibold text-stone-300 transition-colors hover:bg-stone-900"
             >
               Log in
             </Link>

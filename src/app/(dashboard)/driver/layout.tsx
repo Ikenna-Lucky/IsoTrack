@@ -29,11 +29,11 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
   return (
     <AuthGuard role="driver">
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="min-h-screen bg-[#070907] text-stone-100">
         <DriverSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="lg:ml-[230px] flex flex-col min-h-screen">
+        <div className="flex min-h-screen flex-col lg:ml-[230px]">
           <DriverTopbar title={title} onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <main className="flex-1 p-4 pb-24 sm:p-6 lg:p-7 lg:pb-7 xl:p-8">
             <ProfileCompletionBanner completion={completion} />
             {children}
           </main>

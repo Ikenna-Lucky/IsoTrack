@@ -10,7 +10,7 @@ import { CtaBanner } from "@/components/landing/cta-banner";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="min-h-screen bg-[#080806] text-stone-100">
       <Navbar />
       <main>
         <Hero />

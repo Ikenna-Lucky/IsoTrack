@@ -42,7 +42,7 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20 lg:py-28"
+      className="border-y border-stone-800 bg-[#080806] py-16 sm:py-20 lg:py-28"
       ref={ref as unknown as React.RefObject<HTMLElement>}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -54,10 +54,10 @@ export function HowItWorks() {
             transition: `opacity 0.55s ${SPRING}, transform 0.55s ${SPRING}`,
           }}
         >
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-700">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-300">
             Workflow
           </p>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-stone-100 sm:text-4xl">
             One shipment record from dispatch to delivery.
           </h2>
         </div>
@@ -66,7 +66,7 @@ export function HowItWorks() {
           {STEPS.map(({ icon: Icon, label, title, description }, index) => (
             <div
               key={label}
-              className="relative rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+              className="relative rounded-md border border-stone-800 bg-[#0c0b08] p-5 shadow-sm"
               style={{
                 opacity: inView ? 1 : 0,
                 transform: inView ? "translateY(0)" : "translateY(18px)",
@@ -74,17 +74,17 @@ export function HowItWorks() {
               }}
             >
               <div className="mb-6 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                <span className="text-xs font-semibold uppercase tracking-widest text-stone-500">
                   {label}
                 </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
-                  <Icon className="h-4 w-4 text-sky-700" />
+                <div className="flex h-9 w-9 items-center justify-center rounded border border-amber-500/25 bg-amber-400/10">
+                  <Icon className="h-4 w-4 text-amber-300" />
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-slate-950">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+              <h3 className="text-base font-semibold text-stone-100">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-400">{description}</p>
               {index < STEPS.length - 1 && (
-                <ArrowRight className="absolute -right-3 top-10 hidden h-5 w-5 text-slate-300 lg:block" />
+                <ArrowRight className="absolute -right-3 top-10 hidden h-5 w-5 text-stone-600 lg:block" />
               )}
             </div>
           ))}

@@ -34,7 +34,7 @@ export default function BusinessLayout({
 
   return (
     <AuthGuard role="business">
-    <div className="min-h-screen bg-[#09090b]">
+    <div className="min-h-screen bg-[#070907]">
       {/* Sidebar */}
       <BusinessSidebar
         open={sidebarOpen}
@@ -42,12 +42,12 @@ export default function BusinessLayout({
       />
 
       {/* Main content — offset by sidebar width on desktop */}
-      <div className="lg:ml-[230px] flex flex-col min-h-screen">
+      <div className="flex min-h-screen flex-col lg:ml-[230px]">
         <BusinessTopbar
           title={title}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-7 xl:p-8">
           <ProfileCompletionBanner completion={completion} />
           {children}
         </main>

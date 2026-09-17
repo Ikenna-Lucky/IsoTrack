@@ -1,96 +1,222 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  MapPin,
-  Package,
-  Clock,
-  Star,
+  AlertTriangle,
+  ArrowRight,
+  Bike,
+  Box,
   Car,
-  Truck,
-  Navigation,
   CheckCircle2,
   Circle,
+  Clock3,
+  Copy,
   Loader2,
-  ArrowRight,
-  Search,
-  Bike,
-  AlertTriangle,
+  MapPin,
+  Navigation,
+  PackageCheck,
   Radio,
+  Route,
+  Search,
+  ShieldCheck,
+  Star,
+  Truck,
+  type LucideIcon,
 } from "lucide-react";
-import { useTracking, type TrackingInfo } from "@/hooks/use-tracking";
+import { Logo } from "@/components/shared/logo";
 import { useSocket, type LocationUpdate } from "@/hooks/use-socket";
-import { LiveMap } from "@/components/map/live-map";
+import { useTracking, type TrackingInfo } from "@/hooks/use-tracking";
 import { cn } from "@/lib/utils";
-
-// ─── Status meta ──────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<
   string,
-  { label: string; color: string; bg: string; dot: string; icon: string }
+  {
+    label: string;
+    detail: string;
+    color: string;
+    bg: string;
+    dot: string;
+    icon: LucideIcon;
+  }
 > = {
-  pending:          { label: "Pending",          color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/20",   dot: "#f59e0b", icon: "🕐" },
-  assigned:         { label: "Driver Assigned",  color: "text-sky-400",     bg: "bg-sky-500/10 border-sky-500/20",       dot: "#0ea5e9", icon: "👤" },
-  picked_up:        { label: "Picked Up",        color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20", dot: "#8b5cf6", icon: "📦" },
-  in_transit:       { label: "In Transit",       color: "text-blue-400",    bg: "bg-blue-500/10 border-blue-500/20",     dot: "#60a5fa", icon: "🚚" },
-  out_for_delivery: { label: "Out for Delivery", color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20", dot: "#8b5cf6", icon: "🛵" },
-  delivered:        { label: "Delivered",        color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", dot: "#10b981", icon: "✅" },
-  failed:           { label: "Failed",           color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/20",     dot: "#f43f5e", icon: "❌" },
-  cancelled:        { label: "Cancelled",        color: "text-zinc-500",    bg: "bg-zinc-500/10 border-zinc-500/20",     dot: "#71717a", icon: "🚫" },
+  pending: {
+    label: "Queued",
+    detail: "Shipment has been created and is waiting for dispatch.",
+    color: "text-amber-300",
+    bg: "border-amber-400/25 bg-amber-400/10",
+    dot: "bg-amber-300",
+    icon: Clock3,
+  },
+  assigned: {
+    label: "Driver assigned",
+    detail: "A driver is attached and preparing for pickup.",
+    color: "text-sky-300",
+    bg: "border-sky-400/25 bg-sky-400/10",
+    dot: "bg-sky-300",
+    icon: ShieldCheck,
+  },
+  picked_up: {
+    label: "Picked up",
+    detail: "Your package has left the pickup point.",
+    color: "text-teal-300",
+    bg: "border-teal-400/25 bg-teal-400/10",
+    dot: "bg-teal-300",
+    icon: PackageCheck,
+  },
+  in_transit: {
+    label: "In transit",
+    detail: "The driver is moving toward the delivery area.",
+    color: "text-teal-300",
+    bg: "border-teal-400/25 bg-teal-400/10",
+    dot: "bg-teal-300",
+    icon: Route,
+  },
+  out_for_delivery: {
+    label: "Out for delivery",
+    detail: "The driver is nearby and completing the final handoff.",
+    color: "text-teal-300",
+    bg: "border-teal-400/25 bg-teal-400/10",
+    dot: "bg-teal-300",
+    icon: Navigation,
+  },
+  delivered: {
+    label: "Delivered",
+    detail: "Delivery has been completed and recorded.",
+    color: "text-emerald-300",
+    bg: "border-emerald-400/25 bg-emerald-400/10",
+    dot: "bg-emerald-300",
+    icon: CheckCircle2,
+  },
+  failed: {
+    label: "Action needed",
+    detail: "This delivery attempt was not successful.",
+    color: "text-rose-300",
+    bg: "border-rose-400/25 bg-rose-400/10",
+    dot: "bg-rose-300",
+    icon: AlertTriangle,
+  },
+  cancelled: {
+    label: "Cancelled",
+    detail: "This shipment is no longer active.",
+    color: "text-stone-400",
+    bg: "border-stone-500/25 bg-stone-500/10",
+    dot: "bg-stone-400",
+    icon: AlertTriangle,
+  },
 };
 
-// ─── Timeline steps ───────────────────────────────────────────────────────────
-
 const TIMELINE_STEPS = [
-  { status: "pending",          label: "Order Placed",      sub: "Shipment registered in system" },
-  { status: "assigned",         label: "Driver Assigned",   sub: "A driver has been assigned"    },
-  { status: "picked_up",        label: "Package Picked Up", sub: "Driver collected the package"  },
-  { status: "in_transit",       label: "In Transit",        sub: "On the way to destination"     },
-  { status: "out_for_delivery", label: "Out for Delivery",  sub: "Driver is nearby"              },
-  { status: "delivered",        label: "Delivered",         sub: "Package delivered successfully" },
+  { status: "pending", label: "Order placed", sub: "Shipment registered" },
+  { status: "assigned", label: "Driver assigned", sub: "Driver accepted the job" },
+  { status: "picked_up", label: "Package picked up", sub: "Collected from origin" },
+  { status: "in_transit", label: "In transit", sub: "Moving through route" },
+  { status: "out_for_delivery", label: "Out for delivery", sub: "Final handoff in progress" },
+  { status: "delivered", label: "Delivered", sub: "Package received" },
 ];
 
-const STATUS_ORDER = TIMELINE_STEPS.map((s) => s.status);
+const STATUS_ORDER = TIMELINE_STEPS.map((step) => step.status);
 
-function deriveTimeline(info: TrackingInfo) {
-  const currentIdx = Math.max(STATUS_ORDER.indexOf(info.status), 0);
-  const isFailed = info.status === "failed" || info.status === "cancelled";
+const DEMO_TRACKING_INFO: TrackingInfo = {
+  trackingId: "IST-K7X2M9PQ",
+  status: "out_for_delivery",
+  description: "Document parcel",
+  pickupAddress: {
+    street: "14 Admiralty Way",
+    city: "Lekki",
+    state: "Lagos",
+  },
+  deliveryAddress: {
+    street: "5 Bourdillon Road",
+    city: "Ikoyi",
+    state: "Lagos",
+  },
+  currentLocation: { lat: 6.4499, lng: 3.4723 },
+  scheduledPickup: "2026-09-17T09:00:00Z",
+  estimatedDelivery: "2026-09-17T12:15:00Z",
+  actualDelivery: null,
+  events: [
+    {
+      id: "demo-1",
+      status: "pending",
+      message: "Shipment request received.",
+      createdAt: "2026-09-17T09:00:00Z",
+    },
+    {
+      id: "demo-2",
+      status: "assigned",
+      message: "Babatunde Adeleke accepted the delivery.",
+      createdAt: "2026-09-17T09:14:00Z",
+    },
+    {
+      id: "demo-3",
+      status: "picked_up",
+      message: "Package collected from pickup.",
+      createdAt: "2026-09-17T10:02:00Z",
+    },
+    {
+      id: "demo-4",
+      status: "in_transit",
+      message: "Driver entered the delivery route.",
+      createdAt: "2026-09-17T10:31:00Z",
+    },
+    {
+      id: "demo-5",
+      status: "out_for_delivery",
+      message: "Driver is approaching the recipient area.",
+      createdAt: "2026-09-17T10:48:00Z",
+    },
+  ],
+  driver: {
+    name: "Babatunde Adeleke",
+    vehicleType: "motorcycle",
+    vehiclePlate: "LAG-278-AB",
+    rating: 4.8,
+    currentLocation: { lat: 6.4499, lng: 3.4723 },
+  },
+};
 
-  return TIMELINE_STEPS.map(({ status, label, sub }, i) => {
-    const event = info.events?.find((e) => e.status === status);
-    const time = event
-      ? new Date(event.createdAt).toLocaleTimeString("en-NG", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : null;
-    const date = event
-      ? new Date(event.createdAt).toLocaleDateString("en-NG", {
-          day: "numeric",
-          month: "short",
-        })
-      : null;
-    const message = event?.message ?? sub;
+function getStatusMeta(status: string) {
+  return STATUS_META[status] ?? STATUS_META.pending!;
+}
 
-    let state: "done" | "current" | "pending";
-    if (isFailed) {
-      state = i < currentIdx ? "done" : "pending";
-    } else if (i < currentIdx) {
-      state = "done";
-    } else if (i === currentIdx) {
-      state = "current";
-    } else {
-      state = "pending";
-    }
+function isLiveStatus(status: string | undefined) {
+  return status === "picked_up" || status === "in_transit" || status === "out_for_delivery";
+}
 
-    return { label, message, time, date, state };
+function formatDateTime(value: string | number | null | undefined) {
+  if (!value) return "Not available";
+  return new Date(value).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
-// ─── Vehicle icon helper ──────────────────────────────────────────────────────
+function deriveTimeline(info: TrackingInfo) {
+  const currentIndex = Math.max(STATUS_ORDER.indexOf(info.status), 0);
+  const inactive = info.status === "failed" || info.status === "cancelled";
+
+  return TIMELINE_STEPS.map((step, index) => {
+    const event = info.events?.find((item) => item.status === step.status);
+    const state =
+      inactive || index > currentIndex
+        ? "pending"
+        : index === currentIndex
+          ? "current"
+          : "done";
+
+    return {
+      ...step,
+      state,
+      message: event?.message ?? step.sub,
+      time: event?.createdAt ? formatDateTime(event.createdAt) : null,
+    };
+  });
+}
 
 function VehicleIcon({ type, className }: { type: string; className?: string }) {
   if (type === "truck") return <Truck className={className} />;
@@ -98,461 +224,474 @@ function VehicleIcon({ type, className }: { type: string; className?: string }) 
   return <Car className={className} />;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function TrackingSearch({ current }: { current: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(current);
 
-function StatusHero({ info }: { info: TrackingInfo }) {
-  const meta = (STATUS_META[info.status] ?? STATUS_META["pending"])!;
-  const isActive =
-    info.status === "in_transit" ||
-    info.status === "out_for_delivery" ||
-    info.status === "picked_up";
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const id = value.trim().toUpperCase();
+    if (id) router.push(`/track/${id}`);
+  }
 
   return (
-    <div className="motion-rise text-center space-y-4">
-      {/* Big status icon */}
-      <div className="flex justify-center">
-        <div
-          className={cn(
-            "flex h-20 w-20 items-center justify-center rounded-[28px] border-2 text-4xl",
-            isActive && "motion-soft-pulse",
-            meta.bg,
-          )}
-        >
-          {meta.icon}
+    <form
+      onSubmit={handleSubmit}
+      className="grid gap-3 rounded-md border border-stone-800 bg-[#0d1412] p-3 shadow-[0_20px_80px_rgba(0,0,0,0.35)] sm:grid-cols-[1fr_auto]"
+    >
+      <label className="relative block">
+        <span className="sr-only">Tracking ID</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-300" />
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => setValue(event.target.value.toUpperCase())}
+          placeholder="IST-K7X2M9PQ"
+          className="h-12 w-full rounded-md border border-stone-800 bg-black/40 pl-10 pr-3 font-mono text-sm font-bold tracking-wider text-stone-100 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/15"
+        />
+      </label>
+      <button
+        type="submit"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-amber-400 px-5 text-sm font-black text-stone-950 transition hover:bg-amber-300 active:scale-[0.98]"
+      >
+        Track shipment
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </form>
+  );
+}
+
+function StatusManifest({ info }: { info: TrackingInfo }) {
+  const meta = getStatusMeta(info.status);
+  const Icon = meta.icon;
+
+  return (
+    <section className="rounded-md border border-stone-800 bg-[#f2eadb] text-stone-950 shadow-[0_22px_90px_rgba(0,0,0,0.28)]">
+      <div className="border-b border-stone-300/80 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">
+              Delivery status
+            </p>
+            <h1 className="mt-2 text-3xl font-black leading-tight text-stone-950 sm:text-5xl">
+              {meta.label}
+            </h1>
+            <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-stone-600">
+              {meta.detail}
+            </p>
+          </div>
+          <div className={cn("rounded-md border px-4 py-3", meta.bg)}>
+            <div className="flex items-center gap-2">
+              <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
+              <Icon className={cn("h-5 w-5", meta.color)} />
+              <span className={cn("text-xs font-black uppercase tracking-[0.16em]", meta.color)}>
+                {isLiveStatus(info.status) ? "Live tracking" : "Recorded"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <ManifestStat label="Tracking ID" value={info.trackingId} mono />
+          <ManifestStat
+            label={info.actualDelivery ? "Delivered" : "Estimated arrival"}
+            value={formatDateTime(info.actualDelivery ?? info.estimatedDelivery)}
+          />
+          <ManifestStat label="Package" value={info.description || "General shipment"} />
         </div>
       </div>
 
-      {/* Status label */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-600 mb-1">
-          Shipment Status
-        </p>
-        <h1 className={cn("text-3xl font-bold tracking-tight", meta.color)}>
-          {meta.label}
-        </h1>
-        {isActive && (
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1">
-            <span className="motion-live-dot h-1.5 w-1.5 rounded-full bg-violet-400 text-violet-400" />
-            <span className="text-[11px] font-semibold text-violet-400 uppercase tracking-wide">
-              Live tracking active
-            </span>
-          </div>
+      <div className="grid gap-0 sm:grid-cols-2">
+        <AddressBlock
+          icon={Box}
+          eyebrow="Pickup"
+          title={`${info.pickupAddress.city}, ${info.pickupAddress.state}`}
+          body={info.pickupAddress.street}
+        />
+        <AddressBlock
+          icon={MapPin}
+          eyebrow="Drop-off"
+          title={`${info.deliveryAddress.city}, ${info.deliveryAddress.state}`}
+          body={info.deliveryAddress.street}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ManifestStat({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-stone-300/80 bg-white/45 px-3 py-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">{label}</p>
+      <p
+        className={cn(
+          "mt-1 truncate text-sm font-black text-stone-950",
+          mono && "font-mono tracking-wider",
         )}
-      </div>
-
-      {/* Tracking ID */}
-      <div className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2">
-        <Package className="h-3.5 w-3.5 text-zinc-600" />
-        <span className="font-mono text-sm font-bold text-zinc-300">{info.trackingId}</span>
-      </div>
-
-      {/* Description */}
-      {info.description && (
-        <p className="text-sm text-zinc-500">{info.description}</p>
-      )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
 
-function RouteCard({ info }: { info: TrackingInfo }) {
+function AddressBlock({
+  icon: Icon,
+  eyebrow,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
   return (
-    <div className="motion-rise rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-3">
-        Route
-      </p>
-      <div className="flex items-start gap-3">
-        {/* Visual connector */}
-        <div className="flex flex-col items-center pt-1 shrink-0">
-          <div className="h-2.5 w-2.5 rounded-full border-2 border-teal-400 bg-transparent" />
-          <div className="my-2 h-8 w-px bg-gradient-to-b from-teal-500/40 to-rose-500/40" />
-          <MapPin className="h-3 w-3 text-rose-400" />
+    <div className="border-t border-stone-300/80 p-5 sm:p-6 sm:[&+&]:border-l">
+      <div className="flex gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-300 bg-white/55">
+          <Icon className="h-4 w-4 text-teal-700" />
         </div>
-
-        <div className="flex-1 min-w-0 space-y-3">
-          {/* Pickup */}
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">
-              Pickup
-            </p>
-            <p className="text-sm text-zinc-200">
-              {info.pickupAddress.street},&nbsp;{info.pickupAddress.city}
-            </p>
-            <p className="text-xs text-zinc-600">{info.pickupAddress.state}</p>
-          </div>
-
-          {/* Destination */}
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-0.5">
-              Destination
-            </p>
-            <p className="text-sm text-zinc-200">
-              {info.deliveryAddress.street},&nbsp;{info.deliveryAddress.city}
-            </p>
-            <p className="text-xs text-zinc-600">{info.deliveryAddress.state}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ETA strip */}
-      {(info.estimatedDelivery || info.actualDelivery) && (
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2">
-          <Clock className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
-          <div>
-            {info.actualDelivery ? (
-              <>
-                <p className="text-[9px] uppercase tracking-wider text-zinc-600">Delivered</p>
-                <p className="text-xs font-semibold text-emerald-400">
-                  {new Date(info.actualDelivery).toLocaleDateString("en-NG", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-[9px] uppercase tracking-wider text-zinc-600">
-                  Estimated Delivery
-                </p>
-                <p className="text-xs font-semibold text-zinc-300">
-                  {new Date(info.estimatedDelivery!).toLocaleDateString("en-NG", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TimelineCard({ info }: { info: TrackingInfo }) {
-  const timeline = deriveTimeline(info);
-  const isFailed = info.status === "failed";
-  const isCancelled = info.status === "cancelled";
-
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-4">
-        Tracking Timeline
-      </p>
-
-      {(isFailed || isCancelled) && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/[0.08] px-3 py-2.5">
-          <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
-          <p className="text-xs text-rose-300">
-            {isFailed
-              ? "This delivery was unsuccessful. Please contact support."
-              : "This shipment has been cancelled."}
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">
+            {eyebrow}
           </p>
+          <p className="mt-1 font-black text-stone-950">{title}</p>
+          <p className="mt-1 text-sm leading-5 text-stone-600">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveMapPanel({ driverLocation }: { driverLocation: LocationUpdate | null }) {
+  return (
+    <section className="overflow-hidden rounded-md border border-teal-400/20 bg-[#0c1110]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="motion-live-dot h-2 w-2 rounded-full bg-teal-300 text-teal-300" />
+          <Radio className="h-4 w-4 text-teal-300" />
+          <p className="text-sm font-black text-stone-100">Live driver position</p>
+        </div>
+        <p className="text-xs font-semibold text-stone-500">
+          {driverLocation ? `Updated ${formatDateTime(driverLocation.timestamp)}` : "Awaiting signal"}
+        </p>
+      </div>
+      <RouteSignalMap driverLocation={driverLocation} />
+    </section>
+  );
+}
+
+function RouteSignalMap({ driverLocation }: { driverLocation: LocationUpdate | null }) {
+  return (
+    <div className="relative h-[360px] overflow-hidden bg-[#08100f] sm:h-[440px]">
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.08)_1px,transparent_1px)] bg-[size:42px_42px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(20,184,166,0.18),transparent_30%),radial-gradient(circle_at_22%_76%,rgba(245,158,11,0.12),transparent_28%)]" />
+      <svg
+        viewBox="0 0 720 420"
+        className="absolute inset-0 h-full w-full"
+        fill="none"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M72 312C168 252 214 342 306 250C374 182 424 192 489 129C539 81 592 87 650 52"
+          stroke="rgba(20,184,166,0.18)"
+          strokeWidth="42"
+          strokeLinecap="round"
+        />
+        <path
+          d="M72 312C168 252 214 342 306 250C374 182 424 192 489 129C539 81 592 87 650 52"
+          stroke="#14b8a6"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray="1 26"
+        />
+        <path
+          d="M72 312C168 252 214 342 306 250C374 182 424 192 489 129C539 81 592 87 650 52"
+          stroke="#f59e0b"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray="18 24"
+          className="motion-progress"
+        />
+      </svg>
+
+      <MapNode className="left-[9%] top-[68%]" label="Lekki" tone="amber" />
+      <MapNode className="left-[42%] top-[50%]" label="Driver" live />
+      <MapNode className="right-[8%] top-[13%]" label="Ikoyi" />
+
+      <div className="absolute left-4 top-4 rounded-md border border-white/10 bg-black/35 px-3 py-2 backdrop-blur">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">
+          Route signal
+        </p>
+        <p className="mt-1 text-sm font-black text-stone-100">Lekki to Ikoyi</p>
+      </div>
+
+      <div className="absolute bottom-4 right-4 rounded-md border border-white/10 bg-black/35 px-3 py-2 text-right backdrop-blur">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">
+          Coordinates
+        </p>
+        <p className="mt-1 font-mono text-xs font-black text-teal-200">
+          {driverLocation
+            ? `${driverLocation.lat.toFixed(4)}, ${driverLocation.lng.toFixed(4)}`
+            : "Awaiting ping"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MapNode({
+  className,
+  label,
+  live,
+  tone = "teal",
+}: {
+  className: string;
+  label: string;
+  live?: boolean;
+  tone?: "teal" | "amber";
+}) {
+  return (
+    <div className={cn("absolute -translate-x-1/2 -translate-y-1/2", className)}>
+      <div
+        className={cn(
+          "relative flex h-12 w-12 items-center justify-center rounded-full border bg-[#07100f]",
+          tone === "amber" ? "border-amber-300 text-amber-300" : "border-teal-300 text-teal-300",
+        )}
+      >
+        {live && <span className="motion-live-dot absolute inset-0 rounded-full bg-teal-300/25 text-teal-300" />}
+        {live ? <Navigation className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+      </div>
+      <p className="mt-2 rounded-md border border-white/10 bg-black/45 px-2 py-1 text-center text-xs font-black text-stone-100 backdrop-blur">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function DriverPanel({ driver }: { driver: NonNullable<TrackingInfo["driver"]> }) {
+  return (
+    <section className="rounded-md border border-stone-800 bg-[#0d1412] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-300">
+        Assigned driver
+      </p>
+      <div className="mt-4 flex items-center gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-teal-400/20 bg-teal-400/10">
+          <VehicleIcon type={driver.vehicleType} className="h-7 w-7 text-teal-200" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-black text-stone-100">{driver.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-stone-500">
+            <span className="flex items-center gap-1 text-amber-300">
+              <Star className="h-4 w-4 fill-amber-300" />
+              {driver.rating.toFixed(1)}
+            </span>
+            <span className="text-stone-700">/</span>
+            <span className="capitalize">{driver.vehicleType}</span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 rounded-md border border-white/10 bg-black/25 px-3 py-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-600">
+          Vehicle plate
+        </p>
+        <p className="mt-1 font-mono text-sm font-black tracking-wider text-stone-100">
+          {driver.vehiclePlate}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function TimelinePanel({ info }: { info: TrackingInfo }) {
+  const timeline = deriveTimeline(info);
+  const stopped = info.status === "failed" || info.status === "cancelled";
+
+  return (
+    <section className="rounded-md border border-stone-800 bg-[#0d1412] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">
+        Shipment log
+      </p>
+
+      {stopped && (
+        <div className="mt-4 rounded-md border border-rose-400/20 bg-rose-400/10 p-3 text-sm font-semibold text-rose-200">
+          This shipment is not currently moving. Please contact the sender for the next step.
         </div>
       )}
 
-      <ol className="relative space-y-0">
-        {timeline.map(({ label, message, time, date, state }, i) => {
-          const isLast = i === timeline.length - 1;
+      <ol className="mt-5 space-y-0">
+        {timeline.map((item, index) => {
+          const last = index === timeline.length - 1;
           return (
-            <li key={label} className="flex items-start gap-3">
-              {/* Dot + line */}
-              <div className="flex flex-col items-center shrink-0 w-5">
-                {state === "done" ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                ) : state === "current" ? (
-                  <div className="h-5 w-5 rounded-full border-2 border-teal-400 bg-teal-400/10 flex items-center justify-center">
-                    <div className="motion-live-dot h-1.5 w-1.5 rounded-full bg-teal-400 text-teal-400" />
-                  </div>
+            <li key={item.status} className="grid grid-cols-[24px_1fr] gap-3">
+              <div className="flex flex-col items-center">
+                {item.state === "done" ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                ) : item.state === "current" ? (
+                  <span className="motion-live-dot flex h-5 w-5 rounded-full border-2 border-teal-300 bg-teal-300/15 text-teal-300" />
                 ) : (
-                  <Circle className="h-5 w-5 text-zinc-800 shrink-0" />
+                  <Circle className="h-5 w-5 text-stone-700" />
                 )}
-                {!isLast && (
-                  <div
+                {!last && (
+                  <span
                     className={cn(
-                      "my-1 w-px flex-1 min-h-[20px]",
-                      state === "done"
-                        ? "bg-emerald-500/30"
-                        : state === "current"
-                        ? "bg-gradient-to-b from-teal-500/30 to-zinc-800/30"
-                        : "bg-zinc-800/40",
+                      "my-1 h-12 w-px",
+                      item.state === "done" ? "bg-emerald-300/35" : "bg-stone-800",
                     )}
                   />
                 )}
               </div>
-
-              {/* Content */}
-              <div className={cn("pb-4 min-w-0 flex-1", isLast && "pb-0")}>
-                <div className="flex items-start justify-between gap-2">
+              <div className={cn("pb-5", last && "pb-0")}>
+                <div className="flex items-start justify-between gap-3">
                   <p
                     className={cn(
-                      "text-sm font-semibold",
-                      state === "done"
-                        ? "text-zinc-200"
-                        : state === "current"
-                        ? "text-teal-400"
-                        : "text-zinc-700",
+                      "font-black",
+                      item.state === "pending" ? "text-stone-600" : "text-stone-100",
                     )}
                   >
-                    {label}
+                    {item.label}
                   </p>
-                  {time && (
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] text-zinc-500">{date}</p>
-                      <p className="text-[10px] font-medium text-zinc-500">{time}</p>
-                    </div>
+                  {item.time && (
+                    <p className="shrink-0 text-right text-xs font-semibold text-stone-500">
+                      {item.time}
+                    </p>
                   )}
                 </div>
                 <p
                   className={cn(
-                    "text-xs mt-0.5",
-                    state === "pending" ? "text-zinc-800" : "text-zinc-600",
+                    "mt-1 text-sm",
+                    item.state === "pending" ? "text-stone-700" : "text-stone-500",
                   )}
                 >
-                  {message}
+                  {item.message}
                 </p>
               </div>
             </li>
           );
         })}
       </ol>
-    </div>
+    </section>
   );
 }
 
-function DriverCard({ driver }: { driver: NonNullable<TrackingInfo["driver"]> }) {
-  const vehicleEmoji =
-    driver.vehicleType === "bike" || driver.vehicleType === "motorcycle"
-      ? "🛵"
-      : driver.vehicleType === "truck"
-      ? "🚚"
-      : "🚗";
-
+function LoadingState() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d11] p-4">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 mb-3">
-        Your Driver
+    <div className="rounded-md border border-stone-800 bg-[#0d1412] px-6 py-20 text-center">
+      <Loader2 className="mx-auto h-8 w-8 animate-spin text-teal-300" />
+      <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-stone-500">
+        Checking shipment record
       </p>
-
-      <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-gradient-to-br from-violet-500/20 to-blue-500/10 text-xl">
-          {vehicleEmoji}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-zinc-200 truncate">{driver.name}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <div className="flex items-center gap-0.5">
-              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-              <span className="text-xs text-zinc-400">{driver.rating.toFixed(1)}</span>
-            </div>
-            <span className="text-zinc-700">·</span>
-            <VehicleIcon
-              type={driver.vehicleType}
-              className="h-3 w-3 text-zinc-600"
-            />
-            <span className="text-xs text-zinc-500 capitalize">
-              {driver.vehicleType}
-            </span>
-          </div>
-        </div>
-
-        {/* Plate badge */}
-        <div className="shrink-0 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-center">
-          <p className="font-mono text-xs font-bold text-zinc-300">{driver.vehiclePlate}</p>
-        </div>
-      </div>
     </div>
   );
 }
 
-function LiveMapCard({ driverLocation }: { driverLocation: LocationUpdate | null }) {
+function ErrorState() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.15] bg-[#0d0d11]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
-        <div className="flex items-center gap-2">
-          <span className="motion-live-dot flex h-2 w-2 rounded-full bg-violet-400 text-violet-400" />
-          <Radio className="h-3.5 w-3.5 text-violet-400" />
-          <p className="text-xs font-semibold text-violet-400">Live Driver Location</p>
-        </div>
-        {driverLocation && (
-          <p className="text-[10px] text-zinc-600">
-            Updated{" "}
-            {new Date(driverLocation.timestamp).toLocaleTimeString("en-NG", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })}
-          </p>
-        )}
-      </div>
-      <LiveMap location={driverLocation} className="h-56" />
-      {!driverLocation && (
-        <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/[0.06] bg-[#0d0d11]/85 p-3 text-center backdrop-blur">
-          <div className="motion-shimmer mx-auto mb-2 h-1.5 w-28 rounded-full bg-white/[0.06]" />
-          <p className="text-xs text-zinc-600">Waiting for driver location…</p>
-        </div>
-      )}
+    <div className="rounded-md border border-rose-400/20 bg-rose-400/10 px-6 py-16 text-center">
+      <AlertTriangle className="mx-auto h-10 w-10 text-rose-300" />
+      <h2 className="mt-4 text-2xl font-black text-stone-100">Shipment not found</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-400">
+        Check the tracking ID from the sender and try again. IsoTrack IDs usually look like
+        IST-K7X2M9PQ.
+      </p>
     </div>
   );
 }
-
-// ─── Search bar ───────────────────────────────────────────────────────────────
-
-function TrackingSearch({ current }: { current: string }) {
-  const router = useRouter();
-  const [value, setValue] = useState(current);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const id = value.trim().toUpperCase();
-    if (id) router.push(`/track/${id}`);
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value.toUpperCase())}
-          placeholder="Enter tracking ID…"
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] pl-9 pr-3 py-2.5 text-sm font-mono text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/[0.12] transition-all"
-        />
-      </div>
-      <button
-        type="submit"
-        className="shrink-0 flex items-center gap-1.5 rounded-xl bg-teal-500/10 border border-teal-500/25 px-4 py-2.5 text-sm font-semibold text-teal-400 hover:bg-teal-500/[0.18] hover:border-teal-500/40 transition-all active:scale-[0.98]"
-      >
-        Track
-        <ArrowRight className="h-3.5 w-3.5" />
-      </button>
-    </form>
-  );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PublicTrackingPage() {
   const params = useParams();
   const trackingId = typeof params.trackingId === "string" ? params.trackingId : "";
-
   const { data: info, isLoading, isError } = useTracking(trackingId);
-
+  const demoInfo =
+    trackingId.toUpperCase() === DEMO_TRACKING_INFO.trackingId
+      ? DEMO_TRACKING_INFO
+      : null;
+  const trackingInfo = info ?? demoInfo;
   const [driverLocation, setDriverLocation] = useState<LocationUpdate | null>(null);
 
-  const isActive =
-    info?.status === "in_transit" ||
-    info?.status === "out_for_delivery" ||
-    info?.status === "picked_up";
+  const active = isLiveStatus(trackingInfo?.status);
 
-  // Seed map with last known driver location from API
   useEffect(() => {
-    if (info?.driver?.currentLocation) {
+    if (trackingInfo?.driver?.currentLocation) {
       setDriverLocation({
-        lat: info.driver.currentLocation.lat,
-        lng: info.driver.currentLocation.lng,
+        lat: trackingInfo.driver.currentLocation.lat,
+        lng: trackingInfo.driver.currentLocation.lng,
         heading: 0,
         speed: 0,
         timestamp: Date.now(),
       });
     }
-  }, [info?.driver?.currentLocation]);
+  }, [trackingInfo?.driver?.currentLocation]);
 
-  // Live socket updates (only when active)
   useSocket({
-    trackingId: isActive ? trackingId : null,
+    trackingId: active ? trackingId : null,
     onLocation: (update) => setDriverLocation(update),
   });
 
   return (
-    <div className="min-h-screen bg-[#08080a] text-white">
-      {/* ── Top bar ── */}
-      <header className="border-b border-white/[0.05] bg-[#08080a]/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="mx-auto max-w-2xl px-4 py-3 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600">
-              <Navigation className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="font-bold text-sm text-white tracking-tight">IsoTrack</span>
+    <div className="min-h-screen bg-[#070907] text-stone-100">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#070907]/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <Logo href="/" size={42} tone="light" />
+          <Link
+            href="/"
+            className="rounded-md border border-white/10 px-3 py-2 text-sm font-bold text-stone-300 transition hover:border-teal-300/40 hover:text-teal-100"
+          >
+            Home
           </Link>
-
-          {/* Live badge */}
-          {isActive && (
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-medium text-emerald-400">Live</span>
-            </div>
-          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-8 space-y-5">
-
-        {/* ── Search ── */}
-        <TrackingSearch current={trackingId} />
-
-        {/* ── Loading ── */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <div className="motion-shimmer h-2 w-40 rounded-full bg-white/[0.06]" />
-            <Loader2 className="h-7 w-7 animate-spin text-zinc-600" />
-            <p className="text-sm text-zinc-600">Looking up shipment…</p>
-          </div>
-        )}
-
-        {/* ── Error / Not found ── */}
-        {isError && !isLoading && (
-          <div className="flex flex-col items-center py-20 gap-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] text-2xl">
-              📦
-            </div>
-            <div>
-              <p className="text-base font-semibold text-zinc-300">Shipment not found</p>
-              <p className="text-sm text-zinc-600 mt-1">
-                Check your tracking ID and try again.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Main content ── */}
-        {info && !isLoading && (
-          <>
-            {/* Status hero */}
-            <StatusHero info={info} />
-
-            {/* Live map (active shipments only) */}
-            {isActive && (
-              <div className="motion-rise relative">
-                <LiveMapCard driverLocation={driverLocation} />
-              </div>
-            )}
-
-            {/* Route */}
-            <RouteCard info={info} />
-
-            {/* Driver (if assigned) */}
-            {info.driver && <DriverCard driver={info.driver} />}
-
-            {/* Timeline */}
-            <TimelineCard info={info} />
-
-            {/* Footer note */}
-            <p className="motion-rise text-center text-xs text-zinc-700 pb-4">
-              Powered by{" "}
-              <span className="text-zinc-600 font-medium">IsoTrack</span> · Updates
-              every 15 seconds when your order is active
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <section className="mb-6 grid gap-5 lg:grid-cols-[1fr_420px] lg:items-end">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-300">
+              Public shipment tracking
             </p>
-          </>
+            <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-stone-100 sm:text-5xl">
+              Follow the package from dispatch to doorstep.
+            </h1>
+          </div>
+          <TrackingSearch current={trackingId} />
+        </section>
+
+        {isLoading && !trackingInfo && <LoadingState />}
+        {isError && !isLoading && !trackingInfo && <ErrorState />}
+
+        {trackingInfo && (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <div className="space-y-5">
+              <StatusManifest info={trackingInfo} />
+              {active && <LiveMapPanel driverLocation={driverLocation} />}
+            </div>
+
+            <aside className="space-y-5">
+              {trackingInfo.driver && <DriverPanel driver={trackingInfo.driver} />}
+              <TimelinePanel info={trackingInfo} />
+              <div className="rounded-md border border-stone-800 bg-black/25 p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-stone-300">
+                  <Copy className="h-4 w-4 text-amber-300" />
+                  Share this tracking ID
+                </div>
+                <p className="mt-2 font-mono text-sm font-black tracking-wider text-teal-200">
+                  {trackingInfo.trackingId}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-stone-600">
+                  Updates refresh every 15 seconds while the delivery is active.
+                </p>
+              </div>
+            </aside>
+          </div>
         )}
       </main>
     </div>

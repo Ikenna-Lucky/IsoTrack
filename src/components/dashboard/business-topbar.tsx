@@ -1,42 +1,53 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
-  Menu, Bell, Search, X, CheckCircle2, Truck, Package,
-  AlertCircle, Loader2, Info,
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+  Info,
+  Loader2,
+  Menu,
+  Package,
+  Search,
+  Truck,
+  X,
 } from "lucide-react";
-import Link from "next/link";
 import { useAuthStore } from "@/store/auth";
 import {
-  useNotifications,
-  useMarkNotificationRead,
   useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
 } from "@/hooks/use-notifications";
 import type { Notification } from "@/types";
 import { cn } from "@/lib/utils";
 
-// Map notification title keywords to an icon + colour
-function notifIcon(n: Notification): { Icon: React.ElementType; color: string; bg: string } {
-  const t = n.title.toLowerCase();
-  if (t.includes("delivered") || t.includes("picked up") || t.includes("assigned"))
-    return { Icon: CheckCircle2, color: "text-sky-400",     bg: "bg-sky-500/10 border-sky-500/15"     };
-  if (t.includes("transit") || t.includes("delivery"))
-    return { Icon: Truck,        color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/15" };
-  if (t.includes("failed") || t.includes("cancel"))
-    return { Icon: AlertCircle,  color: "text-rose-400",    bg: "bg-rose-500/10 border-rose-500/15"   };
-  if (t.includes("created"))
-    return { Icon: Package,      color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/15" };
-  return   { Icon: Info,         color: "text-zinc-400",    bg: "bg-white/[0.06] border-white/[0.08]" };
+function notifIcon(notification: Notification): { Icon: React.ElementType; color: string; bg: string } {
+  const title = notification.title.toLowerCase();
+  if (title.includes("delivered") || title.includes("picked up") || title.includes("assigned")) {
+    return { Icon: CheckCircle2, color: "text-emerald-200", bg: "border-emerald-400/20 bg-emerald-400/10" };
+  }
+  if (title.includes("transit") || title.includes("delivery")) {
+    return { Icon: Truck, color: "text-teal-200", bg: "border-teal-400/20 bg-teal-400/10" };
+  }
+  if (title.includes("failed") || title.includes("cancel")) {
+    return { Icon: AlertCircle, color: "text-rose-200", bg: "border-rose-400/20 bg-rose-400/10" };
+  }
+  if (title.includes("created")) {
+    return { Icon: Package, color: "text-amber-200", bg: "border-amber-400/20 bg-amber-400/10" };
+  }
+  return { Icon: Info, color: "text-stone-400", bg: "border-white/[0.07] bg-white/[0.04]" };
 }
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1)  return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 interface Props {
@@ -45,77 +56,64 @@ interface Props {
 }
 
 export function BusinessTopbar({ title, onMenuClick }: Props) {
-  const user = useAuthStore((s) => s.user);
-  const [notifOpen,  setNotifOpen]  = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-
   const { notifications, unreadCount, isLoading } = useNotifications();
-  const markRead    = useMarkNotificationRead();
+  const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
-  function handleMarkAllRead() {
-    void markAllRead.mutateAsync();
-  }
-
-  function handleClickNotif(n: Notification) {
-    if (!n.isRead) void markRead.mutateAsync(n.id);
-  }
-
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-white/[0.05] bg-[#09090c]/90 backdrop-blur-xl px-4 sm:px-6">
-      {/* Hamburger — mobile only */}
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-white/[0.07] bg-[#080b0a]/92 px-4 backdrop-blur-xl sm:px-6">
       <button
         onClick={onMenuClick}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-all lg:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 lg:hidden"
         aria-label="Open navigation"
       >
         <Menu className="h-4 w-4" />
       </button>
 
-      {/* Page title */}
-      <div className="flex-1 flex items-center gap-3">
-        <h1 className="text-sm font-semibold text-white">{title}</h1>
-        <span className="hidden sm:block h-3.5 w-px bg-white/[0.08]" />
-        <span className="hidden sm:block text-[11px] text-zinc-600">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <h1 className="truncate text-sm font-black text-stone-50">{title}</h1>
+        <span className="hidden h-3.5 w-px bg-white/[0.08] sm:block" />
+        <span className="hidden text-[11px] font-bold text-stone-600 sm:block">
           {new Date().toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" })}
         </span>
       </div>
 
-      {/* Right side */}
       <div className="flex items-center gap-1.5">
-
-        {/* Search */}
         <div className="relative">
           {searchOpen ? (
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 w-48 animate-in fade-in duration-150">
-              <Search className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+            <div className="hidden w-52 items-center gap-2 rounded-md border border-white/[0.1] bg-white/[0.04] px-3 py-2 sm:flex">
+              <Search className="h-3.5 w-3.5 shrink-0 text-stone-500" />
               <input
                 autoFocus
                 placeholder="Search shipments..."
-                className="flex-1 bg-transparent text-xs text-white placeholder-zinc-600 outline-none"
+                className="min-w-0 flex-1 bg-transparent text-xs font-bold text-stone-100 outline-none placeholder:text-stone-600"
                 onBlur={() => setSearchOpen(false)}
               />
             </div>
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-all"
+              className="hidden h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 sm:flex"
+              aria-label="Open search"
             >
               <Search className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* Notification bell */}
         <div className="relative">
           <button
-            onClick={() => setNotifOpen((v) => !v)}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-all"
+            onClick={() => setNotifOpen((value) => !value)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200"
+            aria-label="Open notifications"
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-2 w-2 items-center justify-center rounded-full bg-sky-500 ring-2 ring-[#09090c]">
-                <span className="absolute h-2 w-2 rounded-full bg-sky-400 animate-ping opacity-75" />
+              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#080b0a]">
+                <span className="absolute h-2 w-2 animate-ping rounded-full bg-amber-300 opacity-75" />
               </span>
             )}
           </button>
@@ -123,14 +121,12 @@ export function BusinessTopbar({ title, onMenuClick }: Props) {
           {notifOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 top-10 z-20 w-80 rounded-2xl border border-white/[0.08] bg-[#0d0d11] shadow-2xl shadow-black/50 overflow-hidden">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+              <div className="absolute right-0 top-11 z-20 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-white/[0.08] bg-[#0d1412] shadow-2xl shadow-black/50">
+                <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold text-white">Notifications</p>
+                    <p className="text-xs font-black text-stone-100">Notifications</p>
                     {unreadCount > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500/20 px-1 text-[9px] font-bold text-sky-400">
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded bg-amber-400/15 px-1 text-[9px] font-black text-amber-200">
                         {unreadCount}
                       </span>
                     )}
@@ -138,71 +134,66 @@ export function BusinessTopbar({ title, onMenuClick }: Props) {
                   <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                       <button
-                        onClick={handleMarkAllRead}
+                        onClick={() => void markAllRead.mutateAsync()}
                         disabled={markAllRead.isPending}
-                        className="text-[10px] text-sky-400 hover:text-sky-300 transition-colors font-medium disabled:opacity-50"
+                        className="text-[10px] font-black text-teal-200 transition hover:text-teal-100 disabled:opacity-50"
                       >
                         Mark all read
                       </button>
                     )}
-                    <button onClick={() => setNotifOpen(false)} className="text-zinc-600 hover:text-zinc-300 transition-colors">
+                    <button onClick={() => setNotifOpen(false)} className="text-stone-600 transition hover:text-stone-300" aria-label="Close notifications">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Body */}
-                <div className="divide-y divide-white/[0.04] max-h-80 overflow-y-auto">
+                <div className="max-h-80 divide-y divide-white/[0.05] overflow-y-auto">
                   {isLoading && (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+                      <Loader2 className="h-5 w-5 animate-spin text-teal-200" />
                     </div>
                   )}
 
                   {!isLoading && notifications.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
-                      <Bell className="h-6 w-6 text-zinc-700" />
-                      <p className="text-xs text-zinc-500 font-medium">No notifications yet</p>
-                      <p className="text-[10px] text-zinc-700">
-                        You will see shipment updates here as they happen.
-                      </p>
+                    <div className="px-4 py-10 text-center">
+                      <Bell className="mx-auto h-6 w-6 text-stone-700" />
+                      <p className="mt-2 text-xs font-black text-stone-400">No notifications yet</p>
+                      <p className="mt-1 text-[10px] text-stone-700">Shipment updates will appear here.</p>
                     </div>
                   )}
 
-                  {!isLoading && notifications.map((n) => {
-                    const { Icon, color, bg } = notifIcon(n);
-                    return (
-                      <div
-                        key={n.id}
-                        onClick={() => handleClickNotif(n)}
-                        className={cn(
-                          "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
-                          !n.isRead ? "bg-sky-500/[0.03] hover:bg-sky-500/[0.06]" : "hover:bg-white/[0.02]",
-                        )}
-                      >
-                        <div className={cn("mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border", bg)}>
-                          <Icon className={cn("h-3 w-3", color)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn("text-xs leading-snug", !n.isRead ? "text-zinc-200 font-medium" : "text-zinc-500")}>
-                            {n.title}
-                          </p>
-                          <p className="text-[10px] text-zinc-600 mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-[10px] text-zinc-700 mt-0.5">{timeAgo(n.createdAt)}</p>
-                        </div>
-                        {!n.isRead && <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />}
-                      </div>
-                    );
-                  })}
+                  {!isLoading &&
+                    notifications.map((notification) => {
+                      const { Icon, color, bg } = notifIcon(notification);
+                      return (
+                        <button
+                          key={notification.id}
+                          onClick={() => {
+                            if (!notification.isRead) void markRead.mutateAsync(notification.id);
+                          }}
+                          className={cn(
+                            "flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition",
+                            !notification.isRead ? "bg-teal-400/[0.04] hover:bg-teal-400/[0.07]" : "hover:bg-white/[0.03]",
+                          )}
+                        >
+                          <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", bg)}>
+                            <Icon className={cn("h-3.5 w-3.5", color)} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={cn("text-xs leading-snug", !notification.isRead ? "font-black text-stone-100" : "font-bold text-stone-500")}>
+                              {notification.title}
+                            </p>
+                            <p className="mt-0.5 line-clamp-2 text-[10px] text-stone-600">{notification.message}</p>
+                            <p className="mt-1 text-[10px] text-stone-700">{timeAgo(notification.createdAt)}</p>
+                          </div>
+                          {!notification.isRead && <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
+                        </button>
+                      );
+                    })}
                 </div>
 
-                {/* Footer */}
-                <div className="px-4 py-2.5 border-t border-white/[0.05] text-center">
-                  <Link
-                    href="/business/settings"
-                    onClick={() => setNotifOpen(false)}
-                    className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                  >
+                <div className="border-t border-white/[0.07] px-4 py-2.5 text-center">
+                  <Link href="/business/settings" onClick={() => setNotifOpen(false)} className="text-[11px] font-bold text-stone-600 transition hover:text-stone-300">
                     Notification settings
                   </Link>
                 </div>
@@ -211,24 +202,18 @@ export function BusinessTopbar({ title, onMenuClick }: Props) {
           )}
         </div>
 
-        {/* Divider */}
-        <span className="h-5 w-px bg-white/[0.06] mx-0.5" />
+        <span className="mx-0.5 h-5 w-px bg-white/[0.07]" />
 
-        {/* User avatar */}
-        <div className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/[0.04] transition-all cursor-pointer">
+        <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-white/[0.04]">
           {user?.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.avatar}
-              alt={user?.name ?? ""}
-              className="h-7 w-7 rounded-full object-cover border border-sky-500/25 ring-1 ring-sky-500/10 ring-offset-1 ring-offset-[#09090c] shrink-0"
-            />
+            <img src={user.avatar} alt={user?.name ?? ""} className="h-7 w-7 shrink-0 rounded object-cover ring-1 ring-teal-400/20" />
           ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/30 to-teal-500/30 border border-sky-500/25 text-[11px] font-bold text-sky-300 uppercase ring-1 ring-sky-500/10 ring-offset-1 ring-offset-[#09090c] shrink-0">
-              {user?.name?.slice(0, 2) ?? "BU"}
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-teal-400/10 text-[11px] font-black uppercase text-teal-200 ring-1 ring-teal-400/20">
+              {(user?.name ?? "BU").slice(0, 2).toUpperCase()}
             </div>
           )}
-          <span className="hidden md:block text-[12px] font-medium text-zinc-400 max-w-[80px] truncate">
+          <span className="hidden max-w-[90px] truncate text-[12px] font-bold text-stone-400 md:block">
             {user?.name?.split(" ")[0] ?? "Business"}
           </span>
         </div>

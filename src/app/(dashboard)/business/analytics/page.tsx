@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { useMemo } from "react";
+import { BarChart3, CheckCircle2, Package, TrendingUp, XCircle } from "lucide-react";
 import { useBusinessAnalytics } from "@/hooks/use-business";
-import { useShipments, getShipmentList } from "@/hooks/use-shipments";
-import type { Shipment } from "@/types";
+import { getShipmentList, useShipments } from "@/hooks/use-shipments";
+import type { Shipment, ShipmentStatus } from "@/types";
+import { cn } from "@/lib/utils";
 
-// ─── Local types ───
 interface DailyStats {
   day: string;
   shipments: number;
@@ -14,306 +14,196 @@ interface DailyStats {
   delivered: number;
 }
 
-// ─── Helpers ──
-function formatNaira(amount: number): string {
+function formatNaira(kobo: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     maximumFractionDigits: 0,
-  }).format(amount / 100);
+  }).format(kobo / 100);
 }
 
-/** Build per-day stats for the last 7 days from a list of shipments. */
 function buildDailyStats(shipments: Shipment[]): DailyStats[] {
-  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const now = new Date();
-  const days: DailyStats[] = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(now.getDate() - (6 - i));
-    return { day: DAY_LABELS[d.getDay()]!, shipments: 0, revenue: 0, delivered: 0 };
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - index));
+    return { day: labels[date.getDay()]!, shipments: 0, revenue: 0, delivered: 0 };
   });
 
-  for (const s of shipments) {
-    const created = new Date(s.createdAt);
+  shipments.forEach((shipment) => {
+    const created = new Date(shipment.createdAt);
     const diffDays = Math.floor((now.getTime() - created.getTime()) / 86_400_000);
-    if (diffDays < 0 || diffDays > 6) continue;
-    const idx = 6 - diffDays;
-    if (!days[idx]) continue;
-    days[idx].shipments++;
-    days[idx].revenue += s.priceKobo;
-    if (s.status === "delivered") days[idx].delivered++;
-  }
+    if (diffDays < 0 || diffDays > 6) return;
+    const item = days[6 - diffDays];
+    if (!item) return;
+    item.shipments += 1;
+    item.revenue += shipment.priceKobo;
+    if (shipment.status === "delivered") item.delivered += 1;
+  });
+
   return days;
 }
 
-// ─── SVG area chart ───────────────────────────────────────────────────────────
+const STATUS_LABELS: Record<ShipmentStatus, string> = {
+  pending: "Pending",
+  assigned: "Assigned",
+  picked_up: "Picked up",
+  in_transit: "In transit",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
 
-function smoothPath(pts: { x: number; y: number }[]): string {
-  if (pts.length < 2) return "";
-  let d = `M ${pts[0]!.x} ${pts[0]!.y}`;
-  for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1]!;
-    const curr = pts[i]!;
-    const dx = (curr.x - prev.x) * 0.45;
-    d += ` C ${prev.x + dx} ${prev.y}, ${curr.x - dx} ${curr.y}, ${curr.x} ${curr.y}`;
-  }
-  return d;
-}
+const STATUS_BARS: Record<ShipmentStatus, string> = {
+  pending: "bg-amber-300",
+  assigned: "bg-teal-300",
+  picked_up: "bg-teal-300",
+  in_transit: "bg-teal-300",
+  out_for_delivery: "bg-teal-300",
+  delivered: "bg-emerald-300",
+  failed: "bg-rose-300",
+  cancelled: "bg-stone-500",
+};
 
-function AreaChart({
-  data,
-  valueKey,
-  color,
-  fillColor,
+function Metric({
   label,
-  formatValue,
+  value,
+  sub,
+  Icon,
+  tone = "teal",
 }: {
-  data: DailyStats[];
-  valueKey: "shipments" | "revenue" | "delivered";
-  color: string;
-  fillColor: string;
   label: string;
-  formatValue: (v: number) => string;
+  value: string;
+  sub: string;
+  Icon: typeof Package;
+  tone?: "teal" | "amber" | "emerald" | "rose";
 }) {
-  const [tooltip, setTooltip] = useState<number | null>(null);
-  const W = 600;
-  const H = 120;
-  const PAD = { top: 12, right: 12, bottom: 20, left: 12 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-
-  const values = data.map((d) => d[valueKey]);
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = max - min || 1;
-
-  const pts = data.map((d, i) => ({
-    x: PAD.left + (i / (data.length - 1)) * innerW,
-    y: PAD.top + (1 - (d[valueKey] - min) / range) * innerH,
-    day: d.day,
-    val: d[valueKey],
-  }));
-
-  const linePath = smoothPath(pts);
-  const areaPath = linePath
-    ? `${linePath} L ${pts[pts.length - 1]!.x} ${H - PAD.bottom} L ${pts[0]!.x} ${H - PAD.bottom} Z`
-    : "";
+  const colors = {
+    teal: "border-teal-400/20 bg-teal-400/10 text-teal-200",
+    amber: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+    rose: "border-rose-400/20 bg-rose-400/10 text-rose-200",
+  }[tone];
 
   return (
-    <div className="rounded-2xl border border-white/6 bg-[#0d0d11] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-white">{label}</p>
-        <p className="text-xs text-zinc-600">Last 7 days</p>
-      </div>
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full overflow-visible"
-          style={{ height: 120 }}
-          onMouseLeave={() => setTooltip(null)}
-        >
-          <defs>
-            <linearGradient id={`grad-${label}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={fillColor} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={fillColor} stopOpacity="0.01" />
-            </linearGradient>
-          </defs>
-          {areaPath && <path d={areaPath} fill={`url(#grad-${label})`} />}
-          {linePath && (
-            <path
-              d={linePath}
-              fill="none"
-              stroke={color}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          {pts.map((pt, i) => (
-            <g key={i}>
-              <circle
-                cx={pt.x}
-                cy={pt.y}
-                r={tooltip === i ? 4 : 2.5}
-                fill={tooltip === i ? color : "#0d0d11"}
-                stroke={color}
-                strokeWidth="1.5"
-                style={{ transition: "r 150ms" }}
-                onMouseEnter={() => setTooltip(i)}
-              />
-              {tooltip === i && (
-                <foreignObject x={pt.x - 40} y={pt.y - 36} width={80} height={28}>
-                  <div className="rounded-lg border border-white/10 bg-[#16161d] px-2 py-1 text-center text-[10px] font-semibold text-white shadow-xl whitespace-nowrap">
-                    {formatValue(pt.val)}
-                  </div>
-                </foreignObject>
-              )}
-              <text
-                key={`day-${i}`}
-                x={pt.x}
-                y={H - 4}
-                textAnchor="middle"
-                fill="#52526a"
-                fontSize="8"
-                fontFamily="system-ui"
-              >
-                {pt.day}
-              </text>
-            </g>
-          ))}
-        </svg>
+    <div className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-600">{label}</p>
+          <p className="mt-3 text-2xl font-black tracking-tight text-stone-50">{value}</p>
+          <p className="mt-1 text-xs font-bold text-stone-600">{sub}</p>
+        </div>
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-md border", colors)}>
+          <Icon className="h-4 w-4" />
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Status donut ─────────────────────────────────────────────────────────────
+function WeeklyBars({ data }: { data: DailyStats[] }) {
+  const max = Math.max(...data.map((item) => item.revenue), 1);
 
-// ─── Top routes ───────────────────────────────────────────────────────────────
-
-// ─── Delivery heatmap ─────────────────────────────────────────────────────────
-
-
-// ─── Delivery timings ─────────────────────────────────────────────────────────
-
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-2xl bg-white/4 ${className ?? ""}`} />;
+  return (
+    <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Last 7 days</p>
+          <h3 className="mt-1 text-base font-black text-stone-50">Revenue rhythm</h3>
+        </div>
+        <p className="text-xs font-black text-amber-200">{formatNaira(data.reduce((sum, item) => sum + item.revenue, 0))}</p>
+      </div>
+      <div className="mt-6 grid h-56 grid-cols-7 items-end gap-2">
+        {data.map((item) => (
+          <div key={item.day} className="flex h-full min-w-0 flex-col justify-end gap-2">
+            <div className="flex flex-1 items-end rounded bg-white/[0.03]">
+              <div
+                className="w-full rounded bg-gradient-to-t from-amber-300 to-teal-200 transition-all"
+                style={{ height: `${Math.max(8, (item.revenue / max) * 100)}%` }}
+                title={`${item.day}: ${formatNaira(item.revenue)}`}
+              />
+            </div>
+            <p className="truncate text-center text-[10px] font-black text-stone-600">{item.day}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
   const { data: analytics, isLoading: analyticsLoading } = useBusinessAnalytics();
   const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments({ pageSize: 200 });
-  const isLoading = analyticsLoading || shipmentsLoading;
+  const shipments = getShipmentList(shipmentsData);
+  const dailyStats = useMemo(() => buildDailyStats(shipments), [shipments]);
+  const loading = analyticsLoading || shipmentsLoading;
 
-  const allShipments = getShipmentList(shipmentsData);
-
-  const statusBreakdown = analytics?.statusBreakdown ?? {};
-  const totalShipments = analytics?.totalShipments ?? 0;
-
-  const dailyStats = useMemo(() => buildDailyStats(allShipments), [allShipments]);
-
-  const deliveredCount = statusBreakdown.delivered ?? 0;
-  const failedCount = (statusBreakdown.failed ?? 0) + (statusBreakdown.cancelled ?? 0);
-  const successRate = totalShipments > 0 ? Math.round((deliveredCount / totalShipments) * 100) : 0;
-
-  const weekRevenue = dailyStats.reduce((s, d) => s + d.revenue, 0);
-  const weekShipments = dailyStats.reduce((s, d) => s + d.shipments, 0);
+  const totalShipments = analytics?.totalShipments ?? shipments.length;
+  const totalRevenue = analytics?.totalRevenueKobo ?? shipments.reduce((sum, shipment) => sum + shipment.priceKobo, 0);
+  const delivered = analytics?.statusBreakdown?.delivered ?? shipments.filter((shipment) => shipment.status === "delivered").length;
+  const failed = (analytics?.statusBreakdown?.failed ?? 0) + (analytics?.statusBreakdown?.cancelled ?? 0);
+  const successRate = totalShipments > 0 ? Math.round((delivered / totalShipments) * 100) : 0;
+  const weekShipments = dailyStats.reduce((sum, item) => sum + item.shipments, 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Analytics</h2>
-        <p className="text-sm text-zinc-500 mt-0.5">Performance overview</p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Performance board</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Analytics</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+          Read shipment volume, revenue, delivery reliability, and exception patterns across your dispatch operation.
+        </p>
+      </section>
 
-      {isLoading ? (
-        <div className="space-y-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
-          </div>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <Skeleton className="h-40" />
-            <Skeleton className="h-40" />
-          </div>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <Skeleton className="h-52" />
-            <Skeleton className="h-52" />
-          </div>
-          <Skeleton className="h-48" />
-          <Skeleton className="h-36" />
+      {loading ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => <div key={item} className="h-32 animate-pulse rounded-md bg-white/[0.04]" />)}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              {
-                label: "Revenue (7d)",
-                value: formatNaira(weekRevenue),
-                trend: null,
-                up: true,
-                color: "text-emerald-400",
-                border: "border-emerald-500/[0.12]",
-                glow: "bg-emerald-500",
-              },
-              {
-                label: "Shipments (7d)",
-                value: String(weekShipments),
-                trend: null,
-                up: true,
-                color: "text-sky-400",
-                border: "border-sky-500/[0.12]",
-                glow: "bg-sky-500",
-              },
-              {
-                label: "Success Rate",
-                value: `${successRate}%`,
-                trend: null,
-                up: true,
-                color: "text-teal-400",
-                border: "border-teal-500/[0.12]",
-                glow: "bg-teal-500",
-              },
-              {
-                label: "Failed",
-                value: String(failedCount),
-                trend: null,
-                up: false,
-                color: "text-rose-400",
-                border: "border-rose-500/[0.12]",
-                glow: "bg-rose-500",
-              },
-            ].map(({ label, value, up, color, border, glow }) => (
-              <div
-                key={label}
-                className={`relative rounded-2xl border ${border} bg-[#0d0d11] p-3.5 sm:p-5 overflow-hidden hover:-translate-y-0.5 transition-all duration-300`}
-              >
-                <div
-                  className={`absolute -bottom-6 -right-6 h-20 w-20 rounded-full blur-2xl opacity-[0.12] ${glow}`}
-                />
-                <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-zinc-600 mb-1.5 sm:mb-2 leading-tight">
-                  {label}
-                </p>
-                <p className={`text-xl sm:text-2xl font-bold ${color} tabular-nums truncate`}>
-                  {value}
-                </p>
-                <div
-                  className={`mt-1.5 sm:mt-2 inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold ${up ? "bg-emerald-500/8 text-emerald-400" : "bg-rose-500/8 text-rose-400"}`}
-                >
-                  {up ? (
-                    <TrendingUp className="h-2.5 w-2.5" />
-                  ) : (
-                    <TrendingDown className="h-2.5 w-2.5" />
-                  )}
-                  {up ? "All time" : "needs attention"}
-                </div>
-              </div>
-            ))}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric label="Revenue" value={formatNaira(totalRevenue)} sub="All recorded shipments" Icon={TrendingUp} tone="amber" />
+            <Metric label="Shipments" value={String(totalShipments)} sub={`${weekShipments} created this week`} Icon={Package} />
+            <Metric label="Success rate" value={`${successRate}%`} sub={`${delivered} delivered`} Icon={CheckCircle2} tone="emerald" />
+            <Metric label="Exceptions" value={String(failed)} sub="Failed or cancelled" Icon={XCircle} tone={failed > 0 ? "rose" : "teal"} />
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-4">
-            <AreaChart
-              data={dailyStats}
-              valueKey="revenue"
-              color="#0ea5e9"
-              fillColor="#0ea5e9"
-              label="Revenue (NGN)"
-              formatValue={(v) => formatNaira(v)}
-            />
-            <AreaChart
-              data={dailyStats}
-              valueKey="shipments"
-              color="#8b5cf6"
-              fillColor="#8b5cf6"
-              label="Shipments"
-              formatValue={(v) => `${v}`}
-            />
+          <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
+            <WeeklyBars data={dailyStats} />
+            <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Status distribution</p>
+              <h3 className="mt-1 text-base font-black text-stone-50">Shipment health</h3>
+              <div className="mt-5 space-y-3">
+                {(Object.keys(STATUS_LABELS) as ShipmentStatus[]).map((status) => {
+                  const count = analytics?.statusBreakdown?.[status] ?? shipments.filter((shipment) => shipment.status === status).length;
+                  const percent = totalShipments > 0 ? Math.round((count / totalShipments) * 100) : 0;
+                  return (
+                    <div key={status}>
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-black text-stone-300">{STATUS_LABELS[status]}</span>
+                        <span className="text-[10px] font-bold text-stone-600">{count} ({percent}%)</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className={cn("h-full rounded-full", STATUS_BARS[status])} style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           </div>
+
+          <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-teal-200" />
+              <p className="text-sm font-black text-stone-100">Route intelligence</p>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-stone-500">
+              Detailed route ranking can be layered here once the backend returns origin-destination aggregation. Current analytics are computed from available shipment records.
+            </p>
+          </section>
         </>
       )}
     </div>

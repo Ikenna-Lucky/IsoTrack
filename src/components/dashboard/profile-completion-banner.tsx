@@ -20,55 +20,44 @@ export function ProfileCompletionBanner({ completion }: Props) {
   const done      = items.filter((i) => i.done);
 
   return (
-    <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-
-      {/* Progress bar top accent */}
+    <div className="mb-6 overflow-hidden rounded-md border border-white/[0.07] bg-[#0d1412]">
       <div className="h-0.5 bg-white/[0.04]">
         <div
-          className="h-full bg-sky-500 transition-all duration-500"
+          className="h-full bg-teal-300 transition-all duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
 
-      <div className="px-4 sm:px-5 py-4">
-
-        {/* Header */}
+      <div className="px-4 py-4 sm:px-5">
         <div className="flex items-center gap-3">
-          {/* Icon hidden on very small screens */}
-          <div className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/20">
-            <ShieldCheck className="h-4 w-4 text-sky-400" />
+          <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-teal-400/20 bg-teal-400/10 sm:flex">
+            <ShieldCheck className="h-4 w-4 text-teal-200" />
           </div>
 
-          {/* Title + subtitle */}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              {/* Icon on mobile inline with title */}
-              <ShieldCheck className="sm:hidden h-3.5 w-3.5 shrink-0 text-sky-400" />
-              <p className="text-sm font-semibold text-white leading-tight">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-teal-200 sm:hidden" />
+              <p className="text-sm font-black leading-tight text-stone-100">
                 Complete your profile
               </p>
-              {/* Progress pill desktop only */}
-              <span className="hidden md:inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+              <span className="hidden items-center gap-1 rounded border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] font-black text-stone-500 md:inline-flex">
                 {completedCount}/{totalCount}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug">
-              {/* Shorter text on mobile */}
+            <p className="mt-0.5 text-[11px] leading-snug text-stone-500">
               <span className="sm:hidden">
                 {remaining.length} field{remaining.length !== 1 ? "s" : ""} needed for support &amp; tracking
               </span>
               <span className="hidden sm:inline">
-                {remaining.length} detail{remaining.length !== 1 ? "s" : ""} still needed &mdash; required for support and delivery tracking
+                {remaining.length} detail{remaining.length !== 1 ? "s" : ""} still needed for support and delivery tracking
               </span>
             </p>
           </div>
 
-          {/* CTA button */}
           <Link
             href={settingsPath as Route}
-            className="shrink-0 flex items-center gap-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 transition-colors px-3 py-2 text-[12px] font-semibold text-white"
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-amber-400 px-3 py-2 text-[12px] font-black text-stone-950 transition hover:bg-amber-300"
           >
-            {/* Label varies by screen size */}
             <span className="sm:hidden">Fix</span>
             <span className="hidden sm:inline">Go to settings</span>
             <ArrowRight className="h-3 w-3" />
@@ -77,42 +66,37 @@ export function ProfileCompletionBanner({ completion }: Props) {
 
         {/* Checklist */}
         <div className="mt-3 space-y-1.5">
-          {/* Incomplete items always show */}
           {remaining.map((item) => (
             <div
               key={item.key}
-              className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2.5"
+              className="flex items-start gap-3 rounded-md border border-white/[0.07] bg-white/[0.03] px-3 py-2.5"
             >
               <div className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 border-amber-500/50 bg-amber-500/10" />
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium text-zinc-300 leading-tight">
+                <p className="text-[12px] font-bold leading-tight text-stone-300">
                   {item.label}
                 </p>
-                {/* Description hide on mobile */}
-                <p className="hidden sm:block text-[10px] text-zinc-600 mt-0.5 leading-snug">
+                <p className="mt-0.5 hidden text-[10px] leading-snug text-stone-600 sm:block">
                   {item.description}
                 </p>
               </div>
             </div>
           ))}
 
-          {/* Completed items collapse to summary on mobile */}
           {done.length > 0 && (
             <>
-              {/* Mobile: one compact summary row */}
-              <div className="sm:hidden flex items-center gap-2 px-1 pt-0.5">
+              <div className="flex items-center gap-2 px-1 pt-0.5 sm:hidden">
                 <CheckCircle2 className="h-3 w-3 text-emerald-500/50 shrink-0" />
-                <p className="text-[10px] text-zinc-700">
+                <p className="text-[10px] text-stone-700">
                   {done.length} field{done.length !== 1 ? "s" : ""} already complete
                 </p>
               </div>
 
-              {/* Desktop: individual struck-through rows */}
-              <div className="hidden sm:flex flex-wrap gap-x-4 gap-y-1 px-1 pt-0.5">
+              <div className="hidden flex-wrap gap-x-4 gap-y-1 px-1 pt-0.5 sm:flex">
                 {done.map((item) => (
                   <div key={item.key} className="flex items-center gap-1.5 opacity-35">
                     <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
-                    <p className={cn("text-[11px] font-medium text-zinc-500 line-through")}>
+                    <p className={cn("text-[11px] font-bold text-stone-500 line-through")}>
                       {item.label}
                     </p>
                   </div>

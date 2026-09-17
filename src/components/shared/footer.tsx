@@ -22,14 +22,14 @@ const FOOTER_LINKS = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white">
+    <footer className="border-t border-stone-800 bg-[#0c0b08]">
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid grid-cols-2 gap-8 sm:gap-10 lg:grid-cols-4">
           <div className="col-span-2 lg:col-span-1">
             <div className="mb-4">
-              <Logo href="/" size={46} tone="dark" />
+              <Logo href="/" size={46} tone="light" />
             </div>
-            <p className="max-w-xs text-xs leading-6 text-slate-500">
+            <p className="max-w-xs text-xs leading-6 text-stone-500">
               Shipment tracking, driver dispatch, live location, and payment visibility
               for Lagos delivery operations.
             </p>
@@ -37,18 +37,18 @@ export function Footer() {
 
           {Object.entries(FOOTER_LINKS).map(([group, links]) => (
             <div key={group}>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-stone-500">
                 {group}
               </p>
               <ul className="space-y-3">
                 {links.map(({ label, href }) => (
                   <li key={label}>
                     {href.startsWith("#") ? (
-                      <a href={href} className="text-sm text-slate-500 transition-colors hover:text-slate-950">
+                      <a href={href} className="text-sm text-stone-500 transition-colors hover:text-stone-100">
                         {label}
                       </a>
                     ) : (
-                      <Link href={href as Route} className="text-sm text-slate-500 transition-colors hover:text-slate-950">
+                      <Link href={href as Route} className="text-sm text-stone-500 transition-colors hover:text-stone-100">
                         {label}
                       </Link>
                     )}
@@ -59,11 +59,11 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-400">
+        <div className="mt-12 flex flex-col gap-3 border-t border-stone-800 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-stone-600">
             &copy; {new Date().getFullYear()} IsoTrack.
           </p>
-          <p className="text-xs text-slate-400">Built for Nigerian shipment workflows.</p>
+          <p className="text-xs text-stone-600">Built for Nigerian shipment workflows.</p>
         </div>
       </div>
     </footer>

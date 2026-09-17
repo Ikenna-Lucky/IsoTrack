@@ -36,7 +36,7 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
       className="fixed bottom-0 inset-x-0 z-20 lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="border-t border-white/[0.06] bg-[#09090c]/95 backdrop-blur-xl">
+      <div className="border-t border-white/[0.07] bg-[#080b0a]/95 backdrop-blur-xl">
         <div className="flex items-stretch h-16">
 
           {/* Main nav links */}
@@ -48,12 +48,12 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
                 href={href as Route}
                 className={cn(
                   "relative flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-all duration-150",
-                  active ? "text-teal-400" : "text-zinc-600 active:text-zinc-300",
+                  active ? "text-teal-200" : "text-stone-600 active:text-stone-300",
                 )}
               >
                 {/* Top accent bar */}
                 {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-teal-400 shadow-[0_0_8px_#2dd4bf]" />
+                  <span className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-amber-300" />
                 )}
 
                 <Icon
@@ -65,7 +65,7 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
                 <span
                   className={cn(
                     "text-[10px] font-semibold tracking-wide",
-                    active ? "text-teal-400" : "text-zinc-600",
+                    active ? "text-teal-200" : "text-stone-600",
                   )}
                 >
                   {label}
@@ -82,7 +82,7 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
           {/* More — opens sidebar drawer */}
           <button
             onClick={onMenuOpen}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-zinc-600 active:text-zinc-300 transition-all duration-150"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-stone-600 transition-all duration-150 active:text-stone-300"
             aria-label="Open menu"
           >
             <Menu className="h-[22px] w-[22px]" />

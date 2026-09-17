@@ -31,9 +31,9 @@ export const metadata: Metadata = {
     description: "Enterprise-grade logistics and shipment tracking platform.",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/images/isotrack-app-icon.png",
+    shortcut: "/images/isotrack-app-icon.png",
+    apple: "/images/isotrack-app-icon.png",
   },
   robots: {
     index: true,
