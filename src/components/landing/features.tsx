@@ -55,7 +55,7 @@ export function Features() {
   const { ref, inView } = useInView({ threshold: 0.08, rootMargin: "0px 0px -60px 0px" });
 
   return (
-    <section id="features" className="bg-white py-16 sm:py-20 lg:py-28" ref={ref as unknown as React.RefObject<HTMLElement>}>
+    <section id="features" className="bg-[#080806] py-16 sm:py-20 lg:py-28" ref={ref as unknown as React.RefObject<HTMLElement>}>
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <div
           className="mb-10 max-w-2xl lg:mb-14"
@@ -65,34 +65,34 @@ export function Features() {
             transition: `opacity 0.55s ${SPRING}, transform 0.55s ${SPRING}`,
           }}
         >
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-sky-700">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-300">
             Operations
           </p>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-stone-100 sm:text-4xl">
             The daily delivery loop, covered end to end.
           </h2>
-          <p className="mt-4 leading-7 text-slate-600">
+          <p className="mt-4 leading-7 text-stone-400">
             IsoTrack is built around the handoffs that usually create support calls:
             payment, driver assignment, location updates, and delivery exceptions.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-slate-200 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 overflow-hidden rounded-md border border-stone-800 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, description }, index) => (
             <div
               key={title}
-              className="border-b border-slate-200 bg-white p-5 transition-colors hover:bg-slate-50 sm:[&:nth-child(odd)]:border-r lg:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(n+4)]:border-b-0"
+              className="border-b border-stone-800 bg-[#0c0b08] p-5 transition-colors hover:bg-[#12100c] sm:[&:nth-child(odd)]:border-r lg:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(n+4)]:border-b-0"
               style={{
                 opacity: inView ? 1 : 0,
                 transform: inView ? "translateY(0)" : "translateY(18px)",
                 transition: `opacity 0.4s ${SPRING} ${index * 55}ms, transform 0.4s ${SPRING} ${index * 55}ms, background-color 0.2s ease`,
               }}
             >
-              <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
-                <Icon className="h-4 w-4 text-sky-700" />
+              <div className="mb-5 flex h-9 w-9 items-center justify-center rounded border border-teal-400/20 bg-teal-400/10">
+                <Icon className="h-4 w-4 text-teal-300" />
               </div>
-              <h3 className="text-base font-semibold text-slate-950">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+              <h3 className="text-base font-semibold text-stone-100">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-400">{description}</p>
             </div>
           ))}
         </div>

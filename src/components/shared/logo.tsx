@@ -18,27 +18,42 @@ export function Logo({
   href,
   className,
 }: LogoProps) {
-  const visualHeight = showWordmark ? Math.max(18, Math.round(size * 0.72)) : size;
-  const width = showWordmark ? Math.round(visualHeight * 4) : visualHeight;
-  const src = showWordmark ? "/images/isotrack-logo.svg" : "/favicon.svg";
+  const markSize = showWordmark ? Math.max(30, Math.round(size * 0.86)) : size;
+  const textSize = Math.max(18, Math.round(markSize * 0.62));
+  const ink = tone === "light" ? "text-stone-50" : "text-stone-950";
+  const trackInk = tone === "light" ? "text-teal-100" : "text-teal-950";
 
   const inner = (
     <span
       className={cn(
-        "inline-flex items-center",
-        tone === "light" && showWordmark && "rounded-md bg-white px-1.5 py-0.5",
+        "inline-flex items-center gap-2 align-middle",
         className,
       )}
     >
       <Image
-        src={src}
-        alt="IsoTrack"
-        width={width}
-        height={visualHeight}
+        src="/images/isotrack-mark-trimmed.png"
+        alt=""
+        width={markSize}
+        height={markSize}
         priority
-        className="object-contain"
-        style={{ width, height: visualHeight }}
+        aria-hidden="true"
+        className="shrink-0 object-contain"
+        style={{ width: markSize, height: markSize }}
       />
+
+      {showWordmark ? (
+        <span
+          className={cn(
+            "select-none whitespace-nowrap font-black leading-none tracking-normal",
+            ink,
+          )}
+          style={{ fontSize: textSize }}
+        >
+          Iso<span className={trackInk}>Track</span>
+        </span>
+      ) : (
+        <span className="sr-only">IsoTrack</span>
+      )}
     </span>
   );
 

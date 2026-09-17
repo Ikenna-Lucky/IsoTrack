@@ -42,7 +42,7 @@ export function AboutProject() {
   return (
     <section
       id="roles"
-      className="bg-white py-16 sm:py-20 lg:py-28"
+      className="bg-[#0c0b08] py-16 sm:py-20 lg:py-28"
       ref={ref as unknown as React.RefObject<HTMLElement>}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -55,31 +55,31 @@ export function AboutProject() {
           }}
         >
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-sky-700">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
               Role dashboards
             </p>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            <h2 className="text-3xl font-bold tracking-tight text-stone-100 sm:text-4xl">
               Built for the people who touch the delivery.
             </h2>
-            <p className="mt-4 leading-7 text-slate-600">
+            <p className="mt-4 leading-7 text-stone-400">
               IsoTrack keeps every shipment visible to the business, the assigned driver,
               and the customer waiting for the package. Each role gets its own dashboard,
               but the shipment record stays shared.
             </p>
 
-            <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-8 rounded-md border border-stone-800 bg-[#080806] p-5">
               <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50">
-                  <Headphones className="h-4 w-4 text-amber-700" />
+                <div className="flex h-9 w-9 items-center justify-center rounded border border-amber-500/25 bg-amber-400/10">
+                  <Headphones className="h-4 w-4 text-amber-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">Designed to reduce support noise</p>
-                  <p className="text-xs text-slate-500">Common questions become visible status.</p>
+                  <p className="text-sm font-semibold text-stone-100">Designed to reduce support noise</p>
+                  <p className="text-xs text-stone-500">Common questions become visible status.</p>
                 </div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {SUPPORT_NOTES.map((note) => (
-                  <div key={note} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                  <div key={note} className="rounded border border-stone-800 bg-[#0c0b08] px-3 py-2 text-xs text-stone-400">
                     {note}
                   </div>
                 ))}
@@ -87,11 +87,11 @@ export function AboutProject() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-hidden rounded-md border border-stone-800">
             {ROLES.map(({ icon: Icon, title, description, points }, index) => (
               <div
                 key={title}
-                className="border-b border-slate-200 bg-white p-5 last:border-b-0"
+                className="border-b border-stone-800 bg-[#080806] p-5 last:border-b-0"
                 style={{
                   opacity: inView ? 1 : 0,
                   transform: inView ? "translateX(0)" : "translateX(18px)",
@@ -99,15 +99,15 @@ export function AboutProject() {
                 }}
               >
                 <div className="flex gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
-                    <Icon className="h-5 w-5 text-sky-700" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-teal-400/20 bg-teal-400/10">
+                    <Icon className="h-5 w-5 text-teal-300" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-slate-950">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                    <h3 className="font-semibold text-stone-100">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-stone-400">{description}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {points.map((point) => (
-                        <span key={point} className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
+                        <span key={point} className="rounded border border-stone-700 bg-stone-900 px-2.5 py-1 text-[11px] text-stone-400">
                           {point}
                         </span>
                       ))}

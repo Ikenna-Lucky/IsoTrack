@@ -1,42 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  User,
-  Shield,
-  Save,
+  Check,
   Eye,
   EyeOff,
-  Check,
+  Loader2,
+  LockKeyhole,
   Mail,
   Phone,
-  Loader2,
+  Save,
+  Shield,
+  Smartphone,
+  User,
 } from "lucide-react";
-import { useUpdateProfile, useChangePassword } from "@/hooks/use-user";
+import { useChangePassword, useUpdateProfile } from "@/hooks/use-user";
 import { useAuthStore } from "@/store/auth";
-import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/errors";
-
-// ─── Tab config ───────────────────────────────────────────────────────────────
+import { cn } from "@/lib/utils";
 
 const TABS = [
-  { key: "profile",  label: "Profile",  icon: User   },
+  { key: "profile", label: "Profile", icon: User },
   { key: "security", label: "Security", icon: Shield },
 ] as const;
 
 type Tab = (typeof TABS)[number]["key"];
 
-// ─── Shared primitives ────────────────────────────────────────────────────────
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
-      {children}
-    </label>
-  );
+  return <label className="mb-1.5 block text-xs font-black text-stone-400">{children}</label>;
 }
 
-function Input({
+function TextInput({
   value,
   onChange,
   placeholder,
@@ -46,36 +40,31 @@ function Input({
   suffix,
 }: {
   value: string;
-  onChange?: (v: string) => void;
-  placeholder?: string | undefined;
-  type?: string | undefined;
-  icon?: React.ElementType | undefined;
-  disabled?: boolean | undefined;
-  suffix?: React.ReactNode | undefined;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  icon?: React.ElementType;
+  disabled?: boolean;
+  suffix?: React.ReactNode;
 }) {
   return (
     <div className="relative">
-      {Icon && (
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
-      )}
+      {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />}
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange?.(e.target.value)}
+        onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "w-full rounded-xl border border-white/[0.07] bg-white/[0.03] py-2.5 pr-3 text-sm text-zinc-200",
-          "placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/[0.12]",
-          "transition-all duration-200",
-          Icon ? "pl-9" : "pl-3.5",
-          suffix ? "pr-10" : "",
-          disabled && "opacity-50 cursor-not-allowed",
+          "w-full rounded-md border border-white/[0.08] bg-black/25 py-3 pr-3 text-sm font-bold text-stone-100 outline-none transition placeholder:text-stone-700",
+          "focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10",
+          Icon ? "pl-10" : "pl-3",
+          suffix && "pr-11",
+          disabled && "cursor-not-allowed opacity-55",
         )}
       />
-      {suffix && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">{suffix}</div>
-      )}
+      {suffix && <div className="absolute right-3 top-1/2 -translate-y-1/2">{suffix}</div>}
     </div>
   );
 }
@@ -94,64 +83,61 @@ function SaveButton({
       onClick={onClick}
       disabled={loading}
       className={cn(
-        "flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200",
-        saved
-          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-          : "bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20",
-        loading && "opacity-60 cursor-not-allowed",
+        "flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+        saved ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "bg-amber-300 text-black hover:bg-amber-200",
       )}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : saved ? (
-        <Check className="h-4 w-4" />
-      ) : (
-        <Save className="h-4 w-4" />
-      )}
-      {loading ? "Saving…" : saved ? "Saved!" : "Save changes"}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+      {loading ? "Saving..." : saved ? "Saved" : "Save changes"}
     </button>
   );
 }
 
-function Card({
+function Panel({
   title,
+  eyebrow,
   description,
   children,
 }: {
   title: string;
-  description?: string | undefined;
+  eyebrow: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/[0.04]">
-        <p className="text-sm font-semibold text-zinc-200">{title}</p>
-        {description && (
-          <p className="text-xs text-zinc-600 mt-0.5">{description}</p>
-        )}
+    <section className="rounded-md border border-white/[0.07] bg-[#0d1412]">
+      <div className="border-b border-white/[0.07] px-4 py-4 sm:px-5">
+        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-teal-200">{eyebrow}</p>
+        <h3 className="mt-1 text-base font-black text-stone-50">{title}</h3>
+        {description && <p className="mt-1 text-xs leading-5 text-stone-500">{description}</p>}
       </div>
-      <div className="px-5 py-5 space-y-4">{children}</div>
-    </div>
+      <div className="space-y-4 p-4 sm:p-5">{children}</div>
+    </section>
   );
 }
 
-// ─── Profile tab ─────────────────────────────────────────────────────────────
+function Notice({ tone, children }: { tone: "error" | "success" | "info"; children: React.ReactNode }) {
+  const styles = {
+    error: "border-rose-400/20 bg-rose-400/10 text-rose-100",
+    success: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
+    info: "border-teal-400/20 bg-teal-400/10 text-teal-100",
+  };
+
+  return <p className={cn("rounded-md border px-3 py-2 text-xs font-bold leading-5", styles[tone])}>{children}</p>;
+}
 
 function ProfileTab() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const { mutateAsync: save, isPending } = useUpdateProfile();
-
-  const [name, setName]   = useState(user?.name ?? "");
+  const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  // Sync if user loads after mount
   useEffect(() => {
     setName(user?.name ?? "");
     setPhone(user?.phone ?? "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, user?.name, user?.phone]);
 
   async function handleSave() {
     setError("");
@@ -165,78 +151,73 @@ function ProfileTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card
-        title="Personal information"
-        description="Your name and contact details"
+    <div className="grid gap-4 lg:grid-cols-[1fr,300px]">
+      <Panel
+        eyebrow="Identity"
+        title="Profile details"
+        description="This information helps drivers confirm they are handing the package to the right person."
       >
-        <div>
-          <FieldLabel>Full name</FieldLabel>
-          <Input
-            value={name}
-            onChange={setName}
-            placeholder="First and last name"
-            icon={User}
-          />
-          <p className="mt-1 text-[11px] text-zinc-700">
-            Used for delivery identification
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel>Full name</FieldLabel>
+            <TextInput value={name} onChange={setName} placeholder="First and last name" icon={User} />
+          </div>
+          <div>
+            <FieldLabel>Phone number</FieldLabel>
+            <TextInput value={phone} onChange={setPhone} placeholder="+234 800 000 0000" icon={Phone} />
+          </div>
         </div>
         <div>
-          <FieldLabel>Email</FieldLabel>
-          <Input
-            value={user?.email ?? ""}
-            disabled
-            icon={Mail}
-          />
-          <p className="mt-1 text-[11px] text-zinc-700">
-            Contact support to change your email
-          </p>
-        </div>
-        <div>
-          <FieldLabel>Phone number</FieldLabel>
-          <Input
-            value={phone}
-            onChange={setPhone}
-            placeholder="+234 800 000 0000"
-            icon={Phone}
-          />
-          <p className="mt-1 text-[11px] text-zinc-700">
-            Drivers call this number when they arrive
-          </p>
+          <FieldLabel>Email address</FieldLabel>
+          <TextInput value={user?.email ?? ""} disabled icon={Mail} />
+          <p className="mt-1.5 text-[11px] text-stone-600">Contact support if this email needs to change.</p>
         </div>
 
-        {error && (
-          <p className="rounded-lg bg-rose-500/[0.08] border border-rose-500/[0.15] px-3 py-2 text-xs text-rose-400">
-            {error}
-          </p>
-        )}
-
+        {error && <Notice tone="error">{error}</Notice>}
         <div className="flex justify-end pt-1">
           <SaveButton saved={saved} loading={isPending} onClick={handleSave} />
         </div>
-      </Card>
+      </Panel>
+
+      <aside className="rounded-md border border-teal-400/20 bg-teal-400/10 p-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-teal-400/25 bg-black/20">
+          <Smartphone className="h-5 w-5 text-teal-200" />
+        </div>
+        <p className="mt-4 text-sm font-black text-stone-100">Delivery contact card</p>
+        <p className="mt-2 text-xs leading-5 text-stone-500">
+          Keep your phone number current so drivers can reach you at pickup handoff or final delivery.
+        </p>
+        <div className="mt-4 rounded-md border border-white/[0.07] bg-black/20 p-3">
+          <p className="text-[10px] font-black uppercase tracking-wider text-stone-600">Current contact</p>
+          <p className="mt-1 truncate text-xs font-black text-stone-200">{phone || "No phone added"}</p>
+        </div>
+      </aside>
     </div>
   );
 }
 
-// ─── Security tab ─────────────────────────────────────────────────────────────
+function PasswordVisibilityButton({ active, onClick }: { active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="text-stone-600 transition hover:text-stone-200" aria-label={active ? "Hide password" : "Show password"}>
+      {active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
+  );
+}
 
 function SecurityTab() {
-  const { mutateAsync: changePw, isPending } = useChangePassword();
-  const logout = useAuthStore((s) => s.logout);
-
-  const [current, setCurrent]   = useState("");
-  const [next, setNext]         = useState("");
-  const [confirm, setConfirm]   = useState("");
+  const { mutateAsync: changePassword, isPending } = useChangePassword();
+  const logout = useAuthStore((state) => state.logout);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
-  const [showNext, setShowNext]       = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState("");
+  const [showNext, setShowNext] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSave() {
     setError("");
-    if (!current || !next) {
+    if (!current || !next || !confirm) {
       setError("Please fill in all password fields.");
       return;
     }
@@ -248,14 +229,14 @@ function SecurityTab() {
       setError("Passwords do not match.");
       return;
     }
+
     try {
-      await changePw({ currentPassword: current, newPassword: next });
+      await changePassword({ currentPassword: current, newPassword: next });
       setSaved(true);
       setCurrent("");
       setNext("");
       setConfirm("");
       setTimeout(() => setSaved(false), 2500);
-      // Sign out so the user logs in fresh with the new password
       setTimeout(() => logout(), 1500);
     } catch (err: unknown) {
       setError(extractErrorMessage(err, "Failed to change password."));
@@ -263,138 +244,104 @@ function SecurityTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card
+    <div className="grid gap-4 lg:grid-cols-[1fr,300px]">
+      <Panel
+        eyebrow="Access"
         title="Change password"
-        description="You will be signed out after a successful change"
+        description="After a successful change, IsoTrack signs you out so you can log back in with the new password."
       >
         <div>
           <FieldLabel>Current password</FieldLabel>
-          <Input
+          <TextInput
             type={showCurrent ? "text" : "password"}
             value={current}
             onChange={setCurrent}
             placeholder="Enter current password"
-            suffix={
-              <button
-                type="button"
-                onClick={() => setShowCurrent((v) => !v)}
-                className="text-zinc-600 hover:text-zinc-300 transition-colors"
-              >
-                {showCurrent ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-              </button>
-            }
+            icon={LockKeyhole}
+            suffix={<PasswordVisibilityButton active={showCurrent} onClick={() => setShowCurrent((value) => !value)} />}
           />
         </div>
-        <div>
-          <FieldLabel>New password</FieldLabel>
-          <Input
-            type={showNext ? "text" : "password"}
-            value={next}
-            onChange={setNext}
-            placeholder="At least 8 characters"
-            suffix={
-              <button
-                type="button"
-                onClick={() => setShowNext((v) => !v)}
-                className="text-zinc-600 hover:text-zinc-300 transition-colors"
-              >
-                {showNext ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-              </button>
-            }
-          />
-        </div>
-        <div>
-          <FieldLabel>Confirm new password</FieldLabel>
-          <Input
-            type="password"
-            value={confirm}
-            onChange={setConfirm}
-            placeholder="Repeat new password"
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel>New password</FieldLabel>
+            <TextInput
+              type={showNext ? "text" : "password"}
+              value={next}
+              onChange={setNext}
+              placeholder="At least 8 characters"
+              icon={Shield}
+              suffix={<PasswordVisibilityButton active={showNext} onClick={() => setShowNext((value) => !value)} />}
+            />
+          </div>
+          <div>
+            <FieldLabel>Confirm new password</FieldLabel>
+            <TextInput type="password" value={confirm} onChange={setConfirm} placeholder="Repeat new password" icon={Shield} />
+          </div>
         </div>
 
-        {error && (
-          <p className="rounded-lg bg-rose-500/[0.08] border border-rose-500/[0.15] px-3 py-2 text-xs text-rose-400">
-            {error}
-          </p>
-        )}
-
-        {saved && (
-          <p className="rounded-lg bg-emerald-500/[0.08] border border-emerald-500/[0.15] px-3 py-2 text-xs text-emerald-400">
-            Password changed. Signing you out…
-          </p>
-        )}
+        {error && <Notice tone="error">{error}</Notice>}
+        {saved && <Notice tone="success">Password changed. Signing you out...</Notice>}
 
         <div className="flex justify-end pt-1">
           <SaveButton saved={saved} loading={isPending} onClick={handleSave} />
         </div>
-      </Card>
+      </Panel>
 
-      <Card title="Two-factor authentication">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-300">
-              Authenticator app
-            </p>
-            <p className="text-xs text-zinc-600 mt-0.5">
-              Add an extra layer of security to your account
-            </p>
+      <aside className="space-y-3">
+        <div className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Security status</p>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black text-stone-100">Password protected</p>
+              <p className="mt-1 text-xs text-stone-500">Update it whenever access changes.</p>
+            </div>
+            <span className="rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-black text-emerald-100">
+              Active
+            </span>
           </div>
-          <span className="inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/[0.06] px-2.5 py-1 text-[10px] font-semibold text-amber-400/70">
+        </div>
+        <div className="rounded-md border border-amber-400/20 bg-amber-400/10 p-4">
+          <p className="text-sm font-black text-stone-100">Two-factor authentication</p>
+          <p className="mt-2 text-xs leading-5 text-stone-500">Authenticator app support is planned for a future security release.</p>
+          <span className="mt-4 inline-flex rounded-md border border-amber-400/25 bg-black/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-100">
             Coming soon
           </span>
         </div>
-      </Card>
+      </aside>
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CustomerSettingsPage() {
   const [tab, setTab] = useState<Tab>("profile");
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Settings</h2>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          Manage your profile and account security
+    <div className="mx-auto max-w-5xl space-y-5">
+      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Account control</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Settings</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+          Manage the identity and security details that support smooth delivery handoffs.
         </p>
-      </div>
+      </section>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-1">
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] p-1">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-150",
-              tab === key
-                ? "bg-violet-500/[0.14] text-violet-400 border border-violet-500/[0.2]"
-                : "text-zinc-600 hover:text-zinc-300 border border-transparent",
+              "flex items-center justify-center gap-2 rounded px-3 py-2.5 text-xs font-black transition",
+              tab === key ? "bg-teal-400/10 text-teal-100 ring-1 ring-teal-400/25" : "text-stone-500 hover:text-stone-200",
             )}
           >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <Icon className="h-4 w-4 shrink-0" />
             {label}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      {tab === "profile"  && <ProfileTab />}
+      {tab === "profile" && <ProfileTab />}
       {tab === "security" && <SecurityTab />}
     </div>
   );

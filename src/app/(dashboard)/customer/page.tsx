@@ -1,368 +1,423 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  MapPin,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
   ArrowRight,
+  CheckCircle2,
+  Circle,
+  Clock3,
+  MapPin,
   Navigation,
+  PackageCheck,
+  PackageSearch,
+  ReceiptText,
+  Route,
+  Search,
+  WalletCards,
 } from "lucide-react";
-import { useShipments, getShipmentList } from "@/hooks/use-shipments";
+import { getShipmentList, useShipments } from "@/hooks/use-shipments";
 import { useAuthStore } from "@/store/auth";
-import type { Shipment } from "@/types";
+import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
+
+const STATUS_STEPS = [
+  { status: "pending", label: "Order placed", sub: "Shipment request received" },
+  { status: "assigned", label: "Driver assigned", sub: "A driver accepted the order" },
+  { status: "picked_up", label: "Package picked up", sub: "Collected from pickup" },
+  { status: "in_transit", label: "In transit", sub: "Moving through route" },
+  { status: "out_for_delivery", label: "Out for delivery", sub: "Final handoff in progress" },
+  { status: "delivered", label: "Delivered", sub: "Package received" },
+] as const;
+
+const ACTIVE_STATUSES: ShipmentStatus[] = [
+  "assigned",
+  "picked_up",
+  "in_transit",
+  "out_for_delivery",
+];
 
 function formatNaira(kobo: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
-    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(kobo / 100);
 }
 
-const STATUS_STEPS = [
-  { status: "pending",          label: "Order placed",       sub: "Shipment request received"          },
-  { status: "assigned",         label: "Driver assigned",    sub: "A driver accepted your order"       },
-  { status: "picked_up",        label: "Package picked up",  sub: "Driver collected the package"       },
-  { status: "out_for_delivery", label: "Out for delivery",   sub: "Driver is near your area"           },
-  { status: "delivered",        label: "Delivered",          sub: "Package delivered successfully"     },
-] as const;
-
-function deriveTimeline(s: Shipment) {
-  const ORDER = STATUS_STEPS.map((st) => st.status as string);
-  const currentIdx = Math.max(ORDER.indexOf(s.status), 0);
-  const isFailed = s.status === "failed" || s.status === "cancelled";
-
-  return STATUS_STEPS.map(({ status, label, sub }, i) => {
-    const event = s.events?.find((e) => e.status === status);
-    const time = event
-      ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      : "—";
-    let state: "done" | "current" | "pending";
-    if (isFailed) state = i < currentIdx ? "done" : "pending";
-    else if (i < currentIdx) state = "done";
-    else if (i === currentIdx) state = "current";
-    else state = "pending";
-    return { label, sub: event?.message ?? sub, time, state };
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Not set";
+  return new Date(value).toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
-function useCountUp(target: number, duration = 1200): number {
-  const [value, setValue] = useState(0);
-  const raf = useRef<number>(0);
-  useEffect(() => {
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(eased * target));
-      if (t < 1) raf.current = requestAnimationFrame(tick);
+function readableStatus(status: ShipmentStatus) {
+  return status.replace(/_/g, " ");
+}
+
+function statusTone(status: ShipmentStatus) {
+  if (status === "delivered") return "text-emerald-300 bg-emerald-400/10 border-emerald-400/20";
+  if (status === "failed" || status === "cancelled") return "text-rose-300 bg-rose-400/10 border-rose-400/20";
+  if (ACTIVE_STATUSES.includes(status)) return "text-teal-200 bg-teal-400/10 border-teal-400/20";
+  return "text-amber-200 bg-amber-400/10 border-amber-400/20";
+}
+
+function deriveTimeline(shipment: Shipment) {
+  const order = STATUS_STEPS.map((step) => step.status as string);
+  const currentIndex = Math.max(order.indexOf(shipment.status), 0);
+  const stopped = shipment.status === "failed" || shipment.status === "cancelled";
+
+  return STATUS_STEPS.map((step, index) => {
+    const event = shipment.events?.find((item) => item.status === step.status);
+    const state =
+      stopped || index > currentIndex
+        ? "pending"
+        : index === currentIndex
+          ? "current"
+          : "done";
+
+    return {
+      ...step,
+      state,
+      message: event?.message ?? step.sub,
+      time: event?.createdAt ? formatDate(event.createdAt) : null,
     };
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
-  }, [target, duration]);
-  return value;
-}
-
-function Sparkline({ data, color, id }: { data: number[]; color: string; id: string }) {
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const W = 68;
-  const H = 30;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * W;
-    const y = H - ((v - min) / range) * (H - 6) - 3;
-    return [x, y] as [number, number];
   });
-  const polyPts = pts.map(([x, y]) => `${x},${y}`).join(" ");
-  const last = pts[pts.length - 1]!;
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,${H} ${polyPts} ${W},${H}`} fill={`url(#${id})`} />
-      <polyline points={polyPts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="2.5" fill={color} />
-    </svg>
-  );
 }
 
-function KPICard({
-  label, value, trend, trendUp, sub, sparkData, sparkColor, sparkId, accentClass, glowClass,
+function StatTile({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone,
 }: {
-  label: string; value: string; trend?: string | undefined; trendUp?: boolean | undefined; sub: string;
-  sparkData: number[]; sparkColor: string; sparkId: string; accentClass: string; glowClass: string;
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof PackageCheck;
+  tone: "teal" | "amber" | "stone" | "emerald";
 }) {
-  return (
-    <div className={cn("group relative rounded-2xl border bg-[#0d0d11] p-3.5 sm:p-5 overflow-hidden transition-all duration-300 hover:-translate-y-0.5", accentClass)}>
-      <div className={cn("pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl opacity-[0.15]", glowClass)} />
-      <div className="flex items-start justify-between mb-2.5 sm:mb-3.5">
-        <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.1em] sm:tracking-[0.15em] text-zinc-500 leading-tight pr-1">{label}</p>
-        <div className="hidden sm:block shrink-0"><Sparkline data={sparkData} color={sparkColor} id={sparkId} /></div>
-      </div>
-      <p className="text-xl sm:text-[30px] font-bold tracking-tight text-white leading-none mb-1 sm:mb-1.5 truncate">{value}</p>
-      <p className="text-[10px] text-zinc-600 mb-2 sm:mb-3 truncate">{sub}</p>
-      {trend !== undefined && (
-        <div className={cn("inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold",
-          trendUp ? "bg-emerald-500/[0.08] text-emerald-400" : "bg-rose-500/[0.08] text-rose-400")}>
-          {trendUp ? <TrendingUp className="h-2.5 w-2.5 shrink-0" /> : <TrendingDown className="h-2.5 w-2.5 shrink-0" />}
-          <span className="whitespace-nowrap">{trend}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+  const toneClass = {
+    teal: "border-teal-400/20 bg-teal-400/10 text-teal-200",
+    amber: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+    stone: "border-stone-700 bg-white/[0.03] text-stone-300",
+    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+  }[tone];
 
-function TimelineStep({ label, sub, time, state, isLast }: {
-  label: string; sub: string; time: string; state: "done" | "current" | "pending"; isLast?: boolean;
-}) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="flex flex-col items-center shrink-0 pt-0.5">
-        <div className={cn(
-          "relative z-10 flex h-4 w-4 items-center justify-center rounded-full border text-[7px] font-bold",
-          state === "done" ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-          : state === "current" ? "border-violet-500 bg-violet-500/20 text-violet-400 animate-pulse"
-          : "border-zinc-800 bg-zinc-900 text-zinc-700",
-        )}>
-          {state === "done" ? "check" : state === "current" ? "dot" : ""}
-        </div>
-        {!isLast && (
-          <div className={cn("w-px flex-1 mt-1", state === "done" ? "bg-emerald-500/25" : "bg-zinc-800")}
-            style={{ minHeight: 24 }} />
-        )}
-      </div>
-      <div className="pb-3 min-w-0">
-        <p className={cn("text-[12px] font-semibold leading-tight",
-          state === "done" ? "text-zinc-200" : state === "current" ? "text-violet-300" : "text-zinc-700")}>
+    <div className="rounded-md border border-stone-800 bg-[#0d1412] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">
           {label}
         </p>
-        <p className="mt-0.5 text-[10px] text-zinc-600 truncate">{sub}</p>
-        <p className={cn("mt-0.5 text-[10px] font-medium",
-          state === "done" ? "text-emerald-500/60" : state === "current" ? "text-violet-400/70" : "text-zinc-800")}>
-          {time}
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md border", toneClass)}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className="mt-4 truncate text-2xl font-black tracking-tight text-stone-100">{value}</p>
+      <p className="mt-1 text-xs font-medium text-stone-600">{detail}</p>
+    </div>
+  );
+}
+
+function LiveShipmentCard({ shipment }: { shipment: Shipment }) {
+  const timeline = deriveTimeline(shipment);
+
+  return (
+    <section className="overflow-hidden rounded-md border border-stone-800 bg-[#f2eadb] text-stone-950">
+      <div className="border-b border-stone-300/80 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">
+              Current delivery
+            </p>
+            <h2 className="mt-2 text-3xl font-black leading-tight">
+              {readableStatus(shipment.status)}
+            </h2>
+            <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-stone-600">
+              {shipment.pickupAddress.city} to {shipment.deliveryAddress.city}. Follow the route and
+              keep the tracking ID ready for the recipient handoff.
+            </p>
+          </div>
+          <Link
+            href="/customer/track"
+            className="inline-flex items-center gap-2 rounded-md bg-stone-950 px-4 py-2.5 text-sm font-black text-stone-100 transition hover:bg-stone-800"
+          >
+            Open tracker
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <ManifestItem label="Tracking ID" value={shipment.trackingId} mono />
+          <ManifestItem label="Estimated arrival" value={formatDate(shipment.estimatedDelivery)} />
+          <ManifestItem label="Delivery fee" value={formatNaira(shipment.priceKobo)} />
+        </div>
+      </div>
+
+      <div className="grid gap-0 lg:grid-cols-[1fr_1fr]">
+        <RouteBlock
+          label="Pickup"
+          icon={PackageSearch}
+          city={`${shipment.pickupAddress.city}, ${shipment.pickupAddress.state}`}
+          address={shipment.pickupAddress.street}
+        />
+        <RouteBlock
+          label="Drop-off"
+          icon={MapPin}
+          city={`${shipment.deliveryAddress.city}, ${shipment.deliveryAddress.state}`}
+          address={shipment.deliveryAddress.street}
+        />
+      </div>
+
+      <div className="border-t border-stone-300/80 p-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">
+          Delivery log
         </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {timeline.slice(0, 6).map((item) => (
+            <div key={item.status} className="flex gap-3">
+              <span
+                className={cn(
+                  "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                  item.state === "done"
+                    ? "border-emerald-600 bg-emerald-100 text-emerald-700"
+                    : item.state === "current"
+                      ? "border-teal-600 bg-teal-100 text-teal-700"
+                      : "border-stone-300 bg-white/50 text-stone-400",
+                )}
+              >
+                {item.state === "done" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-black text-stone-950">{item.label}</p>
+                <p className="mt-0.5 line-clamp-1 text-xs font-medium text-stone-600">
+                  {item.message}
+                </p>
+                {item.time && <p className="mt-1 text-[11px] font-bold text-stone-500">{item.time}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ManifestItem({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-stone-300/80 bg-white/45 px-3 py-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">{label}</p>
+      <p className={cn("mt-1 truncate text-sm font-black text-stone-950", mono && "font-mono tracking-wider")}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function RouteBlock({
+  label,
+  icon: Icon,
+  city,
+  address,
+}: {
+  label: string;
+  icon: typeof PackageSearch;
+  city: string;
+  address: string;
+}) {
+  return (
+    <div className="border-t border-stone-300/80 p-5 lg:[&+&]:border-l">
+      <div className="flex gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-300 bg-white/55">
+          <Icon className="h-4 w-4 text-teal-700" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">{label}</p>
+          <p className="mt-1 font-black text-stone-950">{city}</p>
+          <p className="mt-1 text-sm leading-5 text-stone-600">{address}</p>
+        </div>
       </div>
     </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <section className="rounded-md border border-stone-800 bg-[#0d1412] p-6 text-center sm:p-10">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md border border-teal-400/20 bg-teal-400/10">
+        <PackageSearch className="h-7 w-7 text-teal-200" />
+      </div>
+      <h2 className="mt-5 text-2xl font-black text-stone-100">Track your first package</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-500">
+        Got a tracking ID from a sender? Paste it into the tracker to watch the delivery status,
+        driver assignment, and handoff progress.
+      </p>
+      <Link
+        href="/customer/track"
+        className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-amber-400 px-5 py-3 text-sm font-black text-stone-950 transition hover:bg-amber-300"
+      >
+        Track a package
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </section>
+  );
+}
+
+function RecentShipments({ shipments }: { shipments: Shipment[] }) {
+  if (shipments.length === 0) return null;
+
+  return (
+    <section className="overflow-hidden rounded-md border border-stone-800 bg-[#0d1412]">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <p className="text-sm font-black text-stone-100">Recent shipments</p>
+        <Link href="/customer/shipments" className="text-xs font-bold text-teal-200 hover:text-teal-100">
+          View all
+        </Link>
+      </div>
+      <div className="divide-y divide-white/[0.06]">
+        {shipments.slice(0, 5).map((shipment) => (
+          <Link
+            key={shipment.id}
+            href="/customer/shipments"
+            className="grid gap-3 px-4 py-3 transition hover:bg-white/[0.03] sm:grid-cols-[1fr_auto] sm:items-center"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-mono text-sm font-black tracking-wider text-stone-100">
+                  {shipment.trackingId}
+                </p>
+                <span
+                  className={cn(
+                    "rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em]",
+                    statusTone(shipment.status),
+                  )}
+                >
+                  {readableStatus(shipment.status)}
+                </span>
+              </div>
+              <p className="mt-1 truncate text-sm text-stone-500">
+                {shipment.pickupAddress.city} to {shipment.deliveryAddress.city}
+              </p>
+            </div>
+            <p className="text-sm font-black text-stone-300">{formatNaira(shipment.priceKobo)}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function QuickTrackPanel({ activeCount }: { activeCount: number }) {
+  return (
+    <aside className="rounded-md border border-stone-800 bg-[#0d1412] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Quick track</p>
+      <h2 className="mt-3 text-xl font-black text-stone-100">Have a new tracking ID?</h2>
+      <p className="mt-2 text-sm leading-6 text-stone-500">
+        Open the tracker and paste the ID shared by the sender. Active deliveries refresh while
+        they are moving.
+      </p>
+      <Link
+        href="/customer/track"
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-amber-400 px-4 py-3 text-sm font-black text-stone-950 transition hover:bg-amber-300"
+      >
+        <Search className="h-4 w-4" />
+        Track package
+      </Link>
+      <div className="mt-5 rounded-md border border-white/10 bg-black/25 p-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-600">
+          Active deliveries
+        </p>
+        <p className="mt-1 text-2xl font-black text-teal-200">{activeCount}</p>
+      </div>
+    </aside>
   );
 }
 
 export default function CustomerOverviewPage() {
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((state) => state.user);
   const { data: shipmentsData } = useShipments({ pageSize: 50 });
   const shipments = getShipmentList(shipmentsData);
 
-  const activeDelivery = shipments.find((s) => s.status === "out_for_delivery" || s.status === "in_transit");
-  const pendingShipment = shipments.find((s) => s.status === "pending");
+  const activeShipment =
+    shipments.find((shipment) => shipment.status === "out_for_delivery") ??
+    shipments.find((shipment) => shipment.status === "in_transit") ??
+    shipments.find((shipment) => ACTIVE_STATUSES.includes(shipment.status));
 
-  const totalSpent = shipments.reduce((sum, s) => sum + s.priceKobo, 0);
-  const deliveredCount = shipments.filter((s) => s.status === "delivered").length;
-  const activeCount = shipments.filter((s) =>
-    ["out_for_delivery", "in_transit", "assigned", "picked_up"].includes(s.status)).length;
-  const totalCount = shipments.length;
-
-  const animatedSpent = useCountUp(totalSpent);
-
-  const base = Math.max(1, Math.floor(totalCount / 7));
-  const totalSpark = [0, 1, 2, 3, 4, 5, 6].map((i) => Math.max(0, base + (i % 2 === 0 ? 1 : -1)));
-  const deliveredSpark = totalSpark.map((v) => Math.round(v * (deliveredCount / Math.max(totalCount, 1))));
-  const spentSpark = totalSpark.map((v) => v * Math.max(1, Math.floor(totalSpent / Math.max(totalCount, 1))));
-
-  const timeline = activeDelivery ? deriveTimeline(activeDelivery) : [];
+  const pendingShipment = shipments.find((shipment) => shipment.status === "pending");
+  const totalSpent = shipments.reduce((sum, shipment) => sum + shipment.priceKobo, 0);
+  const deliveredCount = shipments.filter((shipment) => shipment.status === "delivered").length;
+  const activeCount = shipments.filter((shipment) => ACTIVE_STATUSES.includes(shipment.status)).length;
+  const paidCount = shipments.filter((shipment) => shipment.isPaid).length;
+  const firstName = user?.name?.split(" ")[0] ?? "there";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
-
-      <div className="flex items-start justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <section className="grid gap-4 rounded-md border border-stone-800 bg-[#0d1412] p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Hi, {user?.name?.split(" ")[0] ?? "there"} 👋
-          </h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
-            {new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" })}
-            {" · "}Here&apos;s what&apos;s happening with your deliveries.
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-300">
+            Customer dashboard
+          </p>
+          <h1 className="mt-3 text-3xl font-black leading-tight text-stone-100 sm:text-4xl">
+            Welcome back, {firstName}.
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+            Track active deliveries, confirm pickup and drop-off details, and keep your recent
+            shipment records in one place.
           </p>
         </div>
         <Link
           href="/customer/track"
-          className="hidden sm:flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 shrink-0"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-amber-400 px-5 py-3 text-sm font-black text-stone-950 transition hover:bg-amber-300"
         >
+          Track package
           <Navigation className="h-4 w-4" />
-          Track Package
         </Link>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Total spent" value={formatNaira(totalSpent)} detail="All linked shipments" icon={WalletCards} tone="amber" />
+        <StatTile label="Active" value={String(activeCount)} detail="Currently moving" icon={Route} tone="teal" />
+        <StatTile label="Delivered" value={String(deliveredCount)} detail="Received packages" icon={PackageCheck} tone="emerald" />
+        <StatTile label="Paid" value={`${paidCount}/${shipments.length || 0}`} detail="Payment visibility" icon={ReceiptText} tone="stone" />
       </div>
 
-      {totalCount > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPICard label="Total Spent" value={formatNaira(animatedSpent)} trend={totalCount > 0 ? "+growing" : undefined} trendUp
-            sub="All time" sparkData={spentSpark} sparkColor="#a78bfa" sparkId="sp-spent"
-            accentClass="border-violet-500/[0.15] hover:border-violet-500/25" glowClass="bg-violet-500" />
-          <KPICard label="Delivered" value={String(deliveredCount)} trend={deliveredCount > 0 ? `${deliveredCount} received` : undefined} trendUp
-            sub="Successfully received" sparkData={deliveredSpark} sparkColor="#34d399" sparkId="sp-delivered"
-            accentClass="border-emerald-500/[0.15] hover:border-emerald-500/25" glowClass="bg-emerald-500" />
-          <KPICard label="Active" value={String(activeCount)} sub="Currently en route"
-            sparkData={[0, 0, 1, 0, 1, 1, activeCount]} sparkColor="#38bdf8" sparkId="sp-active"
-            accentClass="border-sky-500/[0.15] hover:border-sky-500/25" glowClass="bg-sky-500" />
-          <KPICard label="All Shipments" value={String(totalCount)} sub="Lifetime total"
-            sparkData={totalSpark} sparkColor="#71717a" sparkId="sp-total"
-            accentClass="border-white/[0.06] hover:border-white/[0.1]" glowClass="bg-zinc-600" />
-        </div>
-      )}
-
-      {totalCount === 0 && (
-        <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.15] bg-[#0d0d11]">
-          <div className="pointer-events-none absolute -top-10 right-1/4 h-40 w-64 rounded-full bg-violet-500/[0.06] blur-3xl" />
-          <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/[0.08] text-3xl">
-              📦
-            </div>
-            <div className="max-w-xs">
-              <p className="text-base font-bold text-white">Track your first package</p>
-              <p className="mt-2 text-sm text-zinc-500 leading-relaxed">
-                Got a tracking ID from a sender? Paste it below and track your package in real time.
-              </p>
-            </div>
-            <Link
-              href="/customer/track"
-              className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 active:scale-[0.98]"
-            >
-              <Navigation className="h-4 w-4" />
-              Track a Package
-            </Link>
-            <div className="flex items-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3 text-left max-w-xs w-full">
-              <span className="text-base">💡</span>
-              <p className="text-xs text-zinc-500">
-                Your tracking ID looks like{" "}
-                <span className="font-mono font-bold text-zinc-400">IST-XXXXXXXX</span>
-                . The sender will share it with you.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {pendingShipment && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber-500/[0.18] bg-amber-500/[0.04] px-4 py-3">
-          <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-zinc-200">Awaiting driver assignment</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">
-              <span className="font-mono">{pendingShipment.trackingId}</span>
-              {" · "}
-              {pendingShipment.pickupAddress.city} to {pendingShipment.deliveryAddress.city}
-            </p>
-          </div>
-          <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-400">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-400/20 bg-amber-400/10 px-4 py-3">
+          <Clock3 className="h-4 w-4 text-amber-300" />
+          <p className="min-w-0 flex-1 text-sm font-semibold text-stone-200">
+            {pendingShipment.trackingId} is waiting for driver assignment.
+          </p>
+          <span className="rounded border border-amber-400/20 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
             Pending
           </span>
         </div>
       )}
 
-      {activeDelivery && (
-        <div className="relative overflow-hidden rounded-2xl border border-violet-500/[0.22] bg-[#0d0d11]">
-          <div className="pointer-events-none absolute -top-12 right-1/4 h-36 w-64 rounded-full bg-violet-500/[0.07] blur-3xl" />
-          <div className="flex items-center justify-between border-b border-white/[0.05] px-5 py-3.5">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
-              </span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-violet-400">Live Tracking</span>
-              <span className="hidden sm:block text-[10px] text-zinc-600 font-mono">{activeDelivery.trackingId}</span>
-            </div>
-            <Link
-              href="/customer/track"
-              className="flex items-center gap-1 rounded-lg border border-white/[0.06] px-3 py-1.5 text-[11px] font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.03] transition-all"
-            >
-              Open map <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
-            <div>
-              <p className="mb-3 text-[9px] font-semibold uppercase tracking-widest text-zinc-600">Delivery Progress</p>
-              {timeline.map((ev, i) => (
-                <TimelineStep key={i} label={ev.label} sub={ev.sub} time={ev.time} state={ev.state} isLast={i === timeline.length - 1} />
-              ))}
-            </div>
-            <div className="space-y-3">
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
-                <p className="mb-3 text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Route</p>
-                <div className="flex items-start gap-2.5">
-                  <div className="flex flex-col items-center pt-0.5 shrink-0">
-                    <div className="h-2 w-2 rounded-full border-2 border-violet-400" />
-                    <div className="my-1 h-8 w-px bg-gradient-to-b from-violet-500/40 to-rose-500/40" />
-                    <MapPin className="h-2.5 w-2.5 text-rose-400" />
-                  </div>
-                  <div className="space-y-2.5 min-w-0 flex-1">
-                    <div>
-                      <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">From</p>
-                      <p className="text-xs font-medium text-zinc-300 truncate">
-                        {activeDelivery.pickupAddress.street}, {activeDelivery.pickupAddress.city}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] uppercase tracking-wider text-zinc-700 mb-0.5">To</p>
-                      <p className="text-xs font-medium text-zinc-300 truncate">
-                        {activeDelivery.deliveryAddress.street}, {activeDelivery.deliveryAddress.city}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {activeDelivery.estimatedDelivery && (
-                <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.06] p-3.5">
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-1">Estimated Delivery</p>
-                  <p className="text-sm font-semibold text-violet-300">
-                    {new Date(activeDelivery.estimatedDelivery).toLocaleDateString("en-NG", {
-                      weekday: "short", day: "numeric", month: "short",
-                    })}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
+          {activeShipment ? <LiveShipmentCard shipment={activeShipment} /> : <EmptyState />}
+          <RecentShipments shipments={shipments} />
         </div>
-      )}
-
-      {shipments.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.04]">
-            <p className="text-xs font-semibold text-zinc-200">Recent Shipments</p>
-            <Link href="/customer/shipments" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">View all</Link>
-          </div>
-          <div className="divide-y divide-white/[0.03]">
-            {shipments.slice(0, 5).map((s) => (
-              <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.015] transition-colors">
-                <div className={cn("h-1.5 w-1.5 rounded-full shrink-0",
-                  s.status === "delivered" ? "bg-emerald-400" :
-                  s.status === "failed" || s.status === "cancelled" ? "bg-rose-400" :
-                  s.status === "in_transit" || s.status === "out_for_delivery" ? "bg-violet-400" : "bg-amber-400"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-zinc-200 font-mono truncate">{s.trackingId}</p>
-                  <p className="text-[10px] text-zinc-600 truncate">{s.pickupAddress.city} to {s.deliveryAddress.city}</p>
-                </div>
-                <span className={cn("text-[10px] font-semibold capitalize",
-                  s.status === "delivered" ? "text-emerald-400" :
-                  s.status === "failed" || s.status === "cancelled" ? "text-rose-400" :
-                  s.status === "in_transit" || s.status === "out_for_delivery" ? "text-violet-400" : "text-amber-400"
-                )}>
-                  {s.status.replace(/_/g, " ")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        <QuickTrackPanel activeCount={activeCount} />
+      </div>
     </div>
   );
 }

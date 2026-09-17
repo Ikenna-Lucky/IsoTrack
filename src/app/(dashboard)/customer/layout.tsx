@@ -15,6 +15,7 @@ function usePageTitle(): string {
   if (pathname === "/customer") return "Overview";
   if (pathname.startsWith("/customer/shipments")) return "My Shipments";
   if (pathname.startsWith("/customer/track")) return "Track Package";
+  if (pathname.startsWith("/customer/settings")) return "Settings";
   return "Customer";
 }
 
@@ -27,18 +28,18 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
   return (
     <AuthGuard role="customer">
-    <div className="min-h-screen bg-[#09090b]">
+    <div className="min-h-screen bg-[#070907]">
       <CustomerSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="lg:ml-[230px] flex flex-col min-h-screen">
+      <div className="flex min-h-screen flex-col lg:ml-[230px]">
         <CustomerTopbar
           title={title}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-7 xl:p-8">
           <ProfileCompletionBanner completion={completion} />
           {children}
         </main>
