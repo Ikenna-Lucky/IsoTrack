@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { getShipmentList, useShipments } from "@/hooks/use-shipments";
-import { usePayment } from "@/hooks/use-payment";
-import { useAuthStore } from "@/store/auth";
+import { usePayment, usePaymentReturn } from "@/hooks/use-payment";
+
 import type { Shipment, ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -69,13 +69,8 @@ const FILTERS: { label: string; value: FilterValue }[] = [
 const ACTIVE_STATUSES: ShipmentStatus[] = ["assigned", "picked_up", "in_transit", "out_for_delivery"];
 
 function PaymentSection({ shipment }: { shipment: Shipment }) {
-  const user = useAuthStore((s) => s.user);
-  const [justPaid, setJustPaid] = useState(false);
-  const { pay, isPaying, verifying, error, clearError } = usePayment({
-    onSuccess: () => setJustPaid(true),
-  });
-
-  const isPaid = shipment.isPaid || justPaid;
+  const { pay, isPaying, error, clearError } = usePayment();
+  const isPaid = shipment.isPaid;
   const blocked = shipment.status === "cancelled" || shipment.status === "failed";
 
   if (blocked) return null;
@@ -104,14 +99,14 @@ function PaymentSection({ shipment }: { shipment: Shipment }) {
         </div>
       )}
       <button
-        onClick={() => pay({ shipmentId: shipment.id, email: user?.email ?? "" })}
-        disabled={isPaying || verifying}
+        onClick={() => pay({ shipmentId: shipment.id })}
+        disabled={isPaying}
         className="flex w-full items-center justify-center gap-2 rounded-md bg-amber-300 px-4 py-2.5 text-sm font-black text-black transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isPaying || verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-        {isPaying ? "Opening payment..." : verifying ? "Verifying..." : `Pay ${formatNaira(shipment.priceKobo)}`}
+        {isPaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+        {isPaying ? "Opening payment..." : `Pay ${formatNaira(shipment.priceKobo)}`}
       </button>
-      <p className="text-center text-[10px] text-stone-600">Secured by Paystack. Card, bank transfer and USSD.</p>
+      <p className="text-center text-[10px] text-stone-600">Secured by Stripe Checkout.</p>
     </div>
   );
 }
@@ -237,6 +232,7 @@ function ShipmentRow({
 }
 
 export default function CustomerShipmentsPage() {
+  const paymentMessage = usePaymentReturn();
   const [filter, setFilter] = useState<FilterValue>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -272,6 +268,7 @@ export default function CustomerShipmentsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      {paymentMessage && <p role="status" className="rounded-md border border-teal-400/20 p-3 text-sm text-teal-100">{paymentMessage}</p>}
       <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr,340px] lg:items-end">
           <div>

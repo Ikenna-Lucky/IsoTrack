@@ -39,7 +39,7 @@ const FEATURES = [
     icon: CreditCard,
     title: "Payment status beside every order",
     description:
-      "Paystack checkout and verification keep paid and unpaid shipments visible to the teams that need to act on them.",
+      "Stripe checkout and verification keep paid and unpaid shipments visible to the teams that need to act on them.",
   },
   {
     icon: Bell,

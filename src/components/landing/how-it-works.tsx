@@ -30,7 +30,7 @@ const STEPS = [
     label: "Settle",
     title: "Verify payment cleanly",
     description:
-      "Paystack checkout and backend verification keep payment state attached to the shipment record.",
+      "Stripe checkout and backend verification keep payment state attached to the shipment record.",
   },
 ] as const;
 

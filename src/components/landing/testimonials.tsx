@@ -23,7 +23,7 @@ const ROLES = [
     title: "Customers",
     description:
       "Customers can follow a delivery from tracking ID to doorstep, view their shipment history, and pay through a dedicated tracking flow.",
-    points: ["Public tracking", "Live map", "Paystack checkout"],
+    points: ["Public tracking", "Live map", "Stripe checkout"],
   },
 ] as const;
 
