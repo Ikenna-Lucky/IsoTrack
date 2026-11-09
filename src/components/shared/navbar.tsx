@@ -1,143 +1,231 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
-import type { Route } from "next";
-import { ArrowRight, Menu, PackageSearch, X } from "lucide-react";
+import { ArrowUpRight, Menu, ScanLine, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 
-const NAV_LINKS: { label: string; href: Route }[] = [
-  { label: "Features", href: "/#features" as Route },
-  { label: "Workflow", href: "/#how-it-works" as Route },
-  { label: "Dashboards", href: "/#roles" as Route },
-];
+const links = [
+  { label: "Product", href: "#features" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "For your team", href: "#roles" },
+] as const;
+
+const focus =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#080b0b]";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const header = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 18);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        toggle.current?.focus();
+      }
+    };
+    const onOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !header.current?.contains(event.target))
+        setMobileOpen(false);
+    };
+    const desktop = window.matchMedia("(min-width: 1100px)");
+    const onDesktop = () => {
+      if (desktop.matches) setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onOutside);
+    desktop.addEventListener("change", onDesktop);
     return () => {
-      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onOutside);
+      desktop.removeEventListener("change", onDesktop);
     };
   }, [mobileOpen]);
 
+  function trackShipment(event: MouseEvent<HTMLAnchorElement>) {
+    setMobileOpen(false);
+    const form = document.getElementById("shipment-tracking");
+    const input = form?.querySelector<HTMLInputElement>("input");
+    if (!form || !input) return;
+    event.preventDefault();
+    form.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center",
+    });
+    input.focus({ preventScroll: true });
+  }
+
   return (
-    <>
-      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5">
-        <nav
-          className={cn(
-            "mx-auto flex h-16 max-w-7xl items-center justify-between rounded-md border border-stone-700/80 bg-[#0c0b08]/90 px-3 shadow-sm shadow-black/30 backdrop-blur-xl transition-shadow sm:px-4 lg:px-5",
-            scrolled && "shadow-lg shadow-black/40",
-          )}
-        >
-          <Logo href="/" size={45} tone="light" />
-
-          <div className="hidden items-center rounded-md border border-stone-700 bg-stone-950/70 p-1 md:flex">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded px-3 py-1.5 text-sm font-medium text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-100"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          <div className="hidden items-center gap-2 md:flex">
-            <Link
-              href={"/track/IST-K7X2M9PQ" as Route}
-              className="inline-flex items-center gap-2 rounded-md border border-stone-700 bg-stone-950 px-3.5 py-2 text-sm font-semibold text-stone-200 transition-colors hover:border-amber-500/50 hover:bg-stone-900"
-            >
-              <PackageSearch className="h-4 w-4 text-amber-400" />
-              Track shipment
-            </Link>
-            <Link
-              href={"/login" as Route}
-              className="px-3 py-2 text-sm font-medium text-stone-400 transition-colors hover:text-stone-100"
-            >
-              Log in
-            </Link>
-            <Link
-              href={"/register" as Route}
-              className="inline-flex items-center gap-1.5 rounded-md bg-amber-400 px-4 py-2 text-sm font-bold text-stone-950 transition-colors hover:bg-amber-300"
-            >
-              Create shipment
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          <button
-            onClick={() => setMobileOpen((open) => !open)}
-            className="rounded-md border border-stone-700 bg-stone-950 p-2 text-stone-200 transition-colors hover:bg-stone-900 md:hidden"
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen}
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </nav>
-      </header>
-
-      <div
-        className={cn(
-          "fixed inset-0 z-40 bg-[#0c0b08]/[0.98] px-5 pt-24 backdrop-blur-xl transition-all duration-200 md:hidden",
-          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        )}
+    <header
+      ref={header}
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 px-7 transition-[background-color,box-shadow] duration-200 motion-reduce:transition-none min-[601px]:px-12 min-[951px]:px-[55px] min-[1151px]:px-[6vw]",
+        scrolled || mobileOpen
+          ? "bg-[#080b0b]/95 shadow-[0_8px_28px_#0003] backdrop-blur-xl"
+          : "bg-[#080b0b]/80 backdrop-blur-md",
+      )}
+    >
+      <nav
+        aria-label="Primary navigation"
+        className="mx-auto max-w-[1320px] border-b border-white/[0.08]"
       >
-        <div className="mx-auto max-w-sm">
-          <div className="mb-5 rounded-md border border-stone-700 bg-stone-950 p-2">
-            <Link
-              href={"/track/IST-K7X2M9PQ" as Route}
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded bg-stone-900 px-3 py-3 text-sm font-semibold text-stone-100 shadow-sm"
-            >
-              <PackageSearch className="h-4 w-4 text-amber-400" />
-              Track sample shipment
-            </Link>
+        <div className="flex h-[84px] items-center justify-between gap-6 max-[600px]:h-[76px]">
+          <div className="shrink-0 [&_a]:rounded-sm [&_a]:focus-visible:outline [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-4 [&_a]:focus-visible:outline-teal-300">
+            <Logo href="/" size={40} tone="light" />
           </div>
 
-          <div className="overflow-hidden rounded-md border border-stone-700 bg-stone-950">
-            {NAV_LINKS.map((link) => (
-              <Link
+          <div className="hidden items-center gap-7 min-[1100px]:flex">
+            {links.map((link) => (
+              <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="block border-b border-stone-800 px-4 py-3 text-sm font-medium text-stone-300 last:border-b-0 hover:bg-stone-900 hover:text-stone-100"
+                className={cn(
+                  "rounded-sm py-3 text-[13px] font-medium text-stone-400 transition-colors hover:text-stone-50",
+                  focus,
+                )}
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3">
-            <Link
-              href={"/register" as Route}
-              onClick={() => setMobileOpen(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-amber-400 px-5 py-3 text-sm font-bold text-stone-950 transition-colors hover:bg-amber-300"
+          <div className="hidden items-center gap-6 min-[1100px]:flex">
+            <a
+              href="#shipment-tracking"
+              onClick={trackShipment}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 rounded-sm text-[12px] font-medium text-stone-300 transition-colors hover:text-teal-200",
+                focus,
+              )}
             >
-              Create shipment
-              <ArrowRight className="h-4 w-4" />
+              <ScanLine size={16} strokeWidth={1.6} aria-hidden="true" /> Track a shipment
+            </a>
+            <span className="h-4 w-px bg-white/15" aria-hidden="true" />
+            <Link
+              href="/login"
+              className={cn(
+                "inline-flex min-h-11 items-center rounded-sm text-[12px] font-medium text-stone-300 hover:text-white",
+                focus,
+              )}
+            >
+              Sign in
             </Link>
             <Link
-              href={"/login" as Route}
-              onClick={() => setMobileOpen(false)}
-              className="rounded-md border border-stone-700 bg-stone-950 px-5 py-3 text-center text-sm font-semibold text-stone-300 transition-colors hover:bg-stone-900"
+              href="/register"
+              className={cn(
+                "inline-flex min-h-10 items-center gap-3 rounded bg-amber-400 px-4 text-[12px] font-semibold text-stone-950 transition-colors hover:bg-amber-300",
+                focus,
+              )}
             >
-              Log in
+              Get started <ArrowUpRight size={15} strokeWidth={1.7} aria-hidden="true" />
             </Link>
+          </div>
+
+          <div className="flex items-center gap-5 min-[1100px]:hidden">
+            <Link
+              href="/login"
+              className={cn(
+                "hidden min-h-11 items-center rounded-sm text-xs font-medium text-stone-300 min-[480px]:inline-flex",
+                focus,
+              )}
+            >
+              Sign in
+            </Link>
+            <button
+              ref={toggle}
+              type="button"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-expanded={mobileOpen}
+              aria-controls={menuId}
+              aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+              className={cn(
+                "flex h-11 w-11 items-center justify-center rounded border border-white/15 text-stone-200 transition-colors hover:bg-white/5",
+                focus,
+              )}
+            >
+              {mobileOpen ? (
+                <X size={21} strokeWidth={1.6} aria-hidden="true" />
+              ) : (
+                <Menu size={21} strokeWidth={1.6} aria-hidden="true" />
+              )}
+            </button>
           </div>
         </div>
-      </div>
-    </>
+
+        {mobileOpen && (
+          <div
+            id={menuId}
+            className="max-h-[calc(100dvh-100px)] overflow-y-auto border-t border-white/10 pb-7 pt-3 min-[1100px]:hidden"
+          >
+            <div className="divide-y divide-white/[0.06]">
+              {links.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex min-h-14 items-center justify-between rounded-sm py-3 text-sm font-medium text-stone-200 hover:text-teal-200",
+                    focus,
+                  )}
+                >
+                  {link.label}
+                  <ArrowUpRight
+                    size={15}
+                    strokeWidth={1.5}
+                    className="text-stone-600"
+                    aria-hidden="true"
+                  />
+                </a>
+              ))}
+            </div>
+            <a
+              href="#shipment-tracking"
+              onClick={trackShipment}
+              className={cn(
+                "mt-4 flex min-h-12 items-center gap-3 rounded border border-white/15 px-4 text-sm font-medium text-stone-200 hover:border-teal-300/40",
+                focus,
+              )}
+            >
+              <ScanLine size={17} strokeWidth={1.6} aria-hidden="true" /> Track a shipment
+            </a>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex min-h-11 items-center justify-center rounded border border-white/15 text-xs font-medium text-stone-200 hover:bg-white/5",
+                  focus,
+                )}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex min-h-11 items-center justify-center gap-2 rounded bg-amber-400 px-3 text-xs font-semibold text-stone-950 hover:bg-amber-300",
+                  focus,
+                )}
+              >
+                Get started <ArrowUpRight size={15} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </nav>
+    </header>
   );
 }

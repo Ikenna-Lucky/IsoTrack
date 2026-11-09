@@ -13,8 +13,6 @@ import {
   MousePointer2,
   Package,
   PanelsTopLeft,
-  Pause,
-  Play,
   Route,
   ScanLine,
   ShieldCheck,
@@ -37,7 +35,7 @@ function TrackingSearch() {
     router.push(`/track/${encodeURIComponent(trackingId)}`);
   }
   return (
-    <form onSubmit={submit} className={styles.search}>
+    <form id="shipment-tracking" onSubmit={submit} className={styles.search}>
       <label htmlFor={inputId}>Expecting a delivery? Track your shipment.</label>
       <div className={styles.searchRow}>
         <ScanLine size={18} strokeWidth={1.65} aria-hidden="true" />
@@ -69,7 +67,6 @@ function TrackingSearch() {
 }
 
 function HeroStage() {
-  const [paused, setPaused] = useState(false);
   const scene = useRef<HTMLDivElement>(null);
   const dispatch = useRef<HTMLDivElement>(null);
   const assignment = useRef<HTMLDivElement>(null);
@@ -149,8 +146,8 @@ function HeroStage() {
 
   return (
     <figure
-      className={`${styles.stage} ${paused ? styles.paused : ""}`}
-      aria-label="Animated sample walkthrough: dispatch rows appear, a virtual cursor chooses a shipment and assigns Emeka, then customer tracking updates."
+      className={styles.stage}
+      aria-label="Animated sample walkthrough: dispatch rows appear, a virtual cursor chooses a shipment and assigns Tariye, then customer tracking updates."
     >
       <div className={styles.scene} ref={scene} style={geometry.cursor} aria-hidden="true">
         <div className={styles.photo}>
@@ -222,16 +219,24 @@ function HeroStage() {
             <UserRoundCheck size={17} strokeWidth={1.65} /> Assign a driver
           </div>
           <div className={styles.driver} ref={driver}>
-            <div className={styles.avatar}>EO</div>
+            <div className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full border border-white/20 min-[601px]:max-[950px]:h-[34px] min-[601px]:max-[950px]:w-[34px]">
+              <Image
+                src="/images/demo-driver-tariye.webp"
+                alt=""
+                fill
+                sizes="34px"
+                className="object-cover"
+              />
+            </div>
             <div>
-              <b>Emeka Okafor</b>
+              <b>Tariye Dappa</b>
               <small>Your fleet · Available</small>
             </div>
             <ChevronDown size={13} style={{ marginLeft: "auto" }} />
           </div>
           <div ref={assignAction} className={styles.assignmentState}>
             <span className={styles.choose}>
-              Assign Emeka <ArrowUpRight size={12} />
+              Assign Tariye <ArrowUpRight size={12} />
             </span>
             <span className={styles.chosen}>
               <Check size={13} /> Driver assigned
@@ -267,16 +272,6 @@ function HeroStage() {
       </div>
       <figcaption className={styles.stageFooter}>
         <span>Product walkthrough · Illustrative data</span>
-        <button
-          type="button"
-          className={styles.pause}
-          onClick={() => setPaused(!paused)}
-          aria-pressed={paused}
-          aria-label={paused ? "Play product animation" : "Pause product animation"}
-        >
-          {paused ? <Play size={12} /> : <Pause size={12} />}
-          {paused ? "Play" : "Pause"}
-        </button>
       </figcaption>
     </figure>
   );
@@ -287,7 +282,6 @@ export function Hero() {
     <section className={styles.hero} aria-labelledby="hero-title">
       <div className={styles.layout}>
         <div className={styles.copy}>
-          <p className={styles.eyebrow}>Built around your private fleet</p>
           <h1 className={styles.title} id="hero-title">
             Your drivers.
             <br />
@@ -296,8 +290,8 @@ export function Hero() {
             <span>One clear view.</span>
           </h1>
           <p className={styles.description}>
-            Invite your team, assign shipments and follow every delivery. Keep your customers
-            informed, from dispatch to confirmed handover.
+            Manage your private fleet, assign shipments and follow every delivery. Keep your
+            customers informed, from dispatch to confirmed handover.
           </p>
           <div className={styles.actions}>
             <Link href="/register" className={styles.primary}>

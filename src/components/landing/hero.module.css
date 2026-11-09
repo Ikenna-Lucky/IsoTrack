@@ -16,23 +16,6 @@
   position: relative;
   z-index: 2;
 }
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #86b6ad;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
-}
-.eyebrow::before {
-  content: "";
-  width: 25px;
-  height: 2px;
-  background: #fbbf24;
-}
 .title {
   font-size: clamp(42px, 4.15vw, 62px);
   letter-spacing: -0.048em;
@@ -294,19 +277,6 @@
   padding: 14px 12px;
   animation: driverSelect 16s infinite;
 }
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  border: 1px solid #496451;
-  border-radius: 50%;
-  background: #2a4033;
-  color: #afdbb7;
-  font-size: 10px;
-  font-weight: 650;
-}
 .driver b {
   display: block;
   font-size: 11px;
@@ -477,19 +447,6 @@
   margin: 12px 0 0 3%;
   font-size: 9px;
   color: #849c8e;
-}
-.pause {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  min-height: 32px;
-  padding: 3px 7px;
-  border-radius: 3px;
-  color: #bccdc0;
-}
-.paused *,
-.paused *::before {
-  animation-play-state: paused !important;
 }
 @keyframes rowOne {
   0%,
@@ -809,10 +766,6 @@
   .driver small {
     font-size: 7px;
   }
-  .avatar {
-    width: 26px;
-    height: 26px;
-  }
   .trackingBody {
     padding: 12px;
   }
@@ -878,10 +831,6 @@
   .driver small {
     font-size: 9px;
   }
-  .avatar {
-    width: 34px;
-    height: 34px;
-  }
   .trackingTitle {
     font-size: 11px;
   }
@@ -902,11 +851,6 @@
   }
   .title {
     font-size: clamp(35px, 10.3vw, 48px);
-  }
-  .eyebrow {
-    font-size: 8px;
-    gap: 8px;
-    margin-bottom: 22px;
   }
   .description {
     font-size: 14px;
@@ -1013,8 +957,5 @@
   .connectorFlow {
     stroke-dashoffset: 0;
     opacity: 1;
-  }
-  .pause {
-    display: none;
   }
 }

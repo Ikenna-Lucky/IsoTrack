@@ -1,5 +1,21 @@
 # Dispatch office hero photograph
 
+## Demo driver portrait
+
+`public/images/demo-driver-tariye.webp` is a generated 160×160 portrait for the
+fictional sample driver Tariye Dappa. It does not depict a real ISOTrack driver.
+Generated with the built-in image tool on 2026-11-09 and exported as WebP quality 85.
+
+Prompt: Photorealistic-natural asset: square head-and-shoulders profile portrait
+for a fictional Nigerian delivery driver in a clearly illustrative website product
+demo. A friendly Nigerian man in his early thirties with short natural black hair,
+neat short beard, wearing a plain charcoal work polo. Face centered and clearly
+visible, relaxed professional expression, soft natural daylight, softly blurred
+neutral outdoor background. Tight portrait crop suitable for a small circular
+avatar, realistic skin texture. No text, no logos, no watermark, no UI, no props.
+
+## Office photograph
+
 Generated with the built-in image generation tool on 2026-11-09. This is an
 illustrative photograph, not a photograph of an ISOTrack employee or customer.
 The website asset is `public/images/dispatch-office.webp` (1400px wide, WebP
