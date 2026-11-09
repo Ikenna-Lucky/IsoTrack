@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { Hero } from "@/components/landing/hero";
-import { Features } from "@/components/landing/features";
+import { PrivateFleet } from "@/components/landing/private-fleet";
 import { OperationsWalkthrough } from "@/components/landing/operations-walkthrough";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { AboutProject } from "@/components/landing/testimonials";
@@ -14,7 +14,7 @@ export default function LandingPage() {
       <main>
         <Hero />
         <OperationsWalkthrough />
-        <Features />
+        <PrivateFleet />
         <HowItWorks />
         <AboutProject />
         <CtaBanner />
