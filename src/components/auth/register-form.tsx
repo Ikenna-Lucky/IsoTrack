@@ -18,46 +18,12 @@ import {
   Truck,
 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import { registrationInput, type RegistrationValues } from "@/lib/registration-input";
 import { extractErrorMessage } from "@/lib/errors";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import type { UserRole } from "@/types";
-
-const registerSchema = z
-  .object({
-    name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name too long"),
-    email: z.string().email("Enter a valid email address"),
-    password: z
-      .string()
-      .min(8, "At least 8 characters required")
-      .regex(/[A-Z]/, "Include at least one uppercase letter")
-      .regex(/[0-9]/, "Include at least one number"),
-    role: z.enum(["business", "driver", "customer"]),
-    phone: z
-      .string()
-      .regex(/^\+?[1-9]\d{6,14}$/, "Enter a valid number, e.g. +2348012345678")
-      .optional()
-      .or(z.literal("")),
-    businessName: z.string().min(2, "Business name must be at least 2 characters").max(100).optional(),
-    vehicleType: z.enum(["bike", "car", "van", "truck"]).optional(),
-    vehiclePlate: z.string().min(3, "Enter a valid plate number").max(20).optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.role === "business" && !data.businessName) {
-      ctx.addIssue({ code: "custom", path: ["businessName"], message: "Business name is required" });
-    }
-    if (data.role === "driver") {
-      if (!data.vehicleType) {
-        ctx.addIssue({ code: "custom", path: ["vehicleType"], message: "Vehicle type is required" });
-      }
-      if (!data.vehiclePlate) {
-        ctx.addIssue({ code: "custom", path: ["vehiclePlate"], message: "Plate number is required" });
-      }
-    }
-  });
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const ROLE_ROUTES: Record<UserRole, string> = {
   business: "/business",
@@ -73,7 +39,6 @@ const ROLES: {
 }[] = [
   { value: "customer", label: "Customer", sublabel: "Track deliveries", icon: PackageOpen },
   { value: "business", label: "Business", sublabel: "Manage shipments", icon: Building2 },
-  { value: "driver", label: "Driver", sublabel: "Run deliveries", icon: Truck },
 ];
 
 const VEHICLES = [
@@ -85,11 +50,13 @@ const VEHICLES = [
 
 function Field({
   label,
+  htmlFor,
   hint,
   error,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   hint?: string | undefined;
   error?: string | undefined;
   children: React.ReactNode;
@@ -97,7 +64,9 @@ function Field({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-semibold text-stone-800">{label}</label>
+        <label htmlFor={htmlFor} className="text-sm font-semibold text-stone-800">
+          {label}
+        </label>
         {hint && <span className="text-xs font-medium text-stone-500">{hint}</span>}
       </div>
       {children}
@@ -111,7 +80,7 @@ function Field({
   );
 }
 
-export function RegisterForm() {
+export function RegisterForm({ invitation = false }: { invitation?: boolean }) {
   const router = useRouter();
   const registerUser = useAuthStore((s) => s.register);
 
@@ -124,25 +93,38 @@ export function RegisterForm() {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { role: "customer" },
+  } = useForm<RegistrationValues>({
+    resolver: zodResolver(registrationInput(invitation)),
+    defaultValues: { role: invitation ? "driver" : "customer" },
   });
 
   const selectedRole = watch("role");
 
-  const onSubmit = async (values: RegisterFormValues) => {
+  const onSubmit = async (values: RegistrationValues) => {
     setServerError(null);
     try {
+      if (invitation) {
+        await api.post("/driver-invitations/accept", {
+          token: values.token,
+          email: values.email,
+          name: values.name,
+          password: values.password,
+          vehicleType: values.vehicleType,
+          vehiclePlate: values.vehiclePlate,
+        });
+        router.replace("/login?joined=fleet" as Route);
+        return;
+      }
+      if (values.role === "driver") return;
       await registerUser({
         name: values.name,
         email: values.email,
         password: values.password,
         role: values.role,
         ...(values.phone ? { phone: values.phone } : {}),
-        ...(values.role === "business" && values.businessName ? { businessName: values.businessName } : {}),
-        ...(values.role === "driver" && values.vehicleType ? { vehicleType: values.vehicleType } : {}),
-        ...(values.role === "driver" && values.vehiclePlate ? { vehiclePlate: values.vehiclePlate } : {}),
+        ...(values.role === "business" && values.businessName
+          ? { businessName: values.businessName }
+          : {}),
       });
       router.push(ROLE_ROUTES[values.role] as Route);
     } catch (err: unknown) {
@@ -155,18 +137,25 @@ export function RegisterForm() {
       <div className="motion-rise overflow-hidden rounded-md border border-stone-800 bg-[#101411] shadow-2xl shadow-black/30">
         <div className="border-b border-stone-800 p-5 sm:p-7">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-300">
-            Create account
+            {invitation ? "Join a private fleet" : "Create account"}
           </p>
           <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <h1 className="max-w-xl text-3xl font-black leading-tight tracking-tight text-stone-100 sm:text-4xl">
-                Start with the workspace you need.
+                {invitation
+                  ? "Your business invited you to drive."
+                  : "Start with the workspace you need."}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-400">
-                Choose whether you are tracking a delivery, running deliveries, or managing the dispatch board.
+                {invitation
+                  ? "Use the invitation token and email address your business provided. After joining, sign in to your driver workspace."
+                  : "Create a customer account to track deliveries or a business account to manage dispatch."}
               </p>
             </div>
-            <Link href={"/login" as Route} className="text-sm font-semibold text-stone-400 hover:text-amber-300">
+            <Link
+              href={"/login" as Route}
+              className="text-sm font-semibold text-stone-400 hover:text-amber-300"
+            >
               Already have an account?
             </Link>
           </div>
@@ -181,50 +170,81 @@ export function RegisterForm() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
-            <Field label="Account type">
-              <Controller
-                name="role"
-                control={control}
-                render={({ field }) => (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                    {ROLES.map(({ value, label, sublabel, icon: Icon }) => {
-                      const active = field.value === value;
-                      return (
-                        <label
-                          key={value}
-                          className={cn(
-                            "flex min-h-20 cursor-pointer items-center gap-3 rounded border px-4 py-3 transition focus-within:ring-4 focus-within:ring-teal-700/15",
-                            active
-                              ? "border-teal-700 bg-teal-700/10 text-stone-950"
-                              : "border-stone-300 bg-white text-stone-700 hover:border-stone-500",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            value={value}
-                            checked={active}
-                            onChange={() => field.onChange(value)}
-                            className="sr-only"
-                          />
-                          <span
+            {invitation ? (
+              <Field
+                label="Invitation token"
+                htmlFor="invitation-token"
+                error={errors.token?.message}
+              >
+                <input
+                  {...register("token")}
+                  id="invitation-token"
+                  aria-label="Invitation token"
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="h-12 w-full rounded border border-stone-300 bg-white px-4 text-sm text-stone-950"
+                />
+              </Field>
+            ) : (
+              <Field label="Account type">
+                <Controller
+                  name="role"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      {ROLES.map(({ value, label, sublabel, icon: Icon }) => {
+                        const active = field.value === value;
+                        return (
+                          <label
+                            key={value}
                             className={cn(
-                              "flex h-10 w-10 shrink-0 items-center justify-center rounded",
-                              active ? "bg-teal-700 text-stone-50" : "bg-stone-200 text-stone-600",
+                              "flex min-h-20 cursor-pointer items-center gap-3 rounded border px-4 py-3 transition focus-within:ring-4 focus-within:ring-teal-700/15",
+                              active
+                                ? "border-teal-700 bg-teal-700/10 text-stone-950"
+                                : "border-stone-300 bg-white text-stone-700 hover:border-stone-500",
                             )}
                           >
-                            <Icon className="h-5 w-5" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-bold">{label}</span>
-                            <span className="block text-xs font-medium text-stone-500">{sublabel}</span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-            </Field>
+                            <input
+                              type="radio"
+                              value={value}
+                              checked={active}
+                              onChange={() => field.onChange(value)}
+                              className="sr-only"
+                            />
+                            <span
+                              className={cn(
+                                "flex h-10 w-10 shrink-0 items-center justify-center rounded",
+                                active
+                                  ? "bg-teal-700 text-stone-50"
+                                  : "bg-stone-200 text-stone-600",
+                              )}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-bold">{label}</span>
+                              <span className="block text-xs font-medium text-stone-500">
+                                {sublabel}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                />
+              </Field>
+            )}
+            {!invitation && (
+              <p className="text-sm text-stone-700">
+                Joining as a driver?{" "}
+                <Link href={"/join-fleet" as Route} className="font-bold text-teal-800 underline">
+                  Use your business invitation
+                </Link>
+                .
+              </p>
+            )}
 
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-5">
@@ -234,7 +254,7 @@ export function RegisterForm() {
                   </p>
                 </div>
 
-                <Field label="Full name" error={errors.name?.message}>
+                <Field label="Full name" htmlFor="name" error={errors.name?.message}>
                   <input
                     {...register("name")}
                     id="name"
@@ -249,7 +269,7 @@ export function RegisterForm() {
                   />
                 </Field>
 
-                <Field label="Email address" error={errors.email?.message}>
+                <Field label="Email address" htmlFor="reg-email" error={errors.email?.message}>
                   <input
                     {...register("email")}
                     id="reg-email"
@@ -264,20 +284,27 @@ export function RegisterForm() {
                   />
                 </Field>
 
-                <Field label="Phone number" hint="optional" error={errors.phone?.message}>
-                  <input
-                    {...register("phone")}
-                    id="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder="+2348012345678"
-                    className={cn(
-                      "h-12 w-full rounded border bg-white px-4 text-sm text-stone-950 shadow-sm outline-none transition",
-                      "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
-                      errors.phone ? "border-red-400" : "border-stone-300 hover:border-stone-500",
-                    )}
-                  />
-                </Field>
+                {!invitation && (
+                  <Field
+                    label="Phone number"
+                    htmlFor="phone"
+                    hint="optional"
+                    error={errors.phone?.message}
+                  >
+                    <input
+                      {...register("phone")}
+                      id="phone"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+2348012345678"
+                      className={cn(
+                        "h-12 w-full rounded border bg-white px-4 text-sm text-stone-950 shadow-sm outline-none transition",
+                        "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
+                        errors.phone ? "border-red-400" : "border-stone-300 hover:border-stone-500",
+                      )}
+                    />
+                  </Field>
+                )}
               </div>
 
               <div className="space-y-5">
@@ -287,7 +314,7 @@ export function RegisterForm() {
                   </p>
                 </div>
 
-                <Field label="Password" error={errors.password?.message}>
+                <Field label="Password" htmlFor="reg-password" error={errors.password?.message}>
                   <div className="relative">
                     <input
                       {...register("password")}
@@ -298,7 +325,9 @@ export function RegisterForm() {
                       className={cn(
                         "h-12 w-full rounded border bg-white px-4 pr-12 text-sm text-stone-950 shadow-sm outline-none transition",
                         "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
-                        errors.password ? "border-red-400" : "border-stone-300 hover:border-stone-500",
+                        errors.password
+                          ? "border-red-400"
+                          : "border-stone-300 hover:border-stone-500",
                       )}
                     />
                     <button
@@ -313,7 +342,11 @@ export function RegisterForm() {
                 </Field>
 
                 {selectedRole === "business" && (
-                  <Field label="Business name" error={errors.businessName?.message}>
+                  <Field
+                    label="Business name"
+                    htmlFor="businessName"
+                    error={errors.businessName?.message}
+                  >
                     <input
                       {...register("businessName")}
                       id="businessName"
@@ -323,7 +356,9 @@ export function RegisterForm() {
                       className={cn(
                         "h-12 w-full rounded border bg-white px-4 text-sm text-stone-950 shadow-sm outline-none transition",
                         "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
-                        errors.businessName ? "border-red-400" : "border-stone-300 hover:border-stone-500",
+                        errors.businessName
+                          ? "border-red-400"
+                          : "border-stone-300 hover:border-stone-500",
                       )}
                     />
                   </Field>
@@ -366,7 +401,11 @@ export function RegisterForm() {
                       />
                     </Field>
 
-                    <Field label="Plate number" error={errors.vehiclePlate?.message}>
+                    <Field
+                      label="Plate number"
+                      htmlFor="vehiclePlate"
+                      error={errors.vehiclePlate?.message}
+                    >
                       <input
                         {...register("vehiclePlate")}
                         id="vehiclePlate"
@@ -375,7 +414,9 @@ export function RegisterForm() {
                         className={cn(
                           "h-12 w-full rounded border bg-white px-4 text-sm uppercase text-stone-950 shadow-sm outline-none transition",
                           "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
-                          errors.vehiclePlate ? "border-red-400" : "border-stone-300 hover:border-stone-500",
+                          errors.vehiclePlate
+                            ? "border-red-400"
+                            : "border-stone-300 hover:border-stone-500",
                         )}
                       />
                     </Field>
@@ -387,7 +428,10 @@ export function RegisterForm() {
             <div className="grid gap-3 border-t border-stone-300 pt-5 sm:grid-cols-[1fr_auto] sm:items-center">
               <p className="text-sm text-stone-600">
                 Already have an account?{" "}
-                <Link href={"/login" as Route} className="font-bold text-stone-950 hover:text-teal-700">
+                <Link
+                  href={"/login" as Route}
+                  className="font-bold text-stone-950 hover:text-teal-700"
+                >
                   Sign in
                 </Link>
               </p>
@@ -399,11 +443,11 @@ export function RegisterForm() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating account
+                    {invitation ? "Joining fleet" : "Creating account"}
                   </>
                 ) : (
                   <>
-                    Create account
+                    {invitation ? "Accept invitation" : "Create account"}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}

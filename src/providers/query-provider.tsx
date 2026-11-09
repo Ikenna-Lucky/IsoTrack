@@ -1,12 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import {
-  QueryClient,
-  QueryClientProvider,
-  MutationCache,
-  QueryCache,
-} from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
 
 /**
@@ -21,38 +16,18 @@ import { useAuthStore } from "@/store/auth";
  *   We don't retry on 401/403 (those are user errors, not transient).
  * - refetchOnWindowFocus true — important for a real-time logistics app so
  *   data refreshes when the dispatcher switches back to the tab.
- * - Global 401 handler — if the axios interceptor couldn't refresh the token,
- *   any query/mutation that rejects with 401 will force a logout here.
+ * Session expiry is handled by the API client. A password confirmation failure
+ * must not be interpreted as an expired session.
  */
 function makeQueryClient() {
-  const handle401 = () => {
-    const { isAuthenticated, clearAuth } = useAuthStore.getState();
-    if (isAuthenticated) clearAuth();
-  };
-
   return new QueryClient({
-    queryCache: new QueryCache({
-      onError: (error: unknown) => {
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
-        if (status === 401) handle401();
-      },
-    }),
-    mutationCache: new MutationCache({
-      onError: (error: unknown) => {
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
-        if (status === 401) handle401();
-      },
-    }),
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000,        // 30 seconds
-        gcTime: 5 * 60 * 1000,       // 5 minutes
+        staleTime: 30 * 1000, // 30 seconds
+        gcTime: 5 * 60 * 1000, // 5 minutes
         retry: (failureCount, error: unknown) => {
           // Never retry on auth / permission errors
-          const status = (error as { response?: { status?: number } })
-            ?.response?.status;
+          const status = (error as { response?: { status?: number } })?.response?.status;
           if (status === 401 || status === 403 || status === 404) return false;
           return failureCount < 1;
         },
@@ -69,8 +44,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   // useState ensures a new client is created per component mount (not per render),
   // preventing cache from being shared across server renders in Next.js.
   const [queryClient] = useState(() => makeQueryClient());
-
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  useEffect(
+    () =>
+      useAuthStore.subscribe((state, previous) => {
+        if (state.user?.id !== previous.user?.id) queryClient.clear();
+      }),
+    [queryClient],
   );
+
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

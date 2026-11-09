@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import type { UserRole } from "@/types";
+import { roleRoutes } from "@/lib/auth-routing";
+import type { Route } from "next";
 
 interface Props {
   role?: UserRole;
@@ -24,11 +26,11 @@ interface Props {
  *  - Otherwise → render children normally
  */
 export function AuthGuard({ role, children }: Props) {
-  const isLoading       = useAuthStore((s) => s.isLoading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const userRole        = useAuthStore((s) => s.user?.role);
-  const router          = useRouter();
-  const pathname        = usePathname();
+  const userRole = useAuthStore((s) => s.user?.role);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
@@ -37,7 +39,7 @@ export function AuthGuard({ role, children }: Props) {
       return;
     }
     if (role && userRole !== role) {
-      router.replace("/login");
+      router.replace((userRole ? roleRoutes[userRole] : "/login") as Route);
     }
   }, [isLoading, isAuthenticated, userRole, role, router, pathname]);
 

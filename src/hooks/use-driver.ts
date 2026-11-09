@@ -126,13 +126,3 @@ export function useUpdateNotificationPreferences() {
     },
   });
 }
-
-// ─── Delete account ───────────────────────────────────────────────────────────
-
-export function useDeleteAccount() {
-  return useMutation({
-    mutationFn: async () => {
-      await api.delete("/auth/me");
-    },
-  });
-}

@@ -11,7 +11,7 @@ import { z } from "zod";
 import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import type { UserRole } from "@/types";
+import { loginDestination } from "@/lib/auth-routing";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -20,29 +20,15 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const ROLE_ROUTES: Record<UserRole, string> = {
-  business: "/business",
-  driver: "/driver",
-  customer: "/customer",
-};
-
-function getLoginDestination(next: string | null, role: UserRole) {
-  const fallback = ROLE_ROUTES[role];
-
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return fallback;
-  }
-
-  return next.startsWith(fallback) ? next : fallback;
-}
-
 function Field({
   label,
+  htmlFor,
   error,
   action,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   error?: string | undefined;
   action?: React.ReactNode | undefined;
   children: React.ReactNode;
@@ -50,7 +36,9 @@ function Field({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <label className="text-sm font-semibold text-stone-800">{label}</label>
+        <label htmlFor={htmlFor} className="text-sm font-semibold text-stone-800">
+          {label}
+        </label>
         {action}
       </div>
       {children}
@@ -85,7 +73,7 @@ export function LoginForm() {
     try {
       await login(values.email, values.password);
       const role = useAuthStore.getState().user?.role ?? "customer";
-      router.replace(getLoginDestination(searchParams.get("next"), role) as Route);
+      router.replace(loginDestination(searchParams.get("next"), role) as Route);
     } catch (err: unknown) {
       setServerError(extractErrorMessage(err));
     }
@@ -103,7 +91,8 @@ export function LoginForm() {
               Welcome back
             </h1>
             <p className="mt-4 max-w-sm text-sm leading-7 text-stone-400">
-              Sign in to open the dashboard for your role and continue from the latest shipment state.
+              Sign in to open the dashboard for your role and continue from the latest shipment
+              state.
             </p>
 
             <div className="mt-6 border-l-2 border-amber-400 pl-4">
@@ -111,18 +100,29 @@ export function LoginForm() {
                 Session route
               </p>
               <p className="mt-2 text-sm text-stone-300">
-                Business, driver, and customer accounts are sent to their own workspace after sign in.
+                Business, driver, and customer accounts are sent to their own workspace after sign
+                in.
               </p>
             </div>
           </div>
 
           <div className="bg-[#f8f3e8] p-5 text-stone-950 sm:p-7">
+            {searchParams.get("joined") === "fleet" && (
+              <p
+                role="status"
+                className="mb-5 rounded border border-teal-700/30 bg-teal-700/10 p-3 text-sm text-teal-900"
+              >
+                Fleet joined. Sign in with the email and password you just used.
+              </p>
+            )}
             <div className="mb-6 flex items-center justify-between border-b border-stone-300 pb-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">
                   Identity check
                 </p>
-                <p className="mt-1 text-sm font-semibold text-stone-800">Use your IsoTrack credentials.</p>
+                <p className="mt-1 text-sm font-semibold text-stone-800">
+                  Use your IsoTrack credentials.
+                </p>
               </div>
               <span className="hidden rounded bg-teal-700/10 px-2.5 py-1 text-xs font-bold text-teal-800 sm:inline-flex">
                 Encrypted
@@ -137,7 +137,7 @@ export function LoginForm() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-              <Field label="Email address" error={errors.email?.message}>
+              <Field label="Email address" htmlFor="email" error={errors.email?.message}>
                 <input
                   {...register("email")}
                   id="email"
@@ -154,9 +154,13 @@ export function LoginForm() {
 
               <Field
                 label="Password"
+                htmlFor="password"
                 error={errors.password?.message}
                 action={
-                  <Link href={"#" as Route} className="text-sm font-semibold text-teal-700 hover:text-teal-900">
+                  <Link
+                    href={"#" as Route}
+                    className="text-sm font-semibold text-teal-700 hover:text-teal-900"
+                  >
                     Forgot password?
                   </Link>
                 }
@@ -171,7 +175,9 @@ export function LoginForm() {
                     className={cn(
                       "h-12 w-full rounded border bg-white px-4 pr-12 text-sm text-stone-950 outline-none transition",
                       "placeholder:text-stone-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15",
-                      errors.password ? "border-red-400" : "border-stone-300 hover:border-stone-500",
+                      errors.password
+                        ? "border-red-400"
+                        : "border-stone-300 hover:border-stone-500",
                     )}
                   />
                   <button
@@ -206,7 +212,10 @@ export function LoginForm() {
 
             <div className="mt-6 border-t border-stone-300 pt-5 text-center text-sm text-stone-700">
               New to IsoTrack?{" "}
-              <Link href={"/register" as Route} className="font-bold text-stone-950 hover:text-teal-700">
+              <Link
+                href={"/register" as Route}
+                className="font-bold text-stone-950 hover:text-teal-700"
+              >
                 Create an account
               </Link>
             </div>

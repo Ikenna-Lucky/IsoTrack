@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { AccountDeactivation } from "@/components/auth/account-deactivation";
 import {
   Bell,
   Building2,
@@ -16,7 +16,6 @@ import {
   Save,
   Settings2,
   Shield,
-  Trash2,
   User,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
@@ -30,7 +29,6 @@ import {
   useUpdateBusinessPreferences,
   useUpdateBusinessProfile,
 } from "@/hooks/use-business";
-import { useDeleteAccount } from "@/hooks/use-driver";
 import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
@@ -301,10 +299,8 @@ function PasswordButton({ active, onClick }: { active: boolean; onClick: () => v
 }
 
 function SecurityTab() {
-  const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const changePassword = useChangePassword();
-  const deleteAccount = useDeleteAccount();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -312,8 +308,6 @@ function SecurityTab() {
   const [showNext, setShowNext] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
 
   async function handlePassword() {
     setError("");
@@ -326,17 +320,6 @@ function SecurityTab() {
       setTimeout(() => logout(), 1500);
     } catch (err: unknown) {
       setError(extractErrorMessage(err, "Failed to change password."));
-    }
-  }
-
-  async function handleDelete() {
-    setDeleteError("");
-    try {
-      await deleteAccount.mutateAsync();
-      await logout();
-      router.push("/login");
-    } catch (err: unknown) {
-      setDeleteError(extractErrorMessage(err, "Failed to delete account."));
     }
   }
 
@@ -364,27 +347,7 @@ function SecurityTab() {
         </div>
       </Panel>
 
-      <Panel eyebrow="Danger zone" title="Delete account" description="This permanently removes your business account and associated data.">
-        {deleteOpen ? (
-          <div className="space-y-3 rounded-md border border-rose-400/20 bg-rose-400/10 p-4">
-            <p className="text-sm font-black text-rose-100">Confirm permanent deletion?</p>
-            {deleteError && <Notice tone="error">{deleteError}</Notice>}
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button onClick={handleDelete} disabled={deleteAccount.isPending} className="rounded-md bg-rose-300 px-4 py-2.5 text-sm font-black text-black transition hover:bg-rose-200 disabled:opacity-60">
-                {deleteAccount.isPending ? "Deleting..." : "Delete account"}
-              </button>
-              <button onClick={() => setDeleteOpen(false)} className="rounded-md border border-white/[0.08] px-4 py-2.5 text-sm font-black text-stone-200 transition hover:bg-white/[0.06]">
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setDeleteOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-rose-400/20 bg-rose-400/10 px-4 py-2.5 text-sm font-black text-rose-100 transition hover:bg-rose-400/[0.16]">
-            <Trash2 className="h-4 w-4" />
-            Delete account
-          </button>
-        )}
-      </Panel>
+      <AccountDeactivation />
     </div>
   );
 }

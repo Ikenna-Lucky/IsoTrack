@@ -15,6 +15,7 @@ import {
   User,
 } from "lucide-react";
 import { useChangePassword, useUpdateProfile } from "@/hooks/use-user";
+import { AccountDeactivation } from "@/components/auth/account-deactivation";
 import { useAuthStore } from "@/store/auth";
 import { extractErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -307,6 +308,7 @@ function SecurityTab() {
             Coming soon
           </span>
         </div>
+        <AccountDeactivation />
       </aside>
     </div>
   );
