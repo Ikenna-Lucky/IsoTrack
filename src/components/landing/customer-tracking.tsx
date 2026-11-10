@@ -313,15 +313,6 @@ export function CustomerTracking() {
           <div className="relative z-10 sm:absolute sm:bottom-0 sm:left-0 sm:w-[296px]">
             <TrackingPhone />
           </div>
-          <div className="relative mt-8 aspect-[4/3] overflow-hidden rounded-lg sm:hidden">
-            <Image
-              src="/images/customer-handover.webp"
-              alt="A customer receiving a parcel from a delivery driver at her doorway"
-              fill
-              sizes="100vw"
-              className="object-cover object-[65%_35%]"
-            />
-          </div>
         </div>
       </div>
     </section>
