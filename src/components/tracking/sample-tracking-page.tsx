@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
+  AlertTriangle,
   Check,
   CheckCheck,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import motion from "./tracking-motion.module.css";
 
 const stages = [
   {
@@ -76,6 +78,12 @@ export function SampleTrackingPage() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
   const state = stages[stage] ?? stages[1];
   const closed = stage >= 2;
   const events = [
@@ -107,7 +115,9 @@ export function SampleTrackingPage() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/track/IST-K7X2M9PQ`);
       setCopyStatus("Sample link copied");
+      setCopied(true);
     } catch {
+      setCopied(false);
       setCopyStatus("Copy the link from your browser’s address bar.");
     }
   }
@@ -149,14 +159,20 @@ export function SampleTrackingPage() {
             onClick={copyLink}
             className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--landing-border)] px-4 text-sm hover:bg-[var(--landing-tint)]"
           >
-            <Copy className="size-4" aria-hidden="true" />
-            Share sample
+            {copied ? (
+              <Check className={`size-4 ${motion.confirm}`} aria-hidden="true" />
+            ) : (
+              <Copy className="size-4" aria-hidden="true" />
+            )}
+            {copied ? "Link copied" : "Share sample"}
           </button>
         </div>
         <p role="status" className="sr-only">
           {copyStatus}
         </p>
-        {copyStatus && <p className="mb-4 text-sm text-[var(--landing-accent)]">{copyStatus}</p>}
+        {copyStatus && copyStatus !== "Sample link copied" && (
+          <p className="mb-4 text-sm text-[var(--landing-accent)]">{copyStatus}</p>
+        )}
 
         <section
           aria-label="Sample controls"
@@ -192,7 +208,12 @@ export function SampleTrackingPage() {
               aria-label="Shipment status"
               className="overflow-hidden rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)]"
             >
-              <div className="p-6 sm:p-8" aria-live="polite" aria-atomic="true">
+              <div
+                key={stage}
+                className={`p-6 sm:p-8 ${motion.reveal}`}
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="font-mono text-sm text-[var(--landing-muted)]">IST-K7X2M9PQ</p>
                   <span
@@ -245,13 +266,26 @@ export function SampleTrackingPage() {
                 </h2>
                 <span className="text-xs text-[var(--landing-muted)]">Illustrative route</span>
               </div>
-              <div className="my-8 flex items-center px-3" aria-hidden="true">
+              <div
+                className="relative my-8 flex h-12 items-center justify-between px-6"
+                aria-hidden="true"
+              >
                 <span className="size-4 rounded-full border-[5px] border-[var(--landing-accent)]" />
                 <div className="h-px flex-1 bg-[var(--landing-border)]" />
-                <div className="flex size-12 items-center justify-center rounded-full border border-[var(--landing-border)] bg-[var(--landing-section)] text-[var(--landing-accent)]">
-                  {stage === 2 ? <Check className="size-5" /> : <Truck className="size-5" />}
+                <div
+                  style={{ left: stage === 0 ? "35%" : stage === 1 ? "70%" : "calc(100% - 34px)" }}
+                  className="absolute flex size-12 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--landing-border)] bg-[var(--landing-section)] text-[var(--landing-accent)] transition-[left] duration-700 ease-in-out motion-reduce:transition-none"
+                >
+                  <span key={stage} className={stage === 2 ? motion.confirm : motion.reveal}>
+                    {stage === 2 ? (
+                      <Check className="size-5" />
+                    ) : stage === 3 ? (
+                      <AlertTriangle className="size-5 text-[var(--landing-danger)]" />
+                    ) : (
+                      <Truck className="size-5" />
+                    )}
+                  </span>
                 </div>
-                <div className="h-px flex-1 bg-[var(--landing-border)]" />
                 <MapPin className="size-5 text-[var(--landing-accent)]" />
               </div>
               <div className="grid grid-cols-2 gap-6">
@@ -324,7 +358,10 @@ export function SampleTrackingPage() {
               </div>
               <ol>
                 {events.map((event, index) => (
-                  <li key={event.title} className="relative flex gap-4 pb-6 last:pb-0">
+                  <li
+                    key={`${stage}-${event.title}`}
+                    className={`relative flex gap-4 pb-6 last:pb-0 ${index === 0 ? motion.reveal : ""}`}
+                  >
                     {index < events.length - 1 && (
                       <span
                         aria-hidden="true"

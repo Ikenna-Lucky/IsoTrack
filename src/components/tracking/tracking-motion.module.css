@@ -1,0 +1,37 @@
+.reveal {
+  animation: reveal 320ms ease-out both;
+}
+
+.confirm {
+  display: inline-flex;
+  animation: confirm 360ms ease-out both;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes confirm {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .confirm {
+    animation: none;
+  }
+}
