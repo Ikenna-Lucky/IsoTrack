@@ -6,6 +6,7 @@ import { OperationsWalkthrough } from "@/components/landing/operations-walkthrou
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { CustomerTracking } from "@/components/landing/customer-tracking";
 import { CtaBanner } from "@/components/landing/cta-banner";
+import { LandingFaq } from "@/components/landing/faq";
 
 export default function LandingPage() {
   return (
@@ -17,6 +18,7 @@ export default function LandingPage() {
         <PrivateFleet />
         <HowItWorks />
         <CustomerTracking />
+        <LandingFaq />
         <CtaBanner />
       </main>
       <Footer />

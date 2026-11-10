@@ -1,57 +1,53 @@
-"use client";
-
 import Link from "next/link";
-import type { Route } from "next";
-import { ArrowRight, PackageSearch } from "lucide-react";
-import { useInView } from "@/hooks/use-in-view";
-
-const SPRING = "cubic-bezier(0.22,1,0.36,1)";
+import { ArrowRight } from "lucide-react";
 
 export function CtaBanner() {
-  const { ref, inView } = useInView({ threshold: 0.1 });
-
   return (
     <section
-      className="border-t border-stone-800 bg-[#080806] py-16 sm:py-20 lg:py-28"
-      ref={ref as unknown as React.RefObject<HTMLElement>}
+      aria-labelledby="closing-title"
+      className="border-t border-white/10 bg-[#101b16] px-7 py-16 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-20"
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <div
-          className="grid gap-8 rounded-md border border-amber-500/25 bg-[#f7f0df] p-6 text-stone-950 shadow-sm sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center"
-          style={{
-            opacity: inView ? 1 : 0,
-            transform: inView ? "translateY(0)" : "translateY(18px)",
-            transition: `opacity 0.55s ${SPRING}, transform 0.55s ${SPRING}`,
-          }}
-        >
-          <div>
-            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded border border-stone-300 bg-stone-950">
-              <PackageSearch className="h-5 w-5 text-amber-300" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-stone-950 sm:text-3xl">
-              Start with one shipment and follow the whole path.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-700 sm:text-base">
-              Create a business account, add a delivery, assign a driver, and share the tracking
-              link your customer can open without an account.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+      <div className="mx-auto grid max-w-[1320px] items-center gap-8 lg:grid-cols-[1fr_auto] lg:gap-16">
+        <div>
+          <h2
+            id="closing-title"
+            className="text-3xl font-semibold tracking-tight text-stone-100 sm:text-4xl"
+          >
+            See ISOTrack in action.
+          </h2>
+          <p className="mt-4 max-w-xl text-base leading-7 text-stone-400">
+            Create a business account to manage your fleet, or explore a sample delivery from the
+            customer’s side.
+          </p>
+          <p className="mt-5 text-xs leading-6 text-stone-500">
+            Portfolio project. Payments use Stripe test mode.
+          </p>
+        </div>
+        <div>
+          <div className="flex flex-col gap-3 min-[480px]:flex-row">
             <Link
-              href={"/register" as Route}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-stone-950 px-5 py-3 text-sm font-bold text-stone-100 transition-colors hover:bg-stone-800"
+              href="/register"
+              className="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-amber-300 px-5 py-3 text-sm font-semibold text-[#10150f] transition-colors hover:bg-amber-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
             >
-              Create shipment
-              <ArrowRight className="h-4 w-4" />
+              Create an account
+              <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
             <Link
-              href={"/track/IST-K7X2M9PQ" as Route}
-              className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-transparent px-5 py-3 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100"
+              href="/track/IST-K7X2M9PQ"
+              className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/20 px-5 py-3 text-sm font-semibold text-stone-200 transition-colors hover:border-teal-300/50 hover:text-teal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
             >
               View sample tracking
             </Link>
           </div>
+          <p className="mt-4 text-sm text-stone-400">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="ml-1 inline-flex min-h-8 items-center font-medium text-teal-200 underline decoration-teal-200/30 underline-offset-4 hover:text-teal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
+            >
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </section>
