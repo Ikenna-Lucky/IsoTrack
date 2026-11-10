@@ -12,7 +12,13 @@ export const metadata: Metadata = {
   },
   description:
     "Enterprise-grade logistics and shipment tracking platform. Track deliveries in real time, automate notifications, and manage your entire fleet from one dashboard.",
-  keywords: ["logistics", "shipment tracking", "delivery management", "fleet tracking", "real-time"],
+  keywords: [
+    "logistics",
+    "shipment tracking",
+    "delivery management",
+    "fleet tracking",
+    "real-time",
+  ],
   authors: [{ name: "IsoTrack" }],
   creator: "IsoTrack",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
@@ -67,11 +73,16 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{document.documentElement.dataset.landingTheme=localStorage.getItem('isotrack-landing-theme')==='light'?'light':'dark'}catch{document.documentElement.dataset.landingTheme='dark'}`,
+          }}
+        />
+      </head>
       <body>
         <QueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </QueryProvider>
       </body>
     </html>

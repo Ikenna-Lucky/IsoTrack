@@ -83,93 +83,98 @@ function TrackingPhone() {
         aria-hidden="true"
         className="relative rounded-[40px] border-2 border-[#56635b] bg-[#171e1a] p-[7px] shadow-2xl shadow-black/50"
       >
-        <div ref={root} className="relative h-[535px] overflow-hidden rounded-[31px] bg-[#09110d]">
-          <div className="flex h-9 items-center justify-between px-5 text-[9px] font-medium text-stone-400">
+        <div
+          ref={root}
+          className="relative h-[535px] overflow-hidden rounded-[31px] bg-[var(--landing-panel)]"
+        >
+          <div className="flex h-9 items-center justify-between px-5 text-[9px] font-medium text-[var(--landing-muted)]">
             <span>9:41</span>
             <span className="h-3 w-16 rounded-full bg-black" />
             <span className="h-2 w-4 rounded-sm border border-stone-500 bg-stone-400" />
           </div>
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-stone-100">
+          <div className="flex items-center justify-between border-b border-[var(--landing-border)] px-4 py-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--landing-ink)]">
               {email ? (
-                <Mail className="size-4 text-teal-200" />
+                <Mail className="size-4 text-[var(--landing-accent)]" />
               ) : (
                 <Image src="/images/isotrack-mark-trimmed.png" alt="" width={19} height={19} />
               )}
               {email ? "Recipient email" : "IsoTrack"}
             </div>
-            <span className="text-[8px] text-stone-400">Sample data</span>
+            <span className="text-[8px] text-[var(--landing-muted)]">Sample data</span>
           </div>
           <div className="p-4">
             {phase === 0 ? (
               <>
-                <p className="mt-5 text-lg font-semibold leading-tight text-stone-100">
+                <p className="mt-5 text-lg font-semibold leading-tight text-[var(--landing-ink)]">
                   A delivery is
                   <br />
                   on its way to you.
                 </p>
-                <p className="mt-4 text-xs leading-6 text-stone-400">
+                <p className="mt-4 text-xs leading-6 text-[var(--landing-muted)]">
                   Your business has shared a tracking link. Open it to follow your shipment.
                 </p>
                 <div
                   data-tracking="link"
                   className="mt-6 rounded-md border border-teal-300/25 bg-teal-400/10 p-3"
                 >
-                  <p className="font-mono text-[11px] text-teal-100">IST-B3N8R4PT</p>
-                  <p className="mt-3 flex items-center justify-between text-xs font-medium text-teal-200">
+                  <p className="font-mono text-[11px] text-[var(--landing-accent)]">IST-B3N8R4PT</p>
+                  <p className="mt-3 flex items-center justify-between text-xs font-medium text-[var(--landing-accent)]">
                     Track your shipment
                     <ExternalLink className="size-3.5" />
                   </p>
                 </div>
-                <p className="mt-5 flex items-center gap-2 text-[10px] text-stone-400">
-                  <ShieldCheck className="size-3.5 text-teal-200" />
+                <p className="mt-5 flex items-center gap-2 text-[10px] text-[var(--landing-muted)]">
+                  <ShieldCheck className="size-3.5 text-[var(--landing-accent)]" />
                   No account needed to track.
                 </p>
               </>
             ) : email ? (
               <>
-                <p className="mb-5 flex items-center gap-1 text-[10px] text-stone-400">
+                <p className="mb-5 flex items-center gap-1 text-[10px] text-[var(--landing-muted)]">
                   <ChevronLeft className="size-3" />
                   Inbox
                 </p>
                 <div data-tracking="message">
-                  <p className="text-base font-semibold leading-6 text-stone-100">
+                  <p className="text-base font-semibold leading-6 text-[var(--landing-ink)]">
                     Your delivery
                     <br />
                     confirmation code
                   </p>
-                  <p className="mt-3 text-[10px] text-stone-400">
+                  <p className="mt-3 text-[10px] text-[var(--landing-muted)]">
                     From IsoTrack · To the recipient
                   </p>
                 </div>
-                <p className="mt-5 text-xs leading-6 text-stone-300">
+                <p className="mt-5 text-xs leading-6 text-[var(--landing-ink)]">
                   Your code for shipment <span className="font-mono text-[10px]">IST-B3N8R4PT</span>
                   :
                 </p>
                 <div
                   data-tracking="code"
-                  className="my-4 rounded-md border border-teal-300/25 bg-teal-400/10 px-2 py-4 text-center font-mono text-xl tracking-[0.18em] text-teal-100"
+                  className="my-4 rounded-md border border-teal-300/25 bg-teal-400/10 px-2 py-4 text-center font-mono text-xl tracking-[0.18em] text-[var(--landing-accent)]"
                 >
                   {phase === 6 ? CODE : "········"}
                 </div>
-                <p className="text-xs leading-6 text-stone-300">
+                <p className="text-xs leading-6 text-[var(--landing-ink)]">
                   Share it with the assigned driver only after receiving your package.
                 </p>
-                <p className="mt-4 text-[10px] leading-5 text-stone-500">
+                <p className="mt-4 text-[10px] leading-5 text-[var(--landing-ink)]0">
                   Expires 20 minutes after it was requested. Keep this code private.
                 </p>
               </>
             ) : (
               <>
-                <p className="text-[9px] uppercase tracking-wider text-stone-400">
+                <p className="text-[9px] uppercase tracking-wider text-[var(--landing-muted)]">
                   Shipment tracking
                 </p>
-                <p className="mt-2 font-mono text-sm font-semibold text-stone-100">IST-B3N8R4PT</p>
-                <div className="mt-3 flex items-center gap-2 rounded-md border border-teal-400/25 bg-teal-400/10 px-3 py-2 text-[11px] font-medium text-teal-200">
+                <p className="mt-2 font-mono text-sm font-semibold text-[var(--landing-ink)]">
+                  IST-B3N8R4PT
+                </p>
+                <div className="mt-3 flex items-center gap-2 rounded-md border border-teal-400/25 bg-teal-400/10 px-3 py-2 text-[11px] font-medium text-[var(--landing-accent)]">
                   <Truck className="size-3.5" />
                   {current === 3 ? "Out for delivery" : current === 2 ? "In transit" : "Picked up"}
                 </div>
-                <p className="mt-3 text-[11px] leading-5 text-stone-400">
+                <p className="mt-3 text-[11px] leading-5 text-[var(--landing-muted)]">
                   {current === 3
                     ? "The driver is completing the final handoff."
                     : "Your package is making its way to you."}
@@ -191,7 +196,7 @@ function TrackingPhone() {
                             "relative z-10 flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-500",
                             index <= current
                               ? "border-teal-300 bg-teal-300 text-black"
-                              : "border-stone-600 bg-[#09110d]",
+                              : "border-stone-600 bg-[var(--landing-panel)]",
                           )}
                         >
                           {index <= current && <Check className="size-2.5" />}
@@ -199,7 +204,9 @@ function TrackingPhone() {
                         <span
                           className={cn(
                             "text-[11px]",
-                            index <= current ? "text-stone-200" : "text-stone-500",
+                            index <= current
+                              ? "text-[var(--landing-ink)]"
+                              : "text-[var(--landing-ink)]0",
                           )}
                         >
                           {label}
@@ -213,15 +220,15 @@ function TrackingPhone() {
                   className={cn(
                     "mt-5 rounded-md border px-3 py-3 transition-opacity duration-500",
                     phase === 4
-                      ? "border-teal-300/30 bg-[#162c21] opacity-100"
+                      ? "border-teal-300/30 bg-[var(--landing-selection)] opacity-100"
                       : "border-transparent opacity-0",
                   )}
                 >
-                  <p className="flex items-center gap-2 text-[10px] font-medium text-teal-100">
+                  <p className="flex items-center gap-2 text-[10px] font-medium text-[var(--landing-accent)]">
                     <Mail className="size-3.5" />
                     New email from IsoTrack
                   </p>
-                  <p className="mt-1.5 text-[10px] text-stone-300">
+                  <p className="mt-1.5 text-[10px] text-[var(--landing-ink)]">
                     Your delivery confirmation code
                   </p>
                 </div>
@@ -254,38 +261,40 @@ export function CustomerTracking() {
     <section
       id="roles"
       aria-labelledby="customer-tracking-title"
-      className="scroll-mt-20 overflow-hidden bg-[#0d211a] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
+      className="scroll-mt-20 overflow-hidden bg-[var(--landing-section)] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
     >
       <div className="mx-auto grid max-w-[1320px] items-center gap-12 lg:grid-cols-[0.85fr_1.3fr] lg:gap-16">
         <div className="max-w-lg">
           <h2
             id="customer-tracking-title"
-            className="text-3xl font-semibold leading-[1.12] tracking-tight text-stone-100 sm:text-4xl xl:text-[44px]"
+            className="text-3xl font-semibold leading-[1.12] tracking-tight text-[var(--landing-ink)] sm:text-4xl xl:text-[44px]"
           >
             Your customer stays
             <br className="hidden xl:block" /> in the loop.
           </h2>
-          <p className="mt-6 text-base leading-7 text-stone-300">
+          <p className="mt-6 text-base leading-7 text-[var(--landing-ink)]">
             Share one tracking link so customers can follow their delivery, from pickup to the final
             handover.
           </p>
           <div className="mt-8 space-y-6">
             <div className="flex gap-3">
-              <Bell className="mt-0.5 size-5 shrink-0 text-teal-200" />
+              <Bell className="mt-0.5 size-5 shrink-0 text-[var(--landing-accent)]" />
               <div>
-                <h3 className="text-sm font-semibold text-stone-100">Progress they can follow</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-400">
+                <h3 className="text-sm font-semibold text-[var(--landing-ink)]">
+                  Progress they can follow
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
                   Clear delivery milestones show where the shipment stands.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <Mail className="mt-0.5 size-5 shrink-0 text-teal-200" />
+              <Mail className="mt-0.5 size-5 shrink-0 text-[var(--landing-accent)]" />
               <div>
-                <h3 className="text-sm font-semibold text-stone-100">
+                <h3 className="text-sm font-semibold text-[var(--landing-ink)]">
                   A private code for handover
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-stone-400">
+                <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
                   The recipient receives their confirmation code by email and shares it after
                   receiving the package.
                 </p>
@@ -294,7 +303,7 @@ export function CustomerTracking() {
           </div>
           <a
             href="#shipment-tracking"
-            className="mt-8 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-teal-100 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
+            className="mt-8 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[var(--landing-accent)] transition hover:text-[var(--landing-accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]"
           >
             Track a shipment
             <ArrowRight className="size-4" />

@@ -122,18 +122,18 @@ export function HowItWorks() {
     <section
       id="how-it-works"
       aria-labelledby="journey-title"
-      className="scroll-mt-20 border-y border-white/[0.07] bg-[#080b0b] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
+      className="scroll-mt-20 border-y border-[var(--landing-border)] bg-[var(--landing-canvas)] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
     >
       <div className="mx-auto max-w-[1320px]">
         <div className="mb-12 flex flex-wrap items-end justify-between gap-5">
           <h2
             id="journey-title"
-            className="max-w-3xl text-3xl font-semibold leading-[1.12] tracking-tight text-stone-100 sm:text-4xl xl:text-[44px]"
+            className="max-w-3xl text-3xl font-semibold leading-[1.12] tracking-tight text-[var(--landing-ink)] sm:text-4xl xl:text-[44px]"
           >
             From dispatch to
             <br className="hidden sm:block" /> confirmed handover.
           </h2>
-          <p className="max-w-xs text-sm leading-6 text-stone-400">
+          <p className="max-w-xs text-sm leading-6 text-[var(--landing-muted)]">
             One shipment, followed through every handoff.
             <br />
             Animated walkthrough · Sample data
@@ -149,12 +149,12 @@ export function HowItWorks() {
                       "flex size-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-500",
                       activeStep >= index
                         ? "border-teal-300/50 bg-teal-300 text-[#07120d]"
-                        : "border-white/15 text-stone-500",
+                        : "border-[var(--landing-border)] text-[var(--landing-ink)]0",
                     )}
                   >
                     {activeStep > index || delivered ? <Check className="size-4" /> : index + 1}
                   </span>
-                  <div className="h-px flex-1 bg-white/10">
+                  <div className="h-px flex-1 bg-[var(--landing-tint)]">
                     <div
                       className={cn(
                         "h-full origin-left bg-teal-300 transition-transform duration-700 motion-reduce:transition-none",
@@ -163,52 +163,60 @@ export function HowItWorks() {
                     />
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold tracking-tight text-stone-100">{title}</h3>
-                <p className="mt-2 min-h-12 text-sm leading-6 text-stone-400">{description}</p>
+                <h3 className="text-lg font-semibold tracking-tight text-[var(--landing-ink)]">
+                  {title}
+                </h3>
+                <p className="mt-2 min-h-12 text-sm leading-6 text-[var(--landing-muted)]">
+                  {description}
+                </p>
                 <div
                   aria-hidden="true"
                   className={cn(
-                    "mt-5 h-[265px] overflow-hidden rounded-md border bg-[#0d1412] p-4 transition-colors duration-500",
-                    activeStep === index ? "border-teal-300/40" : "border-white/10",
+                    "mt-5 h-[265px] overflow-hidden rounded-md border bg-[var(--landing-panel)] p-4 transition-colors duration-500",
+                    activeStep === index ? "border-teal-300/40" : "border-[var(--landing-border)]",
                   )}
                 >
                   {index === 0 && (
                     <>
-                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-stone-200">
-                        <Package className="size-4 text-teal-200" />
+                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-[var(--landing-ink)]">
+                        <Package className="size-4 text-[var(--landing-accent)]" />
                         New shipment
                       </p>
-                      <p className="mb-1.5 text-[11px] text-stone-400">Recipient</p>
+                      <p className="mb-1.5 text-[11px] text-[var(--landing-muted)]">Recipient</p>
                       <div
                         data-journey="recipient"
-                        className="h-9 rounded border border-white/15 bg-black/20 px-2 py-2 text-[11px] text-stone-200"
+                        className="h-9 rounded border border-[var(--landing-border)] bg-[var(--landing-field)] px-2 py-2 text-[11px] text-[var(--landing-ink)]"
                       >
                         {phase === 1 ? (
                           RECIPIENT.slice(0, typed)
                         ) : phase > 1 ? (
                           RECIPIENT
                         ) : (
-                          <span className="text-stone-500">Recipient name</span>
+                          <span className="text-[var(--landing-ink)]0">Recipient name</span>
                         )}
                       </div>
-                      <p className="mb-1.5 mt-3 text-[11px] text-stone-400">Delivery address</p>
+                      <p className="mb-1.5 mt-3 text-[11px] text-[var(--landing-muted)]">
+                        Delivery address
+                      </p>
                       <div
                         data-journey="address"
-                        className="h-9 truncate rounded border border-white/15 bg-black/20 px-2 py-2 text-[11px] text-stone-200"
+                        className="h-9 truncate rounded border border-[var(--landing-border)] bg-[var(--landing-field)] px-2 py-2 text-[11px] text-[var(--landing-ink)]"
                       >
                         {phase === 2 ? (
                           ADDRESS.slice(0, typed)
                         ) : phase > 2 ? (
                           ADDRESS
                         ) : (
-                          <span className="text-stone-500">Street and city</span>
+                          <span className="text-[var(--landing-ink)]0">Street and city</span>
                         )}
                       </div>
                       <div
                         data-journey="create"
                         className={cn(
                           "mt-4 flex h-9 items-center justify-center gap-2 rounded text-[11px] font-semibold",
-                          phase >= 3 ? "bg-teal-400/10 text-teal-200" : "bg-amber-300 text-black",
+                          phase >= 3
+                            ? "bg-teal-400/10 text-[var(--landing-accent)]"
+                            : "bg-amber-300 text-black",
                         )}
                       >
                         {phase >= 3 && <Check className="size-3.5" />}
@@ -218,16 +226,20 @@ export function HowItWorks() {
                   )}
                   {index === 1 && (
                     <>
-                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-stone-200">
-                        <UserCheck className="size-4 text-teal-200" />
+                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-[var(--landing-ink)]">
+                        <UserCheck className="size-4 text-[var(--landing-accent)]" />
                         Assign driver
                       </p>
-                      <p className="mb-3 font-mono text-[10px] text-stone-400">IST-B3N8R4PT</p>
+                      <p className="mb-3 font-mono text-[10px] text-[var(--landing-muted)]">
+                        IST-B3N8R4PT
+                      </p>
                       <div
                         data-journey="driver"
                         className={cn(
                           "flex min-h-16 items-center gap-2 rounded border p-2",
-                          phase >= 4 ? "border-teal-300/30 bg-teal-400/[0.06]" : "border-white/10",
+                          phase >= 4
+                            ? "border-teal-300/30 bg-teal-400/[0.06]"
+                            : "border-[var(--landing-border)]",
                         )}
                       >
                         <Image
@@ -238,24 +250,26 @@ export function HowItWorks() {
                           className="size-8 shrink-0 rounded object-cover"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-stone-200">
+                          <p className="truncate text-xs font-medium text-[var(--landing-ink)]">
                             Tariye Dappa
                           </p>
-                          <p className="mt-1 text-[10px] text-teal-200">
+                          <p className="mt-1 text-[10px] text-[var(--landing-accent)]">
                             {phase >= 5 ? "Assigned to shipment" : "Available"}
                           </p>
                         </div>
                         {phase >= 4 ? (
-                          <Check className="size-3.5 text-teal-200" />
+                          <Check className="size-3.5 text-[var(--landing-accent)]" />
                         ) : (
-                          <ChevronDown className="size-3.5 text-stone-400" />
+                          <ChevronDown className="size-3.5 text-[var(--landing-muted)]" />
                         )}
                       </div>
                       <div
                         data-journey="assign"
                         className={cn(
                           "mt-4 flex h-9 items-center justify-center gap-2 rounded text-[11px] font-semibold",
-                          phase >= 5 ? "bg-teal-400/10 text-teal-200" : "bg-amber-300 text-black",
+                          phase >= 5
+                            ? "bg-teal-400/10 text-[var(--landing-accent)]"
+                            : "bg-amber-300 text-black",
                         )}
                       >
                         {phase >= 5 && <Check className="size-3.5" />}
@@ -265,11 +279,13 @@ export function HowItWorks() {
                   )}
                   {index === 2 && (
                     <>
-                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-stone-200">
-                        <MapPin className="size-4 text-teal-200" />
+                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-[var(--landing-ink)]">
+                        <MapPin className="size-4 text-[var(--landing-accent)]" />
                         Shipment progress
                       </p>
-                      <p className="mb-4 font-mono text-[10px] text-stone-400">IST-B3N8R4PT</p>
+                      <p className="mb-4 font-mono text-[10px] text-[var(--landing-muted)]">
+                        IST-B3N8R4PT
+                      </p>
                       <div data-journey="progress" className="space-y-4">
                         {["Picked up", "In transit", "Out for delivery", "Delivered"].map(
                           (label, statusIndex) => {
@@ -287,7 +303,13 @@ export function HowItWorks() {
                                 >
                                   {complete && <Check className="size-2.5" />}
                                 </span>
-                                <span className={complete ? "text-stone-200" : "text-stone-500"}>
+                                <span
+                                  className={
+                                    complete
+                                      ? "text-[var(--landing-ink)]"
+                                      : "text-[var(--landing-ink)]0"
+                                  }
+                                >
                                   {label}
                                 </span>
                               </div>
@@ -299,11 +321,11 @@ export function HowItWorks() {
                   )}
                   {index === 3 && (
                     <>
-                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-stone-200">
-                        <CheckCircle2 className="size-4 text-teal-200" />
+                      <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-[var(--landing-ink)]">
+                        <CheckCircle2 className="size-4 text-[var(--landing-accent)]" />
                         Confirm delivery
                       </p>
-                      <p className="text-[11px] leading-5 text-stone-400">
+                      <p className="text-[11px] leading-5 text-[var(--landing-muted)]">
                         Enter the code shared by the recipient.
                       </p>
                       <div data-journey="code" className="my-4 grid grid-cols-8 gap-1">
@@ -313,8 +335,8 @@ export function HowItWorks() {
                             className={cn(
                               "flex h-8 items-center justify-center rounded border font-mono text-xs",
                               phase >= 9
-                                ? "border-teal-300/40 text-stone-100"
-                                : "border-white/15 text-stone-600",
+                                ? "border-teal-300/40 text-[var(--landing-ink)]"
+                                : "border-[var(--landing-border)] text-[var(--landing-muted)]",
                             )}
                           >
                             {phase > 9 || (phase === 9 && digitIndex < typed) ? digit : "·"}
@@ -325,14 +347,16 @@ export function HowItWorks() {
                         data-journey={delivered ? "delivered" : "confirm"}
                         className={cn(
                           "mt-4 flex min-h-12 items-center justify-center gap-2 rounded px-2 text-[11px] font-semibold",
-                          delivered ? "bg-teal-400/10 text-teal-200" : "bg-amber-300 text-black",
+                          delivered
+                            ? "bg-teal-400/10 text-[var(--landing-accent)]"
+                            : "bg-amber-300 text-black",
                         )}
                       >
                         {delivered && <CheckCircle2 className="size-4" />}
                         {delivered ? "Delivery confirmed" : "Confirm delivery"}
                       </div>
                       {delivered && (
-                        <p className="mt-3 text-center text-[10px] text-teal-200">
+                        <p className="mt-3 text-center text-[10px] text-[var(--landing-accent)]">
                           Shipment marked Delivered
                         </p>
                       )}
@@ -345,14 +369,18 @@ export function HowItWorks() {
                       aria-hidden="true"
                       className={cn(
                         "absolute -right-6 top-[245px] hidden size-4 transition-colors duration-500 min-[1200px]:block",
-                        activeStep > index ? "text-teal-300" : "text-stone-600",
+                        activeStep > index
+                          ? "text-[var(--landing-accent)]"
+                          : "text-[var(--landing-muted)]",
                       )}
                     />
                     <ArrowDown
                       aria-hidden="true"
                       className={cn(
                         "absolute -bottom-7 left-1/2 size-4 -translate-x-1/2 min-[700px]:hidden",
-                        activeStep > index ? "text-teal-300" : "text-stone-600",
+                        activeStep > index
+                          ? "text-[var(--landing-accent)]"
+                          : "text-[var(--landing-muted)]",
                       )}
                     />
                   </>

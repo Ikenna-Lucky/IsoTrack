@@ -33,31 +33,33 @@ export function LandingFaq() {
     <section
       id="faq"
       aria-labelledby="faq-title"
-      className="scroll-mt-20 bg-[#080b0b] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
+      className="scroll-mt-20 bg-[var(--landing-canvas)] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
     >
       <div className="mx-auto grid max-w-[1320px] gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
         <div>
           <h2
             id="faq-title"
-            className="text-3xl font-semibold leading-[1.12] tracking-tight text-stone-100 sm:text-4xl"
+            className="text-3xl font-semibold leading-[1.12] tracking-tight text-[var(--landing-ink)] sm:text-4xl"
           >
             Before you get started.
           </h2>
-          <p className="mt-5 max-w-sm text-base leading-7 text-stone-400">
+          <p className="mt-5 max-w-sm text-base leading-7 text-[var(--landing-muted)]">
             A few details about your fleet, your customers and this portfolio project.
           </p>
         </div>
-        <div className="border-t border-white/15">
+        <div className="border-t border-[var(--landing-border)]">
           {QUESTIONS.map(({ question, answer }) => (
-            <details key={question} className="group border-b border-white/15">
-              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-5 py-5 text-sm font-medium leading-6 text-stone-200 hover:text-teal-200 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300 sm:text-base [&::-webkit-details-marker]:hidden">
+            <details key={question} className="group border-b border-[var(--landing-border)]">
+              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-5 py-5 text-sm font-medium leading-6 text-[var(--landing-ink)] hover:text-[var(--landing-accent)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)] sm:text-base [&::-webkit-details-marker]:hidden">
                 {question}
                 <Plus
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-teal-200 group-open:rotate-45"
+                  className="size-4 shrink-0 text-[var(--landing-accent)] group-open:rotate-45"
                 />
               </summary>
-              <p className="max-w-2xl pb-6 pr-6 text-sm leading-7 text-stone-400">{answer}</p>
+              <p className="max-w-2xl pb-6 pr-6 text-sm leading-7 text-[var(--landing-muted)]">
+                {answer}
+              </p>
             </details>
           ))}
         </div>

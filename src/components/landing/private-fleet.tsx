@@ -91,12 +91,14 @@ function InvitationPreview() {
     <div
       ref={root}
       aria-hidden="true"
-      className="relative h-[340px] overflow-hidden rounded-lg border border-white/15 bg-[#0d1412] text-stone-100 shadow-2xl shadow-black/40 sm:h-[310px]"
+      className="relative h-[340px] overflow-hidden rounded-lg border border-[var(--landing-border)] bg-[var(--landing-panel)] text-[var(--landing-ink)] shadow-2xl shadow-black/40 sm:h-[310px]"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--landing-border)] px-4 py-4">
         <div>
           <p className="text-sm font-semibold">Your fleet</p>
-          <p className="mt-1 text-[11px] text-stone-400">Invitation walkthrough · Sample data</p>
+          <p className="mt-1 text-[11px] text-[var(--landing-muted)]">
+            Invitation walkthrough · Sample data
+          </p>
         </div>
         <div
           data-target="invite"
@@ -108,22 +110,22 @@ function InvitationPreview() {
       </div>
       <div className="px-4 py-4">
         {formOpen ? (
-          <div className="rounded-md border border-white/10 bg-[#111c17] p-4">
+          <div className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-panel)] p-4">
             <div className="mb-4 flex items-center justify-between text-xs font-semibold">
               Invite a driver
-              <X className="size-3.5 text-stone-400" />
+              <X className="size-3.5 text-[var(--landing-muted)]" />
             </div>
-            <p className="mb-2 text-[11px] text-stone-300">Driver email</p>
+            <p className="mb-2 text-[11px] text-[var(--landing-ink)]">Driver email</p>
             <div
               data-target="email"
               className={cn(
-                "flex h-10 items-center gap-2 rounded border bg-black/25 px-2.5 text-xs",
+                "flex h-10 items-center gap-2 rounded border bg-[var(--landing-field)] px-2.5 text-xs",
                 phase === 2
-                  ? "border-teal-400/60 text-stone-100"
-                  : "border-white/15 text-stone-400",
+                  ? "border-teal-400/60 text-[var(--landing-ink)]"
+                  : "border-[var(--landing-border)] text-[var(--landing-muted)]",
               )}
             >
-              <Mail className="size-3.5 shrink-0 text-stone-400" />
+              <Mail className="size-3.5 shrink-0 text-[var(--landing-muted)]" />
               {phase === 1 ? "name@example.com" : phase === 2 ? EMAIL.slice(0, letters) : EMAIL}
               {phase === 2 && <span className="h-3.5 w-px bg-teal-300" />}
             </div>
@@ -137,12 +139,12 @@ function InvitationPreview() {
           </div>
         ) : phase === 5 ? (
           <div className="rounded-md border border-teal-400/25 bg-teal-400/[0.06] p-4">
-            <p className="flex items-center gap-2 text-xs font-semibold text-teal-200">
+            <p className="flex items-center gap-2 text-xs font-semibold text-[var(--landing-accent)]">
               <Mail className="size-4" />
               On the driver’s side
             </p>
             <p className="mt-3 text-sm font-medium">You’ve been invited to join a fleet.</p>
-            <p className="mt-2 text-[11px] leading-5 text-stone-400">
+            <p className="mt-2 text-[11px] leading-5 text-[var(--landing-muted)]">
               The driver opens their invitation and completes account setup.
             </p>
             <div
@@ -155,13 +157,15 @@ function InvitationPreview() {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-white/[0.07] pb-3">
+            <div className="flex items-center gap-3 border-b border-[var(--landing-border)] pb-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-teal-400/10">
-                <ShieldCheck className="size-5 text-teal-200" />
+                <ShieldCheck className="size-5 text-[var(--landing-accent)]" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium">Your business team</p>
-                <p className="mt-1 text-[11px] text-stone-400">Only your invited drivers</p>
+                <p className="mt-1 text-[11px] text-[var(--landing-muted)]">
+                  Only your invited drivers
+                </p>
               </div>
             </div>
             <div
@@ -176,8 +180,10 @@ function InvitationPreview() {
                 className="size-10 shrink-0 rounded-md object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="break-all text-xs font-semibold">{phase === 4 ? EMAIL : "Tariye Dappa"}</p>
-                <p className="mt-1 text-[11px] text-stone-400">
+                <p className="break-all text-xs font-semibold">
+                  {phase === 4 ? EMAIL : "Tariye Dappa"}
+                </p>
+                <p className="mt-1 text-[11px] text-[var(--landing-muted)]">
                   {phase === 6
                     ? "Joined your business fleet"
                     : phase === 4
@@ -186,19 +192,19 @@ function InvitationPreview() {
                 </p>
               </div>
               {phase === 6 ? (
-                <span className="flex items-center gap-1 rounded border border-teal-400/20 bg-teal-400/10 px-2 py-1 text-[10px] text-teal-200">
+                <span className="flex items-center gap-1 rounded border border-teal-400/20 bg-teal-400/10 px-2 py-1 text-[10px] text-[var(--landing-accent)]">
                   <Check className="size-3" />
                   Joined
                 </span>
               ) : phase === 4 ? (
-                <span className="rounded border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[10px] text-amber-200">
+                <span className="rounded border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[10px] text-[var(--landing-warning)]">
                   Pending
                 </span>
               ) : (
-                <Plus className="size-4 text-stone-500" />
+                <Plus className="size-4 text-[var(--landing-ink)]0" />
               )}
             </div>
-            <p className="mt-5 text-[11px] leading-5 text-stone-400">
+            <p className="mt-5 text-[11px] leading-5 text-[var(--landing-muted)]">
               {phase === 6
                 ? "Fleet membership confirmed. Deliveries can now be assigned within your team."
                 : phase === 4
@@ -226,11 +232,11 @@ export function PrivateFleet() {
     <section
       id="features"
       aria-labelledby="private-fleet-title"
-      className="scroll-mt-20 bg-[#0c100e] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
+      className="scroll-mt-20 bg-[var(--landing-section)] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
     >
       <div className="mx-auto grid max-w-[1320px] items-center gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
         <figure className="relative min-w-0 pb-10 sm:pb-14">
-          <div className="relative aspect-[5/4] overflow-hidden rounded-lg bg-[#18231c]">
+          <div className="relative aspect-[5/4] overflow-hidden rounded-lg bg-[var(--landing-tint)]">
             <Image
               src="/images/private-fleet-driver.webp"
               alt="A delivery driver checking his phone beside a parked van"
@@ -250,21 +256,21 @@ export function PrivateFleet() {
         <div className="max-w-lg">
           <h2
             id="private-fleet-title"
-            className="text-3xl font-semibold leading-[1.12] tracking-tight text-stone-100 sm:text-4xl xl:text-[44px]"
+            className="text-3xl font-semibold leading-[1.12] tracking-tight text-[var(--landing-ink)] sm:text-4xl xl:text-[44px]"
           >
             A fleet that belongs
             <br className="hidden xl:block" /> to your business.
           </h2>
-          <p className="mt-6 text-base leading-7 text-stone-400">
+          <p className="mt-6 text-base leading-7 text-[var(--landing-muted)]">
             Invite the drivers you work with and keep deliveries within your own team. Each driver
             joins through your invitation and belongs to one business at a time.
           </p>
-          <p className="mt-5 text-base leading-7 text-stone-400">
+          <p className="mt-5 text-base leading-7 text-[var(--landing-muted)]">
             See who is available, check vehicle details and choose who handles the next shipment.
           </p>
           <Link
             href="/register"
-            className="mt-8 inline-flex min-h-11 items-center gap-3 rounded-md border border-teal-300/40 px-5 py-3 text-sm font-semibold text-teal-100 transition hover:bg-teal-400/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
+            className="mt-8 inline-flex min-h-11 items-center gap-3 rounded-md border border-teal-300/40 px-5 py-3 text-sm font-semibold text-[var(--landing-accent)] transition hover:bg-teal-400/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]"
           >
             Build your fleet
             <ArrowRight className="size-4" />

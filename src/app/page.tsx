@@ -7,10 +7,11 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { CustomerTracking } from "@/components/landing/customer-tracking";
 import { CtaBanner } from "@/components/landing/cta-banner";
 import { LandingFaq } from "@/components/landing/faq";
+import "./landing-theme.css";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#080806] text-stone-100">
+    <div className="landing-page min-h-screen bg-[var(--landing-canvas)] text-[var(--landing-ink)]">
       <Navbar />
       <main>
         <Hero />

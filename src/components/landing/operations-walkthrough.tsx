@@ -109,15 +109,15 @@ function ShipmentWalkthrough() {
           <div
             ref={frame}
             aria-hidden="true"
-            className="relative overflow-hidden rounded-t-[28px] border border-white/10 bg-[#070907] sm:rounded-sm"
+            className="relative overflow-hidden rounded-t-[28px] border border-[var(--landing-border)] bg-[var(--landing-canvas)] sm:rounded-sm"
           >
             <div className="flex h-[600px] sm:h-[470px]">
-              <aside className="hidden w-[110px] shrink-0 flex-col border-r border-white/[0.07] bg-[#080b0a] p-2 sm:flex xl:w-[132px] xl:p-3">
-                <div className="flex items-center gap-2 py-2 text-sm font-bold text-stone-100">
+              <aside className="hidden w-[110px] shrink-0 flex-col border-r border-[var(--landing-border)] bg-[var(--landing-canvas)] p-2 sm:flex xl:w-[132px] xl:p-3">
+                <div className="flex items-center gap-2 py-2 text-sm font-bold text-[var(--landing-ink)]">
                   <Image src="/images/isotrack-mark-trimmed.png" alt="" width={20} height={20} />
                   IsoTrack
                 </div>
-                <div className="mb-5 text-[9px] uppercase tracking-widest text-amber-200">
+                <div className="mb-5 text-[9px] uppercase tracking-widest text-[var(--landing-warning)]">
                   Business
                 </div>
                 <div className="mb-5 flex items-center gap-1 rounded bg-amber-300 px-2 py-2 text-[10px] font-bold text-black">
@@ -128,36 +128,37 @@ function ShipmentWalkthrough() {
                   <div
                     key={label}
                     className={cn(
-                      "mb-1 flex items-center gap-2 rounded border border-transparent px-2 py-2.5 text-[10px] text-stone-400",
-                      label === "Shipments" && "border-teal-400/25 bg-teal-400/10 text-teal-200",
+                      "mb-1 flex items-center gap-2 rounded border border-transparent px-2 py-2.5 text-[10px] text-[var(--landing-muted)]",
+                      label === "Shipments" &&
+                        "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]",
                     )}
                   >
                     <Icon className="size-3.5" />
                     {label}
                   </div>
                 ))}
-                <div className="mt-auto flex items-center gap-2 px-2 py-2 text-[10px] text-stone-400">
+                <div className="mt-auto flex items-center gap-2 px-2 py-2 text-[10px] text-[var(--landing-muted)]">
                   <Settings className="size-3.5" />
                   Settings
                 </div>
               </aside>
               <div className="min-w-0 flex-1">
-                <div className="flex h-12 items-center justify-between border-b border-white/[0.07] px-4 text-xs font-semibold text-stone-200">
+                <div className="flex h-12 items-center justify-between border-b border-[var(--landing-border)] px-4 text-xs font-semibold text-[var(--landing-ink)]">
                   <span className="flex items-center gap-2">
-                    <Menu className="size-4 text-stone-400 sm:hidden" />
+                    <Menu className="size-4 text-[var(--landing-muted)] sm:hidden" />
                     Shipments
                   </span>
-                  <span className="rounded bg-white/[0.06] px-2 py-1 text-[9px] font-normal text-stone-400">
+                  <span className="rounded bg-[var(--landing-tint)] px-2 py-1 text-[9px] font-normal text-[var(--landing-muted)]">
                     Sample data
                   </span>
                 </div>
                 <div className="p-3 sm:p-4">
-                  <div className="rounded-md border border-white/[0.07] bg-[#0d1412] p-3">
-                    <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-teal-200">
+                  <div className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-panel)] p-3">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[var(--landing-accent)]">
                       Shipment manifest
                     </p>
-                    <p className="mt-1 text-lg font-bold text-stone-50">Shipments</p>
-                    <div className="mt-3 flex items-center gap-2 rounded border border-white/10 bg-black/25 px-2 py-2 text-[10px] text-stone-400">
+                    <p className="mt-1 text-lg font-bold text-[var(--landing-ink)]">Shipments</p>
+                    <div className="mt-3 flex items-center gap-2 rounded border border-[var(--landing-border)] bg-[var(--landing-field)] px-2 py-2 text-[10px] text-[var(--landing-muted)]">
                       <Search className="size-3" />
                       Search manifest
                       <Plus className="ml-auto size-4 text-amber-300" />
@@ -169,23 +170,23 @@ function ShipmentWalkthrough() {
                         key={label}
                         data-cursor={label === "Pending" ? "pending" : undefined}
                         className={cn(
-                          "rounded border border-white/[0.07] px-1.5 py-1.5 text-[9px] text-stone-400",
+                          "rounded border border-[var(--landing-border)] px-1.5 py-1.5 text-[9px] text-[var(--landing-muted)]",
                           (pending ? label === "Pending" : label === "All") &&
-                            "border-teal-400/30 bg-teal-400/10 text-teal-100",
+                            "border-teal-400/30 bg-teal-400/10 text-[var(--landing-accent)]",
                         )}
                       >
                         {label}
                       </div>
                     ))}
                   </div>
-                  <div className="overflow-hidden rounded-md border border-white/[0.07] bg-[#0d1412]">
+                  <div className="overflow-hidden rounded-md border border-[var(--landing-border)] bg-[var(--landing-panel)]">
                     <div data-cursor="shipment" className="flex items-center gap-2 px-3 py-3">
                       <div
                         className={cn(
                           "rounded border p-2",
                           assigned
-                            ? "border-teal-400/25 bg-teal-400/10 text-teal-200"
-                            : "border-amber-400/25 bg-amber-400/10 text-amber-200",
+                            ? "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]"
+                            : "border-amber-400/25 bg-amber-400/10 text-[var(--landing-warning)]",
                         )}
                       >
                         {assigned ? (
@@ -195,42 +196,47 @@ function ShipmentWalkthrough() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[10px] font-bold text-stone-100">
+                        <p className="font-mono text-[10px] font-bold text-[var(--landing-ink)]">
                           IST-B3N8R4PT
                         </p>
-                        <p className="mt-1 text-[10px] text-stone-400">Yaba to Ikoyi</p>
+                        <p className="mt-1 text-[10px] text-[var(--landing-muted)]">
+                          Yaba to Ikoyi
+                        </p>
                       </div>
                       <span
                         className={cn(
                           "rounded border px-2 py-1 text-[9px]",
                           assigned
-                            ? "border-teal-400/25 bg-teal-400/10 text-teal-200"
-                            : "border-amber-400/25 bg-amber-400/10 text-amber-200",
+                            ? "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]"
+                            : "border-amber-400/25 bg-amber-400/10 text-[var(--landing-warning)]",
                         )}
                       >
                         {assigned ? "Assigned" : "Pending"}
                       </span>
                       <ChevronDown
-                        className={cn("size-3 text-stone-400", expanded && "rotate-180")}
+                        className={cn(
+                          "size-3 text-[var(--landing-muted)]",
+                          expanded && "rotate-180",
+                        )}
                       />
                     </div>
                     {expanded && (
-                      <div className="border-t border-white/[0.07] bg-black/20 p-3">
-                        <div className="mb-3 flex justify-between text-[10px] text-stone-400">
+                      <div className="border-t border-[var(--landing-border)] bg-[var(--landing-field)] p-3">
+                        <div className="mb-3 flex justify-between text-[10px] text-[var(--landing-muted)]">
                           <span>Package · 2 kg</span>
-                          <span className="text-emerald-200">Paid</span>
+                          <span className="text-[var(--landing-accent)]">Paid</span>
                         </div>
-                        <div className="rounded border border-white/[0.07] bg-white/[0.03] p-3">
-                          <p className="mb-2 text-[8px] font-bold uppercase tracking-[0.15em] text-stone-400">
+                        <div className="rounded border border-[var(--landing-border)] bg-[var(--landing-tint)] p-3">
+                          <p className="mb-2 text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--landing-muted)]">
                             Dispatch action
                           </p>
                           {assigned ? (
                             <div className="rounded border border-teal-400/20 bg-teal-400/10 p-3">
-                              <p className="flex items-center gap-2 text-xs font-bold text-teal-100">
+                              <p className="flex items-center gap-2 text-xs font-bold text-[var(--landing-accent)]">
                                 <CheckCircle2 className="size-4" />
                                 Tariye Dappa
                               </p>
-                              <p className="mt-1 text-[10px] text-stone-400">
+                              <p className="mt-1 text-[10px] text-[var(--landing-muted)]">
                                 Motorcycle · LAG-482-KD
                               </p>
                             </div>
@@ -238,7 +244,7 @@ function ShipmentWalkthrough() {
                             <>
                               <div
                                 data-cursor="driver"
-                                className="flex items-center justify-between rounded border border-white/10 bg-black/25 px-2 py-2 text-[10px] text-stone-200"
+                                className="flex items-center justify-between rounded border border-[var(--landing-border)] bg-[var(--landing-field)] px-2 py-2 text-[10px] text-[var(--landing-ink)]"
                               >
                                 {selected ? "Tariye Dappa · LAG-482-KD" : "Select available driver"}
                                 <ChevronDown className="size-3" />
@@ -246,7 +252,7 @@ function ShipmentWalkthrough() {
                               {step === 4 && (
                                 <div
                                   data-cursor="option"
-                                  className="mt-1 rounded border border-teal-400/25 bg-[#19362e] px-2 py-2 text-[10px] text-teal-100"
+                                  className="mt-1 rounded border border-teal-400/25 bg-[var(--landing-selection)] px-2 py-2 text-[10px] text-[var(--landing-accent)]"
                                 >
                                   Tariye Dappa · LAG-482-KD
                                 </div>
@@ -276,16 +282,18 @@ function ShipmentWalkthrough() {
                     ["In transit", "Failed"].map((status, index) => (
                       <div
                         key={status}
-                        className="mt-2 flex items-center gap-2 rounded border border-white/[0.07] bg-[#0d1412] px-3 py-3"
+                        className="mt-2 flex items-center gap-2 rounded border border-[var(--landing-border)] bg-[var(--landing-panel)] px-3 py-3"
                       >
-                        <Package className="size-4 text-stone-400" />
-                        <span className="flex-1 font-mono text-[10px] text-stone-300">
+                        <Package className="size-4 text-[var(--landing-muted)]" />
+                        <span className="flex-1 font-mono text-[10px] text-[var(--landing-ink)]">
                           {index === 0 ? "IST-W9QK7LMN" : "IST-K7X2M9PQ"}
                         </span>
                         <span
                           className={cn(
                             "text-[9px]",
-                            index === 0 ? "text-teal-200" : "text-rose-200",
+                            index === 0
+                              ? "text-[var(--landing-accent)]"
+                              : "text-[var(--landing-danger)]",
                           )}
                         >
                           {status}
@@ -314,10 +322,10 @@ function ShipmentWalkthrough() {
         </div>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-[#080b0b] to-transparent sm:hidden"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-[var(--landing-canvas)] to-transparent sm:hidden"
         />
       </div>
-      <figcaption className="mt-4 text-center text-xs leading-5 text-stone-500">
+      <figcaption className="mt-4 text-center text-xs leading-5 text-[var(--landing-ink)]0">
         Business workspace · Sample shipment and driver data
         <span className="sr-only">
           . Animated walkthrough: filter pending shipments, expand a shipment, select Tariye Dappa
@@ -333,30 +341,30 @@ export function OperationsWalkthrough() {
     <section
       id="dispatch-preview"
       aria-labelledby="dispatch-preview-title"
-      className="scroll-mt-20 border-t border-white/[0.07] bg-[#080b0b] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
+      className="scroll-mt-20 border-t border-[var(--landing-border)] bg-[var(--landing-canvas)] px-7 py-20 min-[600px]:px-12 min-[950px]:px-[55px] min-[1150px]:px-[6vw] lg:py-28"
     >
       <div className="mx-auto grid max-w-[1320px] items-center gap-10 lg:grid-cols-[1.5fr_1fr] lg:gap-16">
         <ShipmentWalkthrough />
         <div className="max-w-lg">
           <h2
             id="dispatch-preview-title"
-            className="text-3xl font-semibold leading-[1.12] tracking-tight text-stone-100 sm:text-4xl xl:text-[44px]"
+            className="text-3xl font-semibold leading-[1.12] tracking-tight text-[var(--landing-ink)] sm:text-4xl xl:text-[44px]"
           >
             See what needs attention.
             <br />
-            <span className="text-teal-300">Know what to do next.</span>
+            <span className="text-[var(--landing-accent)]">Know what to do next.</span>
           </h2>
-          <p className="mt-6 text-base leading-7 text-stone-400">
+          <p className="mt-6 text-base leading-7 text-[var(--landing-muted)]">
             Find a pending shipment, choose an available driver from your fleet and put the delivery
             in motion. The assignment stays with the shipment, so your team can see who is handling
             it.
           </p>
-          <p className="mt-6 text-sm leading-6 text-stone-300">
+          <p className="mt-6 text-sm leading-6 text-[var(--landing-ink)]">
             Watch one complete assignment, from pending to assigned.
           </p>
           <a
             href="#how-it-works"
-            className="mt-8 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-teal-200 transition hover:text-teal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
+            className="mt-8 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[var(--landing-accent)] transition hover:text-[var(--landing-accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]"
           >
             Follow the delivery journey
             <ArrowRight className="size-4" />
