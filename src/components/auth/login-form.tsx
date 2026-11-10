@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,6 +40,8 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [showPassword, setShowPassword] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -86,7 +88,12 @@ export function LoginForm() {
           <span>{serverError}</span>
         </div>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
+      <noscript>
+        <p className="mt-5 text-sm text-[var(--landing-danger)]">
+          Enable JavaScript in your browser to sign in.
+        </p>
+      </noscript>
+      <form method="post" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
         <div>
           <label
             htmlFor="email"
@@ -155,7 +162,7 @@ export function LoginForm() {
         </div>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={!ready || isSubmitting}
           className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-amber-400 px-5 text-sm font-semibold text-[#152018] transition-colors hover:bg-amber-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)] disabled:cursor-wait disabled:opacity-60"
         >
           {isSubmitting ? (
