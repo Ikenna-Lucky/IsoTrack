@@ -9,7 +9,7 @@ import { Logo } from "@/components/shared/logo";
 const links = [
   { label: "Product", href: "#features" },
   { label: "How it works", href: "#how-it-works" },
-  { label: "For your team", href: "#roles" },
+  { label: "For your customers", href: "#roles" },
 ] as const;
 
 const focus =

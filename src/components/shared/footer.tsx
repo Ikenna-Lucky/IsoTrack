@@ -6,7 +6,7 @@ const FOOTER_LINKS = {
   Product: [
     { label: "Features", href: "#features" },
     { label: "Workflow", href: "#how-it-works" },
-    { label: "Dashboards", href: "#roles" },
+    { label: "Customer tracking", href: "#roles" },
   ],
   Account: [
     { label: "Log in", href: "/login" as Route },
