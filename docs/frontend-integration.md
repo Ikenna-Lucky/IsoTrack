@@ -128,6 +128,15 @@ for coverage, preserved fields, local Docker/browser evidence and retry limits.
 All 22 frontend tests pass. Delivery confirmation and exception/return actions,
 along with other role dashboards, remain to be integrated.
 
+### Recipient delivery confirmation
+
+Business code issuance/replacement and driver code confirmation now use the
+development delivery API. Driver Deliveries has cursor reads and versioned
+pickup/transit/out-for-delivery steps. See [delivery integration](delivery-confirmation.md)
+for privacy, retry limits, local browser evidence and outstanding real-email
+verification. All 25 frontend tests pass. Structured failure, retry and return
+actions remain the next build.
+
 Wire remaining role dashboards and shipment workflows to the frozen backend
 contract. Replace remaining page-based list consumers and legacy mock/fallback
 behaviors as each journey is integrated. Shipment commands need versions and

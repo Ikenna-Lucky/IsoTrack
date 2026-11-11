@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { DeliveryConfirmation } from "./delivery-confirmation";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePendingShipmentAction } from "@/hooks/use-pending-shipment-action";
 import {
@@ -14,17 +15,8 @@ import { shipmentLabels } from "@/lib/business-overview";
 import { extractErrorMessage } from "@/lib/errors";
 import { shipmentMoney } from "@/lib/shipment-workspace";
 
-export const shipmentButton =
-  "rounded-md border border-[var(--landing-border)] px-4 py-2.5 text-sm font-medium hover:bg-[var(--landing-tint)] disabled:opacity-50";
-export const shipmentField =
-  "w-full min-w-0 rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] px-3 py-3 text-sm";
-export const shipmentPanel =
-  "rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)]";
-export function shipmentDate(value?: string | null) {
-  return value
-    ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
-    : "Not recorded";
-}
+import { shipmentButton, shipmentField, shipmentDate } from "./shipment-ui";
+export { shipmentButton, shipmentField, shipmentPanel, shipmentDate } from "./shipment-ui";
 
 export function ShipmentDetail({ id }: { id: string }) {
   const cache = useQueryClient();
@@ -343,6 +335,7 @@ export function ShipmentDetail({ id }: { id: string }) {
           </div>
         )}
       </section>
+      <DeliveryConfirmation id={id} role="business" />
       <section className="border-t border-[var(--landing-border)] pt-5">
         <h4 className="font-semibold">Shipment history</h4>
         <p className="mt-1 text-xs text-[var(--landing-muted)]">
