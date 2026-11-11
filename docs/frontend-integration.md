@@ -135,7 +135,17 @@ development delivery API. Driver Deliveries has cursor reads and versioned
 pickup/transit/out-for-delivery steps. See [delivery integration](delivery-confirmation.md)
 for privacy, retry limits, local browser evidence and outstanding real-email
 verification. All 25 frontend tests pass. Structured failure, retry and return
-actions remain the next build.
+actions are covered by the following integration slice.
+
+### Failed deliveries and returns
+
+Business and driver shipment panels now support structured failure, retries,
+return request/transit/receipt and cancellation before pickup. Private history is
+bounded and role-scoped. Shared pending-request memory prevents competing actions
+while a result is unresolved. See [exception integration](shipment-exceptions.md)
+for the field/action matrix, privacy boundaries, local Docker/browser evidence
+and recovery limits. All 30 frontend tests pass. Legacy driver overview/earnings,
+customer journeys and authenticated tracking/socket adoption remain separate work.
 
 Wire remaining role dashboards and shipment workflows to the frozen backend
 contract. Replace remaining page-based list consumers and legacy mock/fallback

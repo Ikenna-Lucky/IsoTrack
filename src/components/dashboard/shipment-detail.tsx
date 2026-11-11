@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { ShipmentExceptions } from "./shipment-exceptions";
+import { useWorkflowPending } from "@/hooks/use-workflow-request";
 import { DeliveryConfirmation } from "./delivery-confirmation";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePendingShipmentAction } from "@/hooks/use-pending-shipment-action";
@@ -20,6 +22,7 @@ export { shipmentButton, shipmentField, shipmentPanel, shipmentDate } from "./sh
 
 export function ShipmentDetail({ id }: { id: string }) {
   const cache = useQueryClient();
+  const workflowPending = useWorkflowPending(id);
   const detail = useWorkspaceShipment(id);
   const history = useShipmentHistory(id);
   const shipment = detail.data;
@@ -65,7 +68,7 @@ export function ShipmentDetail({ id }: { id: string }) {
       </div>
     );
   const available = drivers.data?.pages.flatMap((page) => page.data) ?? [];
-  const canAct = !pending && !needsReload && !action.isPending && !detail.isFetching;
+  const canAct = !workflowPending && !needsReload && !action.isPending && !detail.isFetching;
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
@@ -177,165 +180,172 @@ export function ShipmentDetail({ id }: { id: string }) {
           )}
         </dl>
       </details>
-      <section className="border-t border-[var(--landing-border)] pt-5">
-        <h4 className="font-semibold">Dispatch</h4>
-        {shipment.status === "pending" && !shipment.driverId && (
-          <div className="mt-3 space-y-3">
-            <label className="block text-sm" htmlFor={`dispatch-${id}`}>
-              Available private fleet driver
-            </label>
-            <select
-              id={`dispatch-${id}`}
-              value={driverId}
-              onChange={(event) => setDriverId(event.target.value)}
-              disabled={!canAct}
-              className={shipmentField}
-            >
-              <option value="">Select a driver</option>
-              {available.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.user.name} · {driver.vehiclePlate}
-                </option>
-              ))}
-            </select>
-            {drivers.isPending && (
-              <p role="status" className="text-sm">
-                Loading available drivers…
-              </p>
-            )}
-            {drivers.isError && (
-              <div role="alert" className="text-sm">
-                Could not load available drivers.{" "}
-                <button className={shipmentButton} onClick={() => void drivers.refetch()}>
-                  Retry drivers
-                </button>
-              </div>
-            )}
-            {!drivers.isPending && !drivers.isError && available.length === 0 && (
-              <p className="text-sm text-[var(--landing-muted)]">
-                No available drivers were returned.
-              </p>
-            )}
-            {drivers.hasNextPage && (
-              <button
-                className={shipmentButton}
-                disabled={drivers.isFetchingNextPage}
-                onClick={() => void drivers.fetchNextPage()}
+      {(["pending", "assigned"].includes(shipment.status) ||
+        pending ||
+        needsReload ||
+        notice ||
+        error) && (
+        <section className="border-t border-[var(--landing-border)] pt-5">
+          <h4 className="font-semibold">Dispatch</h4>
+          {shipment.status === "pending" && !shipment.driverId && (
+            <div className="mt-3 space-y-3">
+              <label className="block text-sm" htmlFor={`dispatch-${id}`}>
+                Available private fleet driver
+              </label>
+              <select
+                id={`dispatch-${id}`}
+                value={driverId}
+                onChange={(event) => setDriverId(event.target.value)}
+                disabled={!canAct}
+                className={shipmentField}
               >
-                Load more available drivers
-              </button>
-            )}
-            <button
-              className={shipmentButton}
-              disabled={!driverId || !canAct}
-              onClick={() =>
-                void execute({
-                  key: crypto.randomUUID(),
-                  kind: "assign",
-                  id,
-                  body: { driverId, expectedVersion: shipment.version },
-                })
-              }
-            >
-              Assign driver
-            </button>
-          </div>
-        )}
-        {(["pending", "assigned"] as string[]).includes(shipment.status) && (
-          <div className="mt-4">
-            {cancelOpen ? (
-              <div className="space-y-3">
-                <p className="text-sm">
-                  Cancel this shipment? The record and history will be preserved. The backend checks
-                  its current state.
+                <option value="">Select a driver</option>
+                {available.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.user.name} · {driver.vehiclePlate}
+                  </option>
+                ))}
+              </select>
+              {drivers.isPending && (
+                <p role="status" className="text-sm">
+                  Loading available drivers…
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={shipmentButton}
-                    disabled={!canAct}
-                    onClick={() =>
-                      void execute({
-                        key: crypto.randomUUID(),
-                        kind: "cancel",
-                        id,
-                        body: { expectedVersion: shipment.version },
-                      })
-                    }
-                  >
-                    Confirm cancellation
-                  </button>
-                  <button
-                    className={shipmentButton}
-                    disabled={!!pending}
-                    onClick={() => setCancelOpen(false)}
-                  >
-                    Keep shipment
+              )}
+              {drivers.isError && (
+                <div role="alert" className="text-sm">
+                  Could not load available drivers.{" "}
+                  <button className={shipmentButton} onClick={() => void drivers.refetch()}>
+                    Retry drivers
                   </button>
                 </div>
-              </div>
-            ) : (
+              )}
+              {!drivers.isPending && !drivers.isError && available.length === 0 && (
+                <p className="text-sm text-[var(--landing-muted)]">
+                  No available drivers were returned.
+                </p>
+              )}
+              {drivers.hasNextPage && (
+                <button
+                  className={shipmentButton}
+                  disabled={drivers.isFetchingNextPage}
+                  onClick={() => void drivers.fetchNextPage()}
+                >
+                  Load more available drivers
+                </button>
+              )}
               <button
                 className={shipmentButton}
-                disabled={!canAct}
-                onClick={() => setCancelOpen(true)}
-              >
-                Cancel shipment
-              </button>
-            )}
-          </div>
-        )}
-        {action.isPending && (
-          <p role="status" className="mt-3 text-sm">
-            Confirming action…
-          </p>
-        )}
-        {notice && (
-          <p role="status" className="mt-3 text-sm text-[var(--landing-accent)]">
-            {notice}
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-[var(--landing-danger)]">
-            {error}
-          </p>
-        )}
-        {pending && !action.isPending && (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm">
-              The result is uncertain. Retry the same {pending.kind} request to recover its result.
-              Keep this page open until resolved.
-            </p>
-            <button className={shipmentButton} onClick={() => void execute(pending)}>
-              Retry same action
-            </button>
-          </div>
-        )}
-        {needsReload && (
-          <div className="mt-3">
-            <p className="text-sm">Reload the current details before making a new decision.</p>
-            <button
-              className={shipmentButton}
-              disabled={detail.isFetching}
-              onClick={async () => {
-                const result = await detail.refetch();
-                if (!result.isError) {
-                  setNeedsReload(false);
-                  setError("");
-                  setDriverId("");
-                  setCancelOpen(false);
-                  void cache.invalidateQueries({ queryKey: ["shipments", "business-manifest"] });
-                  void cache.invalidateQueries({
-                    queryKey: ["shipments", "workspace-history", id],
-                  });
+                disabled={!driverId || !canAct}
+                onClick={() =>
+                  void execute({
+                    key: crypto.randomUUID(),
+                    kind: "assign",
+                    id,
+                    body: { driverId, expectedVersion: shipment.version },
+                  })
                 }
-              }}
-            >
-              Reload shipment
-            </button>
-          </div>
-        )}
-      </section>
+              >
+                Assign driver
+              </button>
+            </div>
+          )}
+          {(["pending", "assigned"] as string[]).includes(shipment.status) && (
+            <div className="mt-4">
+              {cancelOpen ? (
+                <div className="space-y-3">
+                  <p className="text-sm">
+                    Cancel this shipment? The record and history will be preserved. The backend
+                    checks its current state.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={shipmentButton}
+                      disabled={!canAct}
+                      onClick={() =>
+                        void execute({
+                          key: crypto.randomUUID(),
+                          kind: "cancel",
+                          id,
+                          body: { expectedVersion: shipment.version },
+                        })
+                      }
+                    >
+                      Confirm cancellation
+                    </button>
+                    <button
+                      className={shipmentButton}
+                      disabled={!!pending}
+                      onClick={() => setCancelOpen(false)}
+                    >
+                      Keep shipment
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className={shipmentButton}
+                  disabled={!canAct}
+                  onClick={() => setCancelOpen(true)}
+                >
+                  Cancel shipment
+                </button>
+              )}
+            </div>
+          )}
+          {action.isPending && (
+            <p role="status" className="mt-3 text-sm">
+              Confirming action…
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="mt-3 text-sm text-[var(--landing-accent)]">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="mt-3 text-sm text-[var(--landing-danger)]">
+              {error}
+            </p>
+          )}
+          {pending && !action.isPending && (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm">
+                The result is uncertain. Retry the same {pending.kind} request to recover its
+                result. Keep this page open until resolved.
+              </p>
+              <button className={shipmentButton} onClick={() => void execute(pending)}>
+                Retry same action
+              </button>
+            </div>
+          )}
+          {needsReload && (
+            <div className="mt-3">
+              <p className="text-sm">Reload the current details before making a new decision.</p>
+              <button
+                className={shipmentButton}
+                disabled={detail.isFetching}
+                onClick={async () => {
+                  const result = await detail.refetch();
+                  if (!result.isError) {
+                    setNeedsReload(false);
+                    setError("");
+                    setDriverId("");
+                    setCancelOpen(false);
+                    void cache.invalidateQueries({ queryKey: ["shipments", "business-manifest"] });
+                    void cache.invalidateQueries({
+                      queryKey: ["shipments", "workspace-history", id],
+                    });
+                  }
+                }}
+              >
+                Reload shipment
+              </button>
+            </div>
+          )}
+        </section>
+      )}
       <DeliveryConfirmation id={id} role="business" />
+      <ShipmentExceptions id={id} role="business" />
       <section className="border-t border-[var(--landing-border)] pt-5">
         <h4 className="font-semibold">Shipment history</h4>
         <p className="mt-1 text-xs text-[var(--landing-muted)]">

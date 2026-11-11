@@ -15,6 +15,7 @@ import {
   recipientConfirmationEmail,
   recipientDeliveryCode,
 } from "@/lib/delivery-contract";
+import { useWorkflowPending } from "@/hooks/use-workflow-request";
 import { uncertainShipmentError } from "@/lib/shipment-workspace";
 import { shipmentButton, shipmentField, shipmentDate } from "./shipment-ui";
 
@@ -23,7 +24,7 @@ const nextStatus = {
   picked_up: { label: "Mark in transit", status: "in_transit" },
   in_transit: { label: "Out for delivery", status: "out_for_delivery" },
 } as const;
-const driverTheme = {
+export const driverTheme = {
   "--landing-ink": "#e9eee8",
   "--landing-muted": "#a8b2aa",
   "--landing-field": "#080d0b",
@@ -41,6 +42,7 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
   const challenge = useDeliveryChallenge(id, shipment?.status === "out_for_delivery");
   const cache = useQueryClient();
   const [request, setRequest] = usePendingDeliveryRequest(id);
+  const workflowPending = useWorkflowPending(id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -54,7 +56,7 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
   const live = shipment?.status === "out_for_delivery";
   const usable =
     !!shipment && challengeUsable(challenge.data, shipment.version, now) && !challenge.isError;
-  const blocked = busy || !!request || needsRefresh || detail.isFetching || detail.isError;
+  const blocked = busy || workflowPending || needsRefresh || detail.isFetching || detail.isError;
   useEffect(() => {
     setCode("");
   }, [challenge.data?.challengeId, challenge.data?.version, usable]);

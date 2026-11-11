@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, Loader2, MapPin, Package, Radio, Search } from "lucide-react";
 import { useDriverDeliveryQueue } from "@/hooks/use-delivery";
+import { ShipmentExceptions } from "@/components/dashboard/shipment-exceptions";
+import { returnLabels } from "@/lib/shipment-exceptions";
+import type { WorkspaceShipment } from "@/lib/shipment-workspace";
 import { DeliveryConfirmation } from "@/components/dashboard/delivery-confirmation";
 import { useDriverLocation } from "@/hooks/use-driver-location";
-import type { Shipment, ShipmentStatus } from "@/types";
+import type { ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-type FilterValue = "all" | "active" | "delivered" | "failed";
+type FilterValue = "all" | "active" | "held" | "delivered" | "failed";
 const ACTIVE_STATUSES: ShipmentStatus[] = [
   "assigned",
   "picked_up",
@@ -40,7 +43,7 @@ function DeliveryItem({
   expanded,
   onToggle,
 }: {
-  shipment: Shipment;
+  shipment: WorkspaceShipment;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -84,6 +87,9 @@ function DeliveryItem({
           <p className="mt-1 truncate text-xs text-stone-600">
             {shipment.pickupAddress.city} to {shipment.deliveryAddress.city}
           </p>
+          {shipment.returnState !== "none" && (
+            <p className="mt-2 text-xs text-teal-200">{returnLabels[shipment.returnState]}</p>
+          )}
         </div>
         <ChevronDown
           className={cn(
@@ -133,6 +139,7 @@ function DeliveryItem({
             </div>
           </div>
           <DeliveryConfirmation id={shipment.id} role="driver" />
+          <ShipmentExceptions id={shipment.id} role="driver" />
         </div>
       )}
     </li>
@@ -155,7 +162,13 @@ export default function DriverDeliveriesPage() {
     position,
     error: gpsError,
   } = useDriverLocation({
-    trackingIds: activeDeliveries.map((delivery) => delivery.trackingId),
+    trackingIds: deliveries
+      .filter(
+        (delivery) =>
+          ACTIVE_STATUSES.includes(delivery.status) ||
+          (delivery.status === "failed" && delivery.returnState === "in_transit"),
+      )
+      .map((delivery) => delivery.trackingId),
     enabled: gpsOn,
   });
 
@@ -163,6 +176,10 @@ export default function DriverDeliveriesPage() {
     const matchesFilter =
       filter === "all" ||
       (filter === "active" && ACTIVE_STATUSES.includes(delivery.status)) ||
+      (filter === "held" &&
+        delivery.status === "failed" &&
+        !!delivery.actualPickup &&
+        delivery.returnState !== "received") ||
       delivery.status === filter;
     const q = search.trim().toLowerCase();
     const matchesSearch =
@@ -177,6 +194,12 @@ export default function DriverDeliveriesPage() {
     all: deliveries.length,
     active: activeDeliveries.length,
     delivered: deliveries.filter((delivery) => delivery.status === "delivered").length,
+    held: deliveries.filter(
+      (delivery) =>
+        delivery.status === "failed" &&
+        !!delivery.actualPickup &&
+        delivery.returnState !== "received",
+    ).length,
     failed: deliveries.filter((delivery) => delivery.status === "failed").length,
   };
 
@@ -245,7 +268,7 @@ export default function DriverDeliveriesPage() {
       </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {(["all", "active", "delivered", "failed"] as FilterValue[]).map((value) => (
+        {(["all", "active", "held", "delivered", "failed"] as FilterValue[]).map((value) => (
           <button
             key={value}
             onClick={() => setFilter(value)}
@@ -256,7 +279,7 @@ export default function DriverDeliveriesPage() {
                 : "border-white/[0.07] bg-white/[0.03] text-stone-500 hover:text-stone-200",
             )}
           >
-            {value}
+            {value === "held" ? "Held packages" : value}
             <span
               className={cn(
                 "rounded px-1.5 py-0.5 text-[10px]",

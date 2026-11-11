@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, Package, Plus, Search } from "lucide-react";
 import { useShipmentManifest } from "@/hooks/use-shipment-workspace";
 import { shipmentLabels } from "@/lib/business-overview";
+import { returnLabels } from "@/lib/shipment-exceptions";
 import { shipmentMatches } from "@/lib/shipment-workspace";
 import {
   ShipmentDetail,
@@ -144,6 +145,11 @@ export default function ShipmentsPage() {
                     {shipmentLabels[shipment.status]}
                   </span>
                 </div>
+                {shipment.returnState !== "none" && (
+                  <p className="mt-2 text-xs text-[var(--landing-accent)]">
+                    {returnLabels[shipment.returnState]}
+                  </p>
+                )}
                 <p className="mt-2 break-words text-sm">
                   {shipment.pickupAddress.city} → {shipment.deliveryAddress.city}
                 </p>

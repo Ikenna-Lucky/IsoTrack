@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/store/auth";
+import { useWorkflowRequest } from "./use-workflow-request";
 import type { DeliveryChallenge } from "@/lib/delivery-contract";
 import { nextPageCursor, type CursorPage } from "@/lib/business-overview";
 import type { WorkspaceShipment } from "@/lib/shipment-workspace";
@@ -59,30 +58,9 @@ export type DeliveryRequest =
       key: string;
       body: { expectedVersion: number; status: "picked_up" | "in_transit" | "out_for_delivery" };
     };
-// Codes live only in component/request memory. Never query/mutation caches or storage.
-const requests = new Map<string, DeliveryRequest>();
-if (typeof window !== "undefined")
-  window.addEventListener("beforeunload", (event) => {
-    if (requests.size) {
-      event.preventDefault();
-      event.returnValue = "";
-    }
-  });
+// Codes remain in account-scoped request memory, never browser storage or caches.
 export function usePendingDeliveryRequest(id: string) {
-  const userId = useAuthStore((state) => state.user?.id);
-  const key = `${userId}:${id}`;
-  const [request, setRequest] = useState<DeliveryRequest | null>(() => requests.get(key) ?? null);
-  useEffect(() => {
-    setRequest(requests.get(key) ?? null);
-  }, [key]);
-  return [
-    request,
-    (next: DeliveryRequest | null) => {
-      if (next) requests.set(key, next);
-      else requests.delete(key);
-      setRequest(next);
-    },
-  ] as const;
+  return useWorkflowRequest<DeliveryRequest>("delivery", id);
 }
 export async function sendDeliveryRequest(id: string, request: DeliveryRequest) {
   const path = `/shipments/${encodeURIComponent(id)}`;
