@@ -1,4 +1,4 @@
-// ─── User & Auth ──────────────────────────────────────────────────────────────
+// User & Auth
 
 export type UserRole = "business" | "driver" | "customer";
 
@@ -28,7 +28,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-// ─── Shipment ─────────────────────────────────────────────────────────────────
+// Shipment
 
 export type ShipmentStatus =
   | "pending"
@@ -106,24 +106,25 @@ export interface ShipmentEvent {
   createdAt: string;
 }
 
-// ─── Driver ───────────────────────────────────────────────────────────────────
+// Driver
 
 export type DriverStatus = "available" | "on_delivery" | "offline";
 export type VehicleType = "bike" | "car" | "van" | "truck";
 
 export interface NotificationPreferences {
-  newDelivery:      { push: boolean; email: boolean };
-  pickupReminder:   { push: boolean; email: boolean };
+  newDelivery: { push: boolean; email: boolean };
+  pickupReminder: { push: boolean; email: boolean };
   deliveryComplete: { push: boolean; email: boolean };
-  deliveryFailed:   { push: boolean; email: boolean };
-  customerMessage:  { push: boolean; email: boolean };
-  ratingReceived:   { push: boolean; email: boolean };
-  payoutProcessed:  { push: boolean; email: boolean };
-  weeklyReport:     { push: boolean; email: boolean };
+  deliveryFailed: { push: boolean; email: boolean };
+  customerMessage: { push: boolean; email: boolean };
+  ratingReceived: { push: boolean; email: boolean };
+  payoutProcessed: { push: boolean; email: boolean };
+  weeklyReport: { push: boolean; email: boolean };
 }
 
 export interface Driver {
   id: string;
+  businessId?: string | null;
   userId: string;
   user: User;
   vehicleType: VehicleType;
@@ -141,7 +142,7 @@ export interface Driver {
   updatedAt: string;
 }
 
-// ─── Business ─────────────────────────────────────────────────────────────────
+// Business
 
 export interface Business {
   id: string;
@@ -154,7 +155,7 @@ export interface Business {
   updatedAt: string;
 }
 
-// ─── Business analytics (returned by GET /business/analytics) ─────────────────
+// Business analytics (returned by GET /business/analytics)
 
 export interface BusinessAnalytics {
   statusBreakdown: Partial<Record<ShipmentStatus, number>>;
@@ -163,7 +164,7 @@ export interface BusinessAnalytics {
   recentShipments: Shipment[];
 }
 
-// ─── Notifications ────────────────────────────────────────────────────────────
+// Notifications
 
 export type NotificationType = "email" | "sms" | "push";
 
@@ -179,7 +180,7 @@ export interface Notification {
   createdAt: string;
 }
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
+// API helpers
 
 export interface ApiResponse<T> {
   data: T;
@@ -197,7 +198,7 @@ export interface PaginatedResponse<T> {
   message?: string;
 }
 
-// ─── Formatting helpers ───────────────────────────────────────────────────────
+// Formatting helpers
 
 /** Format kobo (1/100 NGN) as a Naira currency string */
 export function formatKobo(kobo: number): string {

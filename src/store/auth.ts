@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { api, registerAuthAccessors, refreshSession, invalidateSession } from "@/lib/api";
 import type { User, UserRole } from "@/types";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Types
 
 interface AuthStore {
   // State

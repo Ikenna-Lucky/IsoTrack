@@ -96,12 +96,34 @@ The modal drawer was checked for Escape dismissal and focus restoration; phone
 and tablet document widths did not overflow. The temporary services were stopped
 after inspection. This is UI/contract-fixture evidence, not hosted API acceptance.
 
-Wire role dashboards and fleet management to the frozen backend contract. Adopt
-cursor pagination rather than treating the first page as the complete fleet,
-shipment or notification collection. Add business invitation creation/revocation,
-existing-driver acceptance and remove legacy mock/fallback behaviors as each
-journey is integrated. Shipment commands then need versions and stable per-action
-idempotency keys; payment completion must use backend settlement state.
+### Private fleet management
+
+The business fleet screen now uses the development backend's cursor driver list,
+invitation creation/latest-50 history/revocation, and paged shipment reads for
+assigned-work detail. It preserves grid/list views, search, availability filters,
+vehicle/contact fields, backend rating/delivery profile values and driver detail.
+Search/counts explicitly cover loaded records. Invitation tokens stay in page
+memory and are shared separately from the join-page address. Existing unlinked
+drivers have a signed-in acceptance form on their overview. Other driver controls
+were not redesigned in this slice. See [field mapping](fleet-integration.md) for
+backend sources, field visibility, behavior preserved and intentional corrections.
+
+Local verification used a separate fictional review business in Docker: 13 new
+drivers plus one legacy-driver acceptance, cursor continuation, populated profile
+fields, an active assignment and cross-business driver denial. Browser checks
+covered token copy, create validation, revoke cancellation/confirmation, existing
+driver acceptance/profile refresh, grid/list/search, dark/light themes and
+1440/768/390px layouts. All 18 frontend unit tests, TypeScript and lint passed;
+production validation uses an isolated source copy so it cannot disrupt `.next`
+on the running dev server. Hosted acceptance and browser dependency-failure
+injection for this slice remain separate checks.
+
+Wire remaining role dashboards and shipment workflows to the frozen backend
+contract. Replace remaining page-based list consumers and legacy mock/fallback
+behaviors as each journey is integrated. Shipment commands need versions and
+stable per-action idempotency keys; payment completion must use backend settlement
+state. The business overview, business fleet and business notification panel now
+have cursor-aware reads; this does not migrate every consumer in other screens.
 
 The complete API contract is in the sibling backend repository's
 `docs/frontend-handoff.md`. Dashboard, shipment, tracking and payment browser

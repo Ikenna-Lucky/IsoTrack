@@ -7,6 +7,7 @@ import { BusinessTopbar } from "@/components/dashboard/business-topbar";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { ProfileCompletionBanner } from "@/components/dashboard/profile-completion-banner";
 import { useBusinessProfileCompletion } from "@/hooks/use-profile-completion";
+import { useAuthStore } from "@/store/auth";
 import "../../landing-theme.css";
 
 function BusinessWorkspace({ children }: { children: React.ReactNode }) {
@@ -14,7 +15,7 @@ function BusinessWorkspace({ children }: { children: React.ReactNode }) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const pathname = usePathname();
   const completion = useBusinessProfileCompletion();
-  const isOverview = pathname === "/business";
+  const isOverview = pathname === "/business" || pathname === "/business/drivers";
   const title =
     pathname === "/business"
       ? "Overview"
@@ -58,9 +59,10 @@ function BusinessWorkspace({ children }: { children: React.ReactNode }) {
 }
 
 export default function BusinessLayout({ children }: { children: React.ReactNode }) {
+  const accountId = useAuthStore((state) => state.user?.id);
   return (
     <AuthGuard role="business">
-      <BusinessWorkspace>{children}</BusinessWorkspace>
+      <BusinessWorkspace key={accountId}>{children}</BusinessWorkspace>
     </AuthGuard>
   );
 }

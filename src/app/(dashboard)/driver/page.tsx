@@ -6,6 +6,7 @@ import { useDriverProfile, useUpdateDriverStatus } from "@/hooks/use-driver";
 import { useActiveDelivery, useDriverHistory } from "@/hooks/use-shipments";
 import type { DriverStatus, Shipment } from "@/types";
 import { cn } from "@/lib/utils";
+import { ExistingFleetEnrollment } from "@/components/dashboard/existing-fleet-enrollment";
 
 function formatNaira(kobo: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -124,6 +125,7 @@ export default function DriverOverviewPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      {driver?.businessId === null && <ExistingFleetEnrollment key={driver.id} />}
       <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr,auto] lg:items-end">
           <div>
