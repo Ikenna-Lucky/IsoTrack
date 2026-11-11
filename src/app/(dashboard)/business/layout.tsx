@@ -15,7 +15,10 @@ function BusinessWorkspace({ children }: { children: React.ReactNode }) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const pathname = usePathname();
   const completion = useBusinessProfileCompletion();
-  const isOverview = pathname === "/business" || pathname === "/business/drivers";
+  const isOverview =
+    pathname === "/business" ||
+    pathname === "/business/drivers" ||
+    pathname.startsWith("/business/shipments");
   const title =
     pathname === "/business"
       ? "Overview"

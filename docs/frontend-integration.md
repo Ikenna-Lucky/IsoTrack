@@ -118,6 +118,16 @@ production validation uses an isolated source copy so it cannot disrupt `.next`
 on the running dev server. Hosted acceptance and browser dependency-failure
 injection for this slice remain separate checks.
 
+### Business shipment workspace
+
+The business manifest and intake now use cursor reads, full current details,
+paged events, available private-fleet drivers, versioned assignment/cancellation
+and per-action idempotency keys. Customer-account and recipient-confirmation
+emails are separate fields. See [shipment field mapping and validation](shipment-workspace.md)
+for coverage, preserved fields, local Docker/browser evidence and retry limits.
+All 22 frontend tests pass. Delivery confirmation and exception/return actions,
+along with other role dashboards, remain to be integrated.
+
 Wire remaining role dashboards and shipment workflows to the frozen backend
 contract. Replace remaining page-based list consumers and legacy mock/fallback
 behaviors as each journey is integrated. Shipment commands need versions and
