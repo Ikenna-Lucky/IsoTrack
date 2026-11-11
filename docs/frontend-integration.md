@@ -66,6 +66,36 @@ Before accepting this slice on preview:
 
 ## Next slice
 
+### Business overview and navigation
+
+The business shell and `/business` overview now share the landing theme preference
+and tokens. Navigation adapts to a native modal drawer on narrow screens. The
+overview uses business-wide analytics for summary counts and a separate cursor
+shipment query (`limit=6`, opaque `cursor`) for the recent list. It does not derive
+business totals from loaded shipment pages. `totalRevenueKobo` is presented as
+total shipment value, including unpaid/cancelled records, not collected revenue.
+Failed deliveries and cancellations are separate; no unsupported fleet total,
+driver earnings, payout timing or invented charts appear on the overview.
+
+The business notification panel reads cursor pages and exposes continuation for
+bounded mark-all-read batches, with mutation/load errors. It uses distinct cache
+keys so legacy dashboard consumers do not receive incompatible response shapes.
+
+This slice targets the development backend contract, including the bounded
+collections build. The existing shipment workspace, fleet, analytics, driver and
+customer screens still need the integration work below. Links from the overview
+are navigation to those existing screens, not proof those workflows are accepted.
+Backend promotion and hosted Vercel/Render session acceptance remain separate.
+
+Local visual QA on 2026-11-11 used an external temporary API fixture with fictional
+business/shipment records; no authentication bypass or sample records were added
+to the application. Checks covered light/dark themes, 1440px desktop, 768px tablet
+and 390px phone layouts, cursor continuation, notification read batches, empty
+results, initial dependency failures and retained totals after a failed refresh.
+The modal drawer was checked for Escape dismissal and focus restoration; phone
+and tablet document widths did not overflow. The temporary services were stopped
+after inspection. This is UI/contract-fixture evidence, not hosted API acceptance.
+
 Wire role dashboards and fleet management to the frozen backend contract. Adopt
 cursor pagination rather than treating the first page as the complete fleet,
 shipment or notification collection. Add business invitation creation/revocation,
