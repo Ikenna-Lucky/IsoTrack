@@ -19,8 +19,9 @@ send only changed keys and retain drafts across settings sections. Explicit
 reload replaces drafts. Security unmounts to discard passwords and changes the
 password directly without putting passwords into mutation caches. Raw driver
 PATCH responses merge into the profile cache without discarding nested user data.
-Driver notification choices are read-only records because active delivery for
-these choices is unavailable. Help describes actual handover, failed-attempt,
+Driver Settings now saves independent in-app/email choices for assignments,
+confirmed deliveries and failed attempts. Unsupported event choices stay stored
+and are not presented as working controls. Help describes actual handover, failed-attempt,
 retry and return permissions; it does not pretend to send support messages.
 
 The notification inbox uses cursor pagination and bounded mark-read batches.
@@ -34,3 +35,23 @@ Work settings: no rendered light/dark, responsive or interaction acceptance is
 claimed for this revision. Run those checks at 390/768/1440px before acceptance.
 Live tracking authentication remains the separate roadmap item; this revision
 does not establish that the existing GPS broadcast reaches authorized viewers.
+
+
+## Notification delivery update
+
+Notification drafts survive section changes; editing sends only changed complete
+channel pairs. Failed initial reads block the form. Reload saved choices replaces
+the draft; background refresh does not silently overwrite edits. `push` maps to
+In-app in the UI and does not mean browser push. Existing inbox history remains
+when opting out. Help now explains the supported events and separate account
+recovery/recipient email policies.
+
+Verification: frontend TypeScript, lint, 49 unit/client tests and production build
+passed. Backend TypeScript, lint, 105 unit tests and production build passed;
+Swagger export validated. Six Driver notification tests and twelve existing
+outbox integration tests passed against disposable local PostgreSQL/Redis/SMTP.
+Eight migration tests passed, including fresh install, upgrades and rollback.
+Migration 0018 was applied to the verified local database. The local app has
+notification workers disabled, so queued app notifications will not dispatch
+until a worker is deliberately configured and enabled. No external mail was sent.
+Browser interaction/visual acceptance and actual inbox receipt remain unverified.

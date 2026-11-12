@@ -2,7 +2,12 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import { useDriverProfile, useNotificationPreferences, useUpdateVehicle } from "@/hooks/use-driver";
+import {
+  useDriverProfile,
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+  useUpdateVehicle,
+} from "@/hooks/use-driver";
 import { useUpdateProfile } from "@/hooks/use-user";
 import { useAuthStore } from "@/store/auth";
 import { api } from "@/lib/api";
@@ -17,7 +22,7 @@ import {
   driverField,
   driverPanel,
 } from "@/components/dashboard/driver-workspace";
-import type { Driver, User, VehicleType } from "@/types";
+import type { Driver, User, VehicleType, NotificationPreferences } from "@/types";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -242,52 +247,135 @@ function VehicleForm({ driver }: { driver: Driver }) {
     </form>
   );
 }
+function NotificationsForm({ preferences }: { preferences: NotificationPreferences }) {
+  const update = useUpdateNotificationPreferences();
+  const [baseline, setBaseline] = useState(preferences);
+  const [draft, setDraft] = useState(preferences);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const events = {
+    newDelivery: "New assignment",
+    deliveryComplete: "Delivery confirmed",
+    deliveryFailed: "Failed delivery attempt",
+  } as const;
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (update.isPending) return;
+    setError("");
+    setSaved(false);
+    const changes = changedSettings(baseline, draft);
+    if (!Object.keys(changes).length) {
+      setError("No changes to save.");
+      return;
+    }
+    try {
+      const updated = await update.mutateAsync(changes);
+      const next = { ...baseline, ...updated };
+      setBaseline(next);
+      setDraft(next);
+      setSaved(true);
+    } catch (cause) {
+      setError(
+        extractErrorMessage(
+          cause,
+          "Could not confirm the save. Reload saved choices before submitting again.",
+        ),
+      );
+    }
+  }
+  return (
+    <form onSubmit={(event) => void submit(event)} className={`${driverPanel} p-5`}>
+      <fieldset disabled={update.isPending} className="space-y-5">
+        <legend className="text-lg font-semibold">Shipment notifications</legend>
+        <p className="text-sm leading-6 text-[var(--landing-muted)]">
+          Choose in-app updates in the notification bell and emails to your account address. In-app
+          and email are independent; browser and device push are not enabled. Assignment records
+          remain available in Deliveries even when alerts are off.
+        </p>
+        <div className="divide-y divide-[var(--landing-border)]">
+          {Object.entries(events).map(([key, label]) => {
+            const event = key as keyof typeof events;
+            return (
+              <div
+                key={key}
+                className="grid gap-3 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+              >
+                <p className="text-sm font-medium">{label}</p>
+                {(["push", "email"] as const).map((channel) => (
+                  <label key={channel} className="flex min-h-11 items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-5 accent-teal-600"
+                      checked={draft[event][channel]}
+                      onChange={(change) => {
+                        setDraft((previous) => ({
+                          ...previous,
+                          [event]: { ...previous[event], [channel]: change.target.checked },
+                        }));
+                        setSaved(false);
+                      }}
+                    />
+                    <span className="sr-only">{label}: </span>
+                    {channel === "push" ? "In-app" : "Email"}
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs leading-5 text-[var(--landing-muted)]">
+          Saved choices are checked before delivery, including queued alerts. Existing inbox updates
+          remain; an email already sending cannot be recalled. Recovery, verification and recipient
+          delivery-code emails are separate.
+        </p>
+        <Feedback error={error} saved={saved} />
+        <button className={driverButton}>
+          {update.isPending ? "Saving..." : "Save notification choices"}
+        </button>
+        <details className="border-t border-[var(--landing-border)] pt-4">
+          <summary className="cursor-pointer py-2 text-sm font-medium">
+            Other alerts are not available yet
+          </summary>
+          <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
+            Pickup reminders, customer messages, rating alerts, payouts and weekly reports have no
+            delivery service. Older saved choices are retained when you update shipment
+            notifications.
+          </p>
+        </details>
+      </fieldset>
+    </form>
+  );
+}
 function NotificationsPanel() {
   const query = useNotificationPreferences();
-  const labels = {
-    newDelivery: "New assignment",
-    pickupReminder: "Pickup reminder",
-    deliveryComplete: "Delivery confirmed",
-    deliveryFailed: "Delivery failed",
-    customerMessage: "Customer message",
-    ratingReceived: "Rating received",
-    payoutProcessed: "Payout processed",
-    weeklyReport: "Weekly report",
-  };
+  const [revision, setRevision] = useState(0);
+  const mutating = useIsMutating();
   return (
-    <section className={`${driverPanel} space-y-4 p-5`}>
-      <h2 className="text-lg font-semibold">Saved notification choices</h2>
-      <p className="text-sm leading-6 text-[var(--landing-muted)]">
-        Driver notification routing is not enabled for these choices. Push and email preferences are
-        shown as saved records only; they do not turn on alerts, customer messaging, ratings or
-        payouts. Assignment records remain available in Deliveries. Account recovery and
-        verification emails are separate.
-      </p>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          disabled={query.isFetching || mutating > 0}
+          className={driverButton}
+          onClick={() =>
+            void query.refetch().then((result) => {
+              if (result.isSuccess) setRevision((value) => value + 1);
+            })
+          }
+        >
+          Reload saved choices
+        </button>
+        <p className="text-xs text-[var(--landing-muted)]">
+          Reloading replaces unsaved notification edits.
+        </p>
+      </div>
       <DriverReadState
         pending={query.isPending}
         error={query.isError}
         retry={() => void query.refetch()}
       >
-        {query.data && (
-          <dl className="divide-y divide-[var(--landing-border)]">
-            {Object.entries(labels).map(([key, label]) => {
-              const preference = query.data?.[key as keyof typeof labels];
-              return (
-                <div key={key} className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <dt className="text-sm">{label}</dt>
-                  <dd className="text-xs text-[var(--landing-muted)]">
-                    {preference
-                      ? `Saved: push ${preference.push ? "on" : "off"}, email ${preference.email ? "on" : "off"}`
-                      : "No saved choice"}{" "}
-                    <span className="text-[var(--landing-warning)]"> / Delivery unavailable</span>
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        )}
+        {query.data && <NotificationsForm key={revision} preferences={query.data} />}
       </DriverReadState>
-    </section>
+    </div>
   );
 }
 function SecurityPanel() {

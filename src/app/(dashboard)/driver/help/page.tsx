@@ -74,7 +74,7 @@ const guides = [
     topic: "account",
     title: "Do saved notification choices send Driver alerts?",
     answer:
-      "Driver notification routing is not enabled for these saved choices. They do not activate push/email delivery, customer messages, ratings or payouts. Check Deliveries for assignments. Account recovery and verification emails are separate.",
+      "Settings lets you choose in-app and email alerts for new assignments, confirmed deliveries and failed delivery attempts. In-app means the dashboard notification bell, not browser push. Saved choices are checked before queued delivery; existing inbox updates remain and email already sending cannot be recalled. Reminders, customer messages, rating alerts, payouts and weekly reports are not available. Check Deliveries for assignments; recovery and verification emails are separate.",
   },
   {
     topic: "account",
