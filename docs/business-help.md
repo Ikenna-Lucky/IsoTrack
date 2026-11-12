@@ -1,0 +1,9 @@
+# Business Help
+
+Replaces the legacy support form, placeholder support email and unsupported office-hours claims with a self-service operations guide. No support message is sent or retained by this page.
+
+Six topic filters (including All topics), 16 guides and three common-task shortcuts cover shipment intake/history/cancellation, uncertain requests, private-fleet invitations and existing-driver acceptance, assignment, progress, recipient confirmation, failed attempts, retries, returns, payment records, analytics and settings. Search matches titles and answer text within the selected topic, automatically expands matching answers and includes a clear-search control and no-results reset. Expandable answers use native details/summary for keyboard support. Destination links open the existing business workspaces; guidance tells users to select the relevant shipment there.
+
+The page uses the shared workspace light/dark theme. Topic navigation becomes a horizontal scroll row on smaller screens. Content is maintained in the page alongside the implementation it describes; changes to backend workflows should update these guides. It does not promise real-time support, automatic invitation email, preference-driven delivery, refunds or driver payouts.
+
+Verification: type checking, lint, 37 existing unit tests and an isolated production build passed. Browser QA with a fictional local Docker business checked expanding an answer, answer-text search, no-results reset, topic filtering, and navigation from the existing-driver guide to Private fleet. Rendered checks covered mobile (390px), tablet (768px), desktop (1440px), light/dark appearance, mobile overflow and console errors (none observed). Existing backend and settings/analytics/fleet/shipment source were used to verify content; no hosted data was changed and no operational shipment command was executed for this guide-only change.
