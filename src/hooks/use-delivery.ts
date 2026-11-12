@@ -26,6 +26,22 @@ export function useDriverDeliveryQueue() {
     getNextPageParam: nextPageCursor<WorkspaceShipment>,
   });
 }
+/** Current assignments, including failed packages still held by the driver. */
+export function useDriverWorkQueue() {
+  return useInfiniteQuery({
+    queryKey: ["shipments", "driver-work-cursor"],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam, signal }) =>
+      (
+        await api.get<CursorPage<WorkspaceShipment>>("/shipments", {
+          signal,
+          params: { limit: 20, ...(pageParam ? { cursor: pageParam } : {}) },
+        })
+      ).data,
+    getNextPageParam: nextPageCursor<WorkspaceShipment>,
+    refetchInterval: 60000,
+  });
+}
 export function useDeliveryChallenge(id: string, enabled: boolean) {
   const refresh = useWorkspaceRefresh(10000, 10000);
   return useQuery({

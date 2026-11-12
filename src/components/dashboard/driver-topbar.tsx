@@ -1,151 +1,200 @@
 "use client";
-
-import { useState } from "react";
-import {
-  Bell,
-  CheckCircle2,
-  DollarSign,
-  Info,
-  Menu,
-  Package,
-  Search,
-  Star,
-  X,
-} from "lucide-react";
-import { useDriverProfile } from "@/hooks/use-driver";
-import { useMarkAllNotificationsRead, useNotifications } from "@/hooks/use-notifications";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { Bell, Menu, UserRound, X } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDriverNotifications } from "@/hooks/use-notifications";
+import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
-import type { Notification } from "@/types";
-import { cn } from "@/lib/utils";
+import { driverDate } from "@/lib/driver-workspace";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { driverButton } from "./driver-workspace";
 
-function notifIcon(notification: Notification) {
-  const title = notification.title?.toLowerCase() ?? "";
-  if (title.includes("deliver") || title.includes("assign")) return { Icon: Package, color: "text-teal-200", bg: "border-teal-400/20 bg-teal-400/10" };
-  if (title.includes("rat") || title.includes("star")) return { Icon: Star, color: "text-amber-200", bg: "border-amber-400/20 bg-amber-400/10" };
-  if (title.includes("pay") || title.includes("earn")) return { Icon: DollarSign, color: "text-emerald-200", bg: "border-emerald-400/20 bg-emerald-400/10" };
-  if (title.includes("complet") || title.includes("success")) return { Icon: CheckCircle2, color: "text-emerald-200", bg: "border-emerald-400/20 bg-emerald-400/10" };
-  return { Icon: Info, color: "text-stone-400", bg: "border-white/[0.07] bg-white/[0.04]" };
-}
-
-function relativeTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
-}
-
-function getInitials(name: string) {
-  return name.split(" ").map((part) => part[0] ?? "").join("").slice(0, 2).toUpperCase() || "DR";
-}
-
-interface Props {
+export function DriverTopbar({
+  title,
+  onMenuClick,
+  menuOpen,
+}: {
   title: string;
   onMenuClick: () => void;
-}
-
-export function DriverTopbar({ title, onMenuClick }: Props) {
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  menuOpen: boolean;
+}) {
   const user = useAuthStore((state) => state.user);
-  const { data: driver } = useDriverProfile();
-  const { notifications, unreadCount } = useNotifications();
-  const { mutate: markAllRead } = useMarkAllNotificationsRead();
-  const displayName = user?.name ?? driver?.user?.name ?? "Driver";
-
+  const [open, setOpen] = useState(false);
+  const [moreUnread, setMoreUnread] = useState(false);
+  const query = useDriverNotifications();
+  const cache = useQueryClient();
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const records = query.data?.pages.flatMap((page) => page.data) ?? [];
+  const unread = records.some((item) => !item.isRead);
+  const mark = useMutation({
+    mutationFn: async (id: string | null) => {
+      if (id) {
+        await api.patch(`/notifications/${encodeURIComponent(id)}/read`);
+        return;
+      }
+      const response = await api.patch<{ data: { hasMore: boolean } }>("/notifications/read-all");
+      setMoreUnread(response.data.data.hasMore);
+    },
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!panel.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-white/[0.07] bg-[#080b0a]/92 px-4 backdrop-blur-xl sm:px-6">
-      <button onClick={onMenuClick} className="flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 lg:hidden" aria-label="Open navigation">
-        <Menu className="h-4 w-4" />
+    <header className="relative z-20 flex min-h-20 items-center gap-3 border-b border-[var(--landing-border)] bg-[var(--landing-panel)] px-4 sm:px-8">
+      <button
+        onClick={onMenuClick}
+        className={`${driverButton} px-3! lg:hidden`}
+        aria-label="Open Driver navigation"
+        aria-expanded={menuOpen}
+      >
+        <Menu className="size-5" />
       </button>
-
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <h1 className="truncate text-sm font-black text-stone-50">{title}</h1>
-        <span className="hidden h-3.5 w-px bg-white/[0.08] sm:block" />
-        <span className="hidden text-[11px] font-bold text-stone-600 sm:block">{new Date().toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" })}</span>
+      <div className="min-w-0 flex-1">
+        <p className="hidden text-xs text-[var(--landing-muted)] sm:block">Workspace / Driver</p>
+        <p className="truncate text-sm font-medium sm:mt-1">{title}</p>
       </div>
-
-      <div className="flex items-center gap-1.5">
-        <div className="relative">
-          {searchOpen ? (
-            <div className="hidden w-48 items-center gap-2 rounded-md border border-white/[0.1] bg-white/[0.04] px-3 py-2 sm:flex">
-              <Search className="h-3.5 w-3.5 shrink-0 text-stone-500" />
-              <input autoFocus placeholder="Search deliveries..." className="min-w-0 flex-1 bg-transparent text-xs font-bold text-stone-100 outline-none placeholder:text-stone-600" onBlur={() => setSearchOpen(false)} />
+      <ThemeToggle />
+      <div ref={panel}>
+        <button
+          ref={trigger}
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls="driver-notifications"
+          className={`${driverButton} relative px-3!`}
+          aria-label={unread ? "Notifications, unread updates loaded" : "Notifications"}
+        >
+          <Bell className="size-5" />
+          {unread && <span className="absolute right-2 top-2 size-2 rounded-full bg-amber-300" />}
+        </button>
+        {open && (
+          <section
+            id="driver-notifications"
+            aria-label="Notifications"
+            className="absolute right-4 top-[calc(100%-0.5rem)] w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-[var(--landing-border)] bg-[var(--landing-panel)] shadow-xl"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--landing-border)] px-4 py-2">
+              <h2 className="font-semibold">Notifications</h2>
+              <button
+                className="grid size-11 place-items-center"
+                aria-label="Close notifications"
+                onClick={() => {
+                  setOpen(false);
+                  trigger.current?.focus();
+                }}
+              >
+                <X className="size-5" />
+              </button>
             </div>
-          ) : (
-            <button onClick={() => setSearchOpen(true)} className="hidden h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 sm:flex" aria-label="Search">
-              <Search className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="relative">
-          <button onClick={() => setNotifOpen((value) => !value)} className="relative flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#080b0a]">
-                <span className="absolute h-2 w-2 animate-ping rounded-full bg-amber-300 opacity-75" />
-              </span>
-            )}
-          </button>
-
-          {notifOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 top-11 z-20 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-white/[0.08] bg-[#0d1412] shadow-2xl shadow-black/50">
-                <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-black text-stone-100">Notifications</p>
-                    {unreadCount > 0 && <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-black text-amber-200">{unreadCount}</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {unreadCount > 0 && <button onClick={() => markAllRead()} className="text-[10px] font-black text-teal-200 hover:text-teal-100">Mark all read</button>}
-                    <button onClick={() => setNotifOpen(false)} className="text-stone-600 transition hover:text-stone-300" aria-label="Close notifications"><X className="h-3.5 w-3.5" /></button>
-                  </div>
+            <div className="max-h-[55dvh] overflow-y-auto">
+              {query.isPending && (
+                <p role="status" className="p-5 text-sm text-[var(--landing-muted)]">
+                  Loading updates...
+                </p>
+              )}
+              {query.isError && (
+                <div role="alert" className="p-4 text-sm text-[var(--landing-danger)]">
+                  Could not refresh updates.{" "}
+                  <button onClick={() => void query.refetch()} className="min-h-11 underline">
+                    Try again
+                  </button>
                 </div>
-                <div className="max-h-80 divide-y divide-white/[0.05] overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-10 text-center">
-                      <Bell className="mx-auto h-6 w-6 text-stone-700" />
-                      <p className="mt-2 text-xs font-black text-stone-500">No notifications yet</p>
-                    </div>
-                  ) : (
-                    notifications.slice(0, 20).map((notification) => {
-                      const { Icon, color, bg } = notifIcon(notification);
-                      return (
-                        <div key={notification.id} className={cn("flex items-start gap-3 px-4 py-3", !notification.isRead ? "bg-teal-400/[0.04]" : "")}>
-                          <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", bg)}>
-                            <Icon className={cn("h-3.5 w-3.5", color)} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={cn("text-xs leading-snug", !notification.isRead ? "font-black text-stone-100" : "font-bold text-stone-500")}>{notification.title}</p>
-                            <p className="mt-0.5 line-clamp-1 text-[10px] text-stone-600">{notification.message}</p>
-                            <p className="mt-1 text-[10px] text-stone-700">{relativeTime(notification.createdAt)}</p>
-                          </div>
-                          {!notification.isRead && <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <span className="mx-0.5 h-5 w-px bg-white/[0.07]" />
-        <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-white/[0.04]">
-          {user?.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar} alt={displayName} className="h-7 w-7 shrink-0 rounded object-cover ring-1 ring-teal-400/20" />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-teal-400/10 text-[11px] font-black uppercase text-teal-200 ring-1 ring-teal-400/20">{getInitials(displayName)}</div>
-          )}
-          <span className="hidden max-w-[90px] truncate text-[12px] font-bold text-stone-400 md:block">{displayName.split(" ")[0]}</span>
-        </div>
+              )}
+              {query.data && !records.length && (
+                <p className="p-5 text-sm text-[var(--landing-muted)]">
+                  No notifications recorded. Check Deliveries for your assignments.
+                </p>
+              )}
+              {records.map((item) => (
+                <button
+                  key={item.id}
+                  disabled={mark.isPending || item.isRead}
+                  onClick={() => mark.mutate(item.id)}
+                  className="block w-full border-b border-[var(--landing-border)] p-4 text-left hover:bg-[var(--landing-tint)] disabled:cursor-default"
+                >
+                  <span
+                    className={`block text-sm font-medium ${item.isRead ? "text-[var(--landing-muted)]" : "text-[var(--landing-accent)]"}`}
+                  >
+                    {!item.isRead && "Unread: "}
+                    {item.title}
+                  </span>
+                  <span className="mt-2 block text-xs leading-5 text-[var(--landing-muted)]">
+                    {item.message}
+                  </span>
+                  <span className="mt-2 block text-xs text-[var(--landing-muted)]">
+                    {driverDate(item.createdAt)}
+                  </span>
+                </button>
+              ))}
+              {query.hasNextPage && (
+                <button
+                  className="min-h-12 w-full text-sm text-[var(--landing-accent)]"
+                  disabled={query.isFetchingNextPage}
+                  onClick={() => void query.fetchNextPage()}
+                >
+                  {query.isFetchingNextPage ? "Loading..." : "Load older updates"}
+                </button>
+              )}
+            </div>
+            <div className="space-y-2 p-4 text-xs text-[var(--landing-muted)]">
+              {(unread || moreUnread) && (
+                <button
+                  className={driverButton}
+                  disabled={mark.isPending}
+                  onClick={() => mark.mutate(null)}
+                >
+                  {mark.isPending
+                    ? "Marking read..."
+                    : moreUnread
+                      ? "Mark next batch read"
+                      : "Mark all read"}
+                </button>
+              )}
+              {moreUnread && (
+                <p role="status">More unread updates remain. Mark the next batch to continue.</p>
+              )}
+              {mark.isError && (
+                <p role="alert" className="text-[var(--landing-danger)]">
+                  Could not mark updates read. Try again.
+                </p>
+              )}
+              <p>Unread state describes loaded updates.</p>
+            </div>
+          </section>
+        )}
       </div>
+      <Link
+        href="/driver/settings"
+        aria-label="Account settings"
+        className="ml-2 hidden min-h-11 items-center gap-3 border-l border-[var(--landing-border)] pl-5 sm:flex"
+      >
+        {user?.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar} alt="" className="size-9 rounded-full object-cover" />
+        ) : (
+          <span className="grid size-9 place-items-center rounded-full bg-[var(--landing-selection)] text-[var(--landing-accent)]">
+            <UserRound className="size-4" />
+          </span>
+        )}
+        <span className="hidden max-w-32 truncate text-sm xl:block">{user?.name ?? "Account"}</span>
+      </Link>
     </header>
   );
 }

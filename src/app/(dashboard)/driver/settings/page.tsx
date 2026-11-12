@@ -1,416 +1,463 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { useDriverProfile, useNotificationPreferences, useUpdateVehicle } from "@/hooks/use-driver";
+import { useUpdateProfile } from "@/hooks/use-user";
+import { useAuthStore } from "@/store/auth";
+import { api } from "@/lib/api";
+import { changedSettings, passwordProblem } from "@/lib/business-settings";
+import { driverProfileInput, driverVehicleInput } from "@/lib/driver-workspace";
+import { extractErrorMessage } from "@/lib/errors";
 import { AccountDeactivation } from "@/components/auth/account-deactivation";
 import {
-  Bell,
-  Bike,
-  Check,
-  Eye,
-  EyeOff,
-  FileText,
-  Loader2,
-  LockKeyhole,
-  Mail,
-  Phone,
-  Save,
-  Shield,
-  User,
-} from "lucide-react";
-import {
-  useDriverProfile,
-  useNotificationPreferences,
-  useUpdateNotificationPreferences,
-  useUpdateVehicle,
-} from "@/hooks/use-driver";
-import { useChangePassword, useUpdateProfile } from "@/hooks/use-user";
-import { useAuthStore } from "@/store/auth";
-import { extractErrorMessage } from "@/lib/errors";
-import type { NotificationPreferences, VehicleType } from "@/types";
-import { cn } from "@/lib/utils";
+  DriverHeading,
+  DriverReadState,
+  driverButton,
+  driverField,
+  driverPanel,
+} from "@/components/dashboard/driver-workspace";
+import type { Driver, User, VehicleType } from "@/types";
 
-const TABS = [
-  { key: "profile", label: "Profile", icon: User },
-  { key: "vehicle", label: "Vehicle", icon: Bike },
-  { key: "notifications", label: "Notifications", icon: Bell },
-  { key: "security", label: "Security", icon: Shield },
-] as const;
-
-type Tab = (typeof TABS)[number]["key"];
-
-const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
-  newDelivery: { push: true, email: true },
-  pickupReminder: { push: true, email: false },
-  deliveryComplete: { push: true, email: true },
-  deliveryFailed: { push: true, email: true },
-  customerMessage: { push: true, email: false },
-  ratingReceived: { push: true, email: false },
-  payoutProcessed: { push: true, email: true },
-  weeklyReport: { push: false, email: true },
-};
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-xs font-black text-stone-400">{children}</label>;
-}
-
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  icon: Icon,
-  disabled,
-  suffix,
-}: {
-  value: string;
-  onChange?: (value: string) => void;
-  placeholder?: string | undefined;
-  type?: string | undefined;
-  icon?: React.ElementType | undefined;
-  disabled?: boolean | undefined;
-  suffix?: React.ReactNode | undefined;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="relative">
-      {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />}
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange?.(event.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={cn(
-          "w-full rounded-md border border-white/[0.08] bg-black/25 py-3 pr-3 text-sm font-bold text-stone-100 outline-none transition placeholder:text-stone-700 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10",
-          Icon ? "pl-10" : "pl-3",
-          suffix && "pr-11",
-          disabled && "cursor-not-allowed opacity-55",
-        )}
-      />
-      {suffix && <div className="absolute right-3 top-1/2 -translate-y-1/2">{suffix}</div>}
-    </div>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  children,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-md border border-white/[0.08] bg-black/25 px-3 py-3 text-sm font-bold text-stone-100 outline-none focus:border-teal-400/40">
+    <label className="block min-w-0 text-sm text-[var(--landing-muted)]">
+      <span className="mb-2 block">{label}</span>
       {children}
-    </select>
+    </label>
   );
 }
-
-function Panel({
-  eyebrow,
-  title,
-  description,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string | undefined;
-  children: React.ReactNode;
-}) {
+function Feedback({ error, saved }: { error: string; saved: boolean }) {
   return (
-    <section className="rounded-md border border-white/[0.07] bg-[#0d1412]">
-      <div className="border-b border-white/[0.07] px-4 py-4 sm:px-5">
-        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-teal-200">{eyebrow}</p>
-        <h3 className="mt-1 text-base font-black text-stone-50">{title}</h3>
-        {description && <p className="mt-1 text-xs leading-5 text-stone-500">{description}</p>}
-      </div>
-      <div className="space-y-4 p-4 sm:p-5">{children}</div>
+    <>
+      {error && (
+        <p role="alert" className="text-sm text-[var(--landing-danger)]">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p role="status" className="text-sm text-[var(--landing-accent)]">
+          Changes saved.
+        </p>
+      )}
+    </>
+  );
+}
+function ProfileForm({ user }: { user: User }) {
+  const update = useUpdateProfile();
+  const cache = useQueryClient();
+  const initial = {
+    name: user.name,
+    phone: user.phone ?? "",
+    emergencyContact: user.emergencyContact ?? "",
+  };
+  const [baseline, setBaseline] = useState(initial);
+  const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  function edit(key: keyof typeof draft, value: string) {
+    setDraft((previous) => ({ ...previous, [key]: value }));
+    setSaved(false);
+  }
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (update.isPending) return;
+    setSaved(false);
+    setError("");
+    const parsed = driverProfileInput.safeParse(draft);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Check your contact details.");
+      return;
+    }
+    const changes = changedSettings(baseline, parsed.data);
+    if (!Object.keys(changes).length) {
+      setError("No changes to save.");
+      return;
+    }
+    try {
+      const updated = await update.mutateAsync(changes);
+      const next = {
+        name: updated.name,
+        phone: updated.phone ?? "",
+        emergencyContact: updated.emergencyContact ?? "",
+      };
+      setBaseline(next);
+      setDraft(next);
+      setSaved(true);
+      void cache.invalidateQueries({ queryKey: ["drivers", "me"] });
+    } catch (cause) {
+      setError(
+        extractErrorMessage(
+          cause,
+          "Could not confirm the save. Refresh your profile before submitting again.",
+        ),
+      );
+    }
+  }
+  return (
+    <form onSubmit={(event) => void submit(event)} noValidate className={`${driverPanel} p-5`}>
+      <fieldset disabled={update.isPending} className="space-y-5">
+        <legend className="text-lg font-semibold">Contact details</legend>
+        <p className="text-sm text-[var(--landing-muted)]">
+          Keep dispatch contact details current. Empty optional fields clear their saved values.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Full name">
+            <input
+              className={driverField}
+              value={draft.name}
+              maxLength={100}
+              autoComplete="name"
+              onChange={(event) => edit("name", event.target.value)}
+            />
+          </Field>
+          <Field label="Email">
+            <input className={driverField} value={user.email} disabled type="email" />
+          </Field>
+          <Field label="Phone">
+            <input
+              className={driverField}
+              value={draft.phone}
+              maxLength={16}
+              type="tel"
+              autoComplete="tel"
+              onChange={(event) => edit("phone", event.target.value)}
+            />
+          </Field>
+          <Field label="Emergency contact">
+            <input
+              className={driverField}
+              value={draft.emergencyContact}
+              maxLength={20}
+              onChange={(event) => edit("emergencyContact", event.target.value)}
+            />
+          </Field>
+        </div>
+        <Feedback error={error} saved={saved} />
+        <button className={driverButton}>
+          {update.isPending ? "Saving..." : "Save contact details"}
+        </button>
+      </fieldset>
+    </form>
+  );
+}
+function vehicleDraft(driver: Driver) {
+  return {
+    vehicleType: driver.vehicleType,
+    vehiclePlate: driver.vehiclePlate,
+    vehicleModel: driver.vehicleModel ?? "",
+    vehicleColor: driver.vehicleColor ?? "",
+    vehicleYear: driver.vehicleYear ?? "",
+    vehicleInsurance: driver.vehicleInsurance ?? "",
+  };
+}
+function VehicleForm({ driver }: { driver: Driver }) {
+  const update = useUpdateVehicle();
+  const [baseline, setBaseline] = useState(() => vehicleDraft(driver));
+  const [draft, setDraft] = useState(baseline);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  function edit(key: keyof typeof draft, value: string) {
+    setDraft((previous) => ({ ...previous, [key]: value }));
+    setSaved(false);
+  }
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (update.isPending) return;
+    setSaved(false);
+    setError("");
+    const parsed = driverVehicleInput.safeParse(draft);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Check your vehicle details.");
+      return;
+    }
+    const changes = changedSettings(baseline, parsed.data);
+    if (!Object.keys(changes).length) {
+      setError("No changes to save.");
+      return;
+    }
+    try {
+      const updated = await update.mutateAsync(changes);
+      const next = vehicleDraft({ ...driver, ...updated });
+      setBaseline(next);
+      setDraft(next);
+      setSaved(true);
+    } catch (cause) {
+      setError(
+        extractErrorMessage(
+          cause,
+          "Could not confirm the save. Refresh your vehicle record before submitting again.",
+        ),
+      );
+    }
+  }
+  return (
+    <form onSubmit={(event) => void submit(event)} noValidate className={`${driverPanel} p-5`}>
+      <fieldset disabled={update.isPending} className="space-y-5">
+        <legend className="text-lg font-semibold">Vehicle record</legend>
+        <p className="text-sm text-[var(--landing-muted)]">
+          These details describe your vehicle. Saving an insurance reference does not verify
+          insurance.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Vehicle type">
+            <select
+              value={draft.vehicleType}
+              onChange={(event) => {
+                edit("vehicleType", event.target.value as VehicleType);
+              }}
+              className={driverField}
+            >
+              {["bike", "car", "van", "truck"].map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {(
+            [
+              ["vehiclePlate", "Plate number", 20],
+              ["vehicleModel", "Model", 60],
+              ["vehicleColor", "Colour", 30],
+              ["vehicleYear", "Year", 4],
+              ["vehicleInsurance", "Insurance reference", 60],
+            ] as const
+          ).map(([key, label, limit]) => (
+            <Field key={key} label={label}>
+              <input
+                value={draft[key]}
+                maxLength={limit}
+                className={driverField}
+                onChange={(event) => edit(key, event.target.value)}
+              />
+            </Field>
+          ))}
+        </div>
+        <Feedback error={error} saved={saved} />
+        <button className={driverButton}>
+          {update.isPending ? "Saving..." : "Save vehicle record"}
+        </button>
+      </fieldset>
+    </form>
+  );
+}
+function NotificationsPanel() {
+  const query = useNotificationPreferences();
+  const labels = {
+    newDelivery: "New assignment",
+    pickupReminder: "Pickup reminder",
+    deliveryComplete: "Delivery confirmed",
+    deliveryFailed: "Delivery failed",
+    customerMessage: "Customer message",
+    ratingReceived: "Rating received",
+    payoutProcessed: "Payout processed",
+    weeklyReport: "Weekly report",
+  };
+  return (
+    <section className={`${driverPanel} space-y-4 p-5`}>
+      <h2 className="text-lg font-semibold">Saved notification choices</h2>
+      <p className="text-sm leading-6 text-[var(--landing-muted)]">
+        Driver notification routing is not enabled for these choices. Push and email preferences are
+        shown as saved records only; they do not turn on alerts, customer messaging, ratings or
+        payouts. Assignment records remain available in Deliveries. Account recovery and
+        verification emails are separate.
+      </p>
+      <DriverReadState
+        pending={query.isPending}
+        error={query.isError}
+        retry={() => void query.refetch()}
+      >
+        {query.data && (
+          <dl className="divide-y divide-[var(--landing-border)]">
+            {Object.entries(labels).map(([key, label]) => {
+              const preference = query.data?.[key as keyof typeof labels];
+              return (
+                <div key={key} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <dt className="text-sm">{label}</dt>
+                  <dd className="text-xs text-[var(--landing-muted)]">
+                    {preference
+                      ? `Saved: push ${preference.push ? "on" : "off"}, email ${preference.email ? "on" : "off"}`
+                      : "No saved choice"}{" "}
+                    <span className="text-[var(--landing-warning)]"> / Delivery unavailable</span>
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        )}
+      </DriverReadState>
     </section>
   );
 }
-
-function SaveButton({ saved, loading, onClick }: { saved: boolean; loading?: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} disabled={loading} className={cn("flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-black transition disabled:opacity-60", saved ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "bg-amber-300 text-black hover:bg-amber-200")}>
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-      {loading ? "Saving..." : saved ? "Saved" : "Save changes"}
-    </button>
-  );
-}
-
-function Notice({ tone, children }: { tone: "error" | "success"; children: React.ReactNode }) {
-  return <p className={cn("rounded-md border px-3 py-2 text-xs font-bold leading-5", tone === "error" ? "border-rose-400/20 bg-rose-400/10 text-rose-100" : "border-emerald-400/20 bg-emerald-400/10 text-emerald-100")}>{children}</p>;
-}
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <button type="button" onClick={() => onChange(!value)} className={cn("relative h-6 w-11 rounded-full border transition", value ? "border-teal-400/30 bg-teal-400/30" : "border-white/[0.08] bg-white/[0.04]")} aria-pressed={value}>
-      <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-stone-100 transition", value ? "left-5" : "left-0.5")} />
-    </button>
-  );
-}
-
-function ProfileTab() {
-  const user = useAuthStore((state) => state.user);
-  const updateProfile = useUpdateProfile();
-  const [name, setName] = useState(user?.name ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
-  const [emergency, setEmergency] = useState(user?.emergencyContact ?? "");
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    setName(user?.name ?? "");
-    setPhone(user?.phone ?? "");
-    setEmergency(user?.emergencyContact ?? "");
-  }, [user?.id, user?.name, user?.phone, user?.emergencyContact]);
-
-  async function handleSave() {
-    setError("");
-    try {
-      await updateProfile.mutateAsync({ name: name.trim(), phone: phone.trim(), emergencyContact: emergency.trim() });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err: unknown) {
-      setError(extractErrorMessage(err, "Failed to save profile."));
-    }
-  }
-
-  return (
-    <Panel eyebrow="Identity" title="Driver profile" description="Keep contact details accurate for dispatch and emergency handling.">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <FieldLabel>Full name</FieldLabel>
-          <Input value={name} onChange={setName} icon={User} />
-        </div>
-        <div>
-          <FieldLabel>Email</FieldLabel>
-          <Input value={user?.email ?? ""} disabled icon={Mail} />
-        </div>
-        <div>
-          <FieldLabel>Phone</FieldLabel>
-          <Input value={phone} onChange={setPhone} icon={Phone} />
-        </div>
-        <div>
-          <FieldLabel>Emergency contact</FieldLabel>
-          <Input value={emergency} onChange={setEmergency} icon={Phone} />
-        </div>
-      </div>
-      {error && <Notice tone="error">{error}</Notice>}
-      <div className="flex justify-end"><SaveButton saved={saved} loading={updateProfile.isPending} onClick={handleSave} /></div>
-    </Panel>
-  );
-}
-
-function VehicleTab() {
-  const { data: driver } = useDriverProfile();
-  const updateVehicle = useUpdateVehicle();
-  const [vehicleType, setVehicleType] = useState<VehicleType>("bike");
-  const [plate, setPlate] = useState("");
-  const [model, setModel] = useState("");
-  const [color, setColor] = useState("");
-  const [year, setYear] = useState("");
-  const [insurance, setInsurance] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!driver) return;
-    setVehicleType(driver.vehicleType);
-    setPlate(driver.vehiclePlate ?? "");
-    setModel(driver.vehicleModel ?? "");
-    setColor(driver.vehicleColor ?? "");
-    setYear(driver.vehicleYear ?? "");
-    setInsurance(driver.vehicleInsurance ?? "");
-  }, [driver]);
-
-  async function handleSave() {
-    setError("");
-    try {
-      await updateVehicle.mutateAsync({
-        vehicleType,
-        vehiclePlate: plate.trim(),
-        vehicleModel: model.trim() || null,
-        vehicleColor: color.trim() || null,
-        vehicleYear: year.trim() || null,
-        vehicleInsurance: insurance.trim() || null,
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err: unknown) {
-      setError(extractErrorMessage(err, "Failed to save vehicle."));
-    }
-  }
-
-  return (
-    <Panel eyebrow="Vehicle" title="Vehicle details" description="These details help dispatch match you with suitable deliveries.">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <FieldLabel>Vehicle type</FieldLabel>
-          <Select value={vehicleType} onChange={(value) => setVehicleType(value as VehicleType)}>
-            <option value="bike">Bike</option>
-            <option value="car">Car</option>
-            <option value="van">Van</option>
-            <option value="truck">Truck</option>
-          </Select>
-        </div>
-        <div>
-          <FieldLabel>Plate number</FieldLabel>
-          <Input value={plate} onChange={setPlate} />
-        </div>
-        <div>
-          <FieldLabel>Model</FieldLabel>
-          <Input value={model} onChange={setModel} />
-        </div>
-        <div>
-          <FieldLabel>Color</FieldLabel>
-          <Input value={color} onChange={setColor} />
-        </div>
-        <div>
-          <FieldLabel>Year</FieldLabel>
-          <Input value={year} onChange={setYear} />
-        </div>
-        <div>
-          <FieldLabel>Insurance reference</FieldLabel>
-          <Input value={insurance} onChange={setInsurance} icon={FileText} />
-        </div>
-      </div>
-      {error && <Notice tone="error">{error}</Notice>}
-      <div className="flex justify-end"><SaveButton saved={saved} loading={updateVehicle.isPending} onClick={handleSave} /></div>
-    </Panel>
-  );
-}
-
-function NotificationsTab() {
-  const { data: serverPrefs } = useNotificationPreferences();
-  const updatePrefs = useUpdateNotificationPreferences();
-  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFS);
-  const [saved, setSaved] = useState(false);
-  const rows: Array<{ key: keyof NotificationPreferences; label: string }> = [
-    { key: "newDelivery", label: "New delivery assigned" },
-    { key: "pickupReminder", label: "Pickup reminder" },
-    { key: "deliveryComplete", label: "Delivery confirmed" },
-    { key: "deliveryFailed", label: "Delivery failed" },
-    { key: "customerMessage", label: "Customer message" },
-    { key: "ratingReceived", label: "Rating received" },
-    { key: "payoutProcessed", label: "Payout processed" },
-    { key: "weeklyReport", label: "Weekly report" },
-  ];
-
-  useEffect(() => {
-    if (serverPrefs) setPrefs((previous) => ({ ...previous, ...serverPrefs }));
-  }, [serverPrefs]);
-
-  function setChannel(key: keyof NotificationPreferences, channel: "push" | "email", value: boolean) {
-    setPrefs((previous) => ({ ...previous, [key]: { ...previous[key], [channel]: value } }));
-  }
-
-  async function handleSave() {
-    await updatePrefs.mutateAsync(prefs);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  }
-
-  return (
-    <Panel eyebrow="Signals" title="Notification preferences" description="Choose how IsoTrack should alert you while you are on route.">
-      <div className="divide-y divide-white/[0.07]">
-        {rows.map(({ key, label }) => (
-          <div key={key} className="grid gap-3 py-3 sm:grid-cols-[1fr,auto,auto] sm:items-center">
-            <div>
-              <p className="text-sm font-black text-stone-100">{label}</p>
-              <p className="mt-0.5 text-xs text-stone-600">Driver event alert</p>
-            </div>
-            <label className="flex items-center gap-2 text-xs font-black text-stone-400">Push <Toggle value={prefs[key].push} onChange={(value) => setChannel(key, "push", value)} /></label>
-            <label className="flex items-center gap-2 text-xs font-black text-stone-400">Email <Toggle value={prefs[key].email} onChange={(value) => setChannel(key, "email", value)} /></label>
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-end"><SaveButton saved={saved} loading={updatePrefs.isPending} onClick={handleSave} /></div>
-    </Panel>
-  );
-}
-
-function PasswordButton({ active, onClick }: { active: boolean; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="text-stone-600 transition hover:text-stone-200" aria-label={active ? "Hide password" : "Show password"}>{active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>;
-}
-
-function SecurityTab() {
-  const logout = useAuthStore((state) => state.logout);
-  const changePassword = useChangePassword();
+function SecurityPanel() {
+  const router = useRouter();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNext, setShowNext] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [show, setShow] = useState(false);
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-
-  async function handlePassword() {
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (pending) return;
     setError("");
-    if (!current || !next || !confirm) return setError("Please fill in all password fields.");
-    if (next.length < 8) return setError("New password must be at least 8 characters.");
-    if (next !== confirm) return setError("Passwords do not match.");
+    if (!current) {
+      setError("Enter your current password.");
+      return;
+    }
+    const problem = passwordProblem(next);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (next !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setPending(true);
     try {
-      await changePassword.mutateAsync({ currentPassword: current, newPassword: next });
-      setSaved(true);
-      setTimeout(() => logout(), 1500);
-    } catch (err: unknown) {
-      setError(extractErrorMessage(err, "Failed to change password."));
+      await api.patch("/auth/password", { currentPassword: current, newPassword: next });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      useAuthStore.getState().clearAuth();
+      router.replace("/login");
+    } catch (cause) {
+      setError(
+        extractErrorMessage(
+          cause,
+          "Password change could not be confirmed. If the connection was lost, sign in with your new password before trying again.",
+        ),
+      );
+    } finally {
+      setPending(false);
     }
   }
-
   return (
-    <div className="space-y-4">
-      <Panel eyebrow="Access" title="Change password" description="After a successful password change you will be signed out.">
-        <div>
-          <FieldLabel>Current password</FieldLabel>
-          <Input type={showCurrent ? "text" : "password"} value={current} onChange={setCurrent} icon={LockKeyhole} suffix={<PasswordButton active={showCurrent} onClick={() => setShowCurrent((value) => !value)} />} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel>New password</FieldLabel>
-            <Input type={showNext ? "text" : "password"} value={next} onChange={setNext} icon={Shield} suffix={<PasswordButton active={showNext} onClick={() => setShowNext((value) => !value)} />} />
+    <div className="space-y-6">
+      <form onSubmit={(event) => void submit(event)} className={`${driverPanel} p-5`} noValidate>
+        <fieldset disabled={pending} className="space-y-5">
+          <legend className="text-lg font-semibold">Change password</legend>
+          <p className="text-sm leading-6 text-[var(--landing-muted)]">
+            Use 8-72 characters with an uppercase letter and a number, within 72 UTF-8 bytes. A
+            successful change signs out every device.
+          </p>
+          <Field label="Current password">
+            <input
+              className={driverField}
+              type={show ? "text" : "password"}
+              value={current}
+              autoComplete="current-password"
+              onChange={(event) => setCurrent(event.target.value)}
+            />
+          </Field>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="New password">
+              <input
+                className={driverField}
+                type={show ? "text" : "password"}
+                value={next}
+                autoComplete="new-password"
+                onChange={(event) => setNext(event.target.value)}
+              />
+            </Field>
+            <Field label="Confirm new password">
+              <input
+                className={driverField}
+                type={show ? "text" : "password"}
+                value={confirm}
+                autoComplete="new-password"
+                onChange={(event) => setConfirm(event.target.value)}
+              />
+            </Field>
           </div>
-          <div>
-            <FieldLabel>Confirm password</FieldLabel>
-            <Input type="password" value={confirm} onChange={setConfirm} icon={Shield} />
-          </div>
-        </div>
-        {error && <Notice tone="error">{error}</Notice>}
-        {saved && <Notice tone="success">Password changed. Signing you out...</Notice>}
-        <div className="flex justify-end"><SaveButton saved={saved} loading={changePassword.isPending} onClick={handlePassword} /></div>
-      </Panel>
-
-      <AccountDeactivation />
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="size-5 accent-teal-300"
+              checked={show}
+              onChange={(event) => setShow(event.target.checked)}
+            />
+            Show passwords
+          </label>
+          <Feedback error={error} saved={false} />
+          <button className={driverButton}>
+            {pending ? "Changing password..." : "Change password"}
+          </button>
+        </fieldset>
+      </form>
+      <AccountDeactivation themed />
     </div>
   );
 }
-
 export default function DriverSettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
-
+  const [section, setSection] = useState("profile");
+  const profile = useDriverProfile();
+  const [reload, setReload] = useState(0);
+  const mutating = useIsMutating();
+  const sections = {
+    profile: "Profile",
+    vehicle: "Vehicle",
+    notifications: "Notifications",
+    security: "Security",
+  };
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Driver control</p>
-        <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Settings</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">Manage personal details, vehicle records, route alerts, and account security.</p>
-      </section>
-
-      <div className="grid gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] p-1 sm:grid-cols-4">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveTab(key)} className={cn("flex items-center justify-center gap-2 rounded px-3 py-2.5 text-xs font-black transition", activeTab === key ? "bg-teal-400/10 text-teal-100 ring-1 ring-teal-400/25" : "text-stone-500 hover:text-stone-200")}>
-            <Icon className="h-4 w-4 shrink-0" />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <DriverHeading eyebrow="Driver account" title="Settings">
+        Maintain your contact and vehicle records, review notification availability and protect your
+        account.
+      </DriverHeading>
+      <nav aria-label="Settings sections" className="flex flex-wrap gap-2">
+        {Object.entries(sections).map(([key, label]) => (
+          <button
+            key={key}
+            aria-current={section === key ? "page" : undefined}
+            onClick={() => setSection(key)}
+            className={`${driverButton} ${section === key ? "border-[var(--landing-accent)]! text-[var(--landing-accent)]!" : ""}`}
+          >
             {label}
           </button>
         ))}
+      </nav>
+      <div hidden={section !== "profile" && section !== "vehicle"} className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className={driverButton}
+            disabled={profile.isFetching || mutating > 0}
+            onClick={() =>
+              void profile.refetch().then((result) => {
+                if (result.isSuccess) setReload((value) => value + 1);
+              })
+            }
+          >
+            Reload saved details
+          </button>
+          <p className="text-xs text-[var(--landing-muted)]">
+            Reloading replaces unsaved Profile and Vehicle edits.
+          </p>
+        </div>
+        <DriverReadState
+          pending={profile.isPending}
+          error={profile.isError}
+          retry={() => void profile.refetch()}
+        >
+          {profile.data && (
+            <>
+              <div hidden={section !== "profile"}>
+                <ProfileForm key={`${profile.data.user.id}-${reload}`} user={profile.data.user} />
+              </div>
+              <div hidden={section !== "vehicle"}>
+                <VehicleForm key={`${profile.data.id}-${reload}`} driver={profile.data} />
+              </div>
+            </>
+          )}
+        </DriverReadState>
       </div>
-
-      {activeTab === "profile" && <ProfileTab />}
-      {activeTab === "vehicle" && <VehicleTab />}
-      {activeTab === "notifications" && <NotificationsTab />}
-      {activeTab === "security" && <SecurityTab />}
+      <div hidden={section !== "notifications"}>
+        <NotificationsPanel />
+      </div>
+      {section === "security" && <SecurityPanel />}
     </div>
   );
 }

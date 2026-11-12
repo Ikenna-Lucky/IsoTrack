@@ -1,6 +1,6 @@
 "use client";
 import { useWorkspaceDate } from "@/providers/business-preferences-provider";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceShipment } from "@/hooks/use-shipment-workspace";
 import {
@@ -26,18 +26,6 @@ const nextStatus = {
   picked_up: { label: "Mark in transit", status: "in_transit" },
   in_transit: { label: "Out for delivery", status: "out_for_delivery" },
 } as const;
-export const driverTheme = {
-  "--landing-ink": "#e9eee8",
-  "--landing-muted": "#a8b2aa",
-  "--landing-field": "#080d0b",
-  "--landing-panel": "#0d1412",
-  "--landing-border": "#ffffff20",
-  "--landing-tint": "#ffffff0d",
-  "--landing-accent": "#99f6e4",
-  "--landing-danger": "#fecdd3",
-  "--landing-warning": "#fde68a",
-} as CSSProperties;
-
 export function DeliveryConfirmation({ id, role }: { id: string; role: "business" | "driver" }) {
   const shipmentDate = useWorkspaceDate();
   const detail = useWorkspaceShipment(id);
@@ -115,7 +103,6 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
   if (detail.isPending) return <p role="status">Loading delivery controls…</p>;
   return (
     <section
-      style={role === "driver" ? driverTheme : undefined}
       className="space-y-4 rounded-lg border border-[var(--landing-border)] bg-[var(--landing-panel)] p-4 text-[var(--landing-ink)] sm:p-5"
       aria-label="Delivery confirmation"
     >

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, Loader2, MapPin, Package, Radio, Search } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, MapPin, Package, Radio } from "lucide-react";
+import { DriverHeading, driverField } from "@/components/dashboard/driver-workspace";
 import { useDriverDeliveryQueue } from "@/hooks/use-delivery";
 import { ShipmentExceptions } from "@/components/dashboard/shipment-exceptions";
 import { returnLabels } from "@/lib/shipment-exceptions";
@@ -19,14 +20,14 @@ const ACTIVE_STATUSES: ShipmentStatus[] = [
   "out_for_delivery",
 ];
 const STATUS_TONE: Record<ShipmentStatus, string> = {
-  pending: "border-amber-400/25 bg-amber-400/10 text-amber-200",
-  assigned: "border-teal-400/25 bg-teal-400/10 text-teal-200",
-  picked_up: "border-teal-400/25 bg-teal-400/10 text-teal-200",
-  in_transit: "border-teal-400/25 bg-teal-400/10 text-teal-200",
-  out_for_delivery: "border-teal-400/25 bg-teal-400/10 text-teal-200",
+  pending: "border-amber-400/25 bg-amber-400/10 text-[var(--landing-warning)]",
+  assigned: "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]",
+  picked_up: "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]",
+  in_transit: "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]",
+  out_for_delivery: "border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]",
   delivered: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
-  failed: "border-rose-400/25 bg-rose-400/10 text-rose-200",
-  cancelled: "border-stone-600 bg-white/[0.04] text-stone-400",
+  failed: "border-rose-400/25 bg-rose-400/10 text-[var(--landing-danger)]",
+  cancelled: "border-stone-600 bg-[var(--landing-tint)] text-[var(--landing-muted)]",
 };
 
 function formatNaira(kobo: number) {
@@ -52,13 +53,13 @@ function DeliveryItem({
   return (
     <li
       className={cn(
-        "overflow-hidden rounded-md border bg-[#0d1412]",
-        active ? "border-teal-400/20" : "border-white/[0.07]",
+        "overflow-hidden rounded-md border bg-[var(--landing-panel)]",
+        active ? "border-teal-400/20" : "border-[var(--landing-border)]",
       )}
     >
       <button
         onClick={onToggle}
-        className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-4 text-left transition hover:bg-white/[0.03]"
+        className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-4 text-left transition hover:bg-[var(--landing-tint)]"
       >
         <div
           className={cn(
@@ -74,68 +75,76 @@ function DeliveryItem({
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-mono text-xs font-black text-stone-100">{shipment.trackingId}</p>
+            <p className="font-mono text-xs font-semibold text-[var(--landing-ink)]">
+              {shipment.trackingId}
+            </p>
             <span
               className={cn(
-                "rounded border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider",
+                "rounded border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider",
                 STATUS_TONE[shipment.status],
               )}
             >
               {shipment.status.replaceAll("_", " ")}
             </span>
           </div>
-          <p className="mt-1 truncate text-xs text-stone-600">
+          <p className="mt-1 truncate text-xs text-[var(--landing-muted)]">
             {shipment.pickupAddress.city} to {shipment.deliveryAddress.city}
           </p>
           {shipment.returnState !== "none" && (
-            <p className="mt-2 text-xs text-teal-200">{returnLabels[shipment.returnState]}</p>
+            <p className="mt-2 text-xs text-[var(--landing-accent)]">
+              {returnLabels[shipment.returnState]}
+            </p>
           )}
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-stone-600 transition",
-            expanded && "rotate-180 text-teal-200",
+            "h-4 w-4 text-[var(--landing-muted)] transition",
+            expanded && "rotate-180 text-[var(--landing-accent)]",
           )}
         />
       </button>
       {expanded && (
-        <div className="space-y-4 border-t border-white/[0.07] bg-black/20 p-4">
+        <div className="space-y-4 border-t border-[var(--landing-border)] bg-[var(--landing-field)] p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-teal-400/20 bg-teal-400/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wider text-teal-200">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--landing-accent)]">
                 Pickup
               </p>
-              <p className="mt-1 truncate text-sm font-black text-stone-100">
+              <p className="mt-1 truncate text-sm font-semibold text-[var(--landing-ink)]">
                 {shipment.pickupAddress.street}
               </p>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-[var(--landing-muted)]">
                 {shipment.pickupAddress.city}, {shipment.pickupAddress.state}
               </p>
             </div>
             <div className="rounded-md border border-amber-400/20 bg-amber-400/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wider text-amber-200">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--landing-warning)]">
                 Drop-off
               </p>
-              <p className="mt-1 truncate text-sm font-black text-stone-100">
+              <p className="mt-1 truncate text-sm font-semibold text-[var(--landing-ink)]">
                 {shipment.deliveryAddress.street}
               </p>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-[var(--landing-muted)]">
                 {shipment.deliveryAddress.city}, {shipment.deliveryAddress.state}
               </p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-              <p className="text-[10px] text-stone-600">Shipment value</p>
-              <p className="mt-1 font-black text-stone-100">{formatNaira(shipment.priceKobo)}</p>
+            <div className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-tint)] p-3">
+              <p className="text-xs text-[var(--landing-muted)]">Shipment value</p>
+              <p className="mt-1 font-semibold text-[var(--landing-ink)]">
+                {formatNaira(shipment.priceKobo)}
+              </p>
             </div>
-            <div className="rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-              <p className="text-[10px] text-stone-600">Package</p>
-              <p className="mt-1 truncate font-black text-stone-100">{shipment.description}</p>
+            <div className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-tint)] p-3">
+              <p className="text-xs text-[var(--landing-muted)]">Package</p>
+              <p className="mt-1 truncate font-semibold text-[var(--landing-ink)]">
+                {shipment.description}
+              </p>
             </div>
-            <div className="rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-              <p className="text-[10px] text-stone-600">Weight</p>
-              <p className="mt-1 font-black text-stone-100">{shipment.weightKg} kg</p>
+            <div className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-tint)] p-3">
+              <p className="text-xs text-[var(--landing-muted)]">Weight</p>
+              <p className="mt-1 font-semibold text-[var(--landing-ink)]">{shipment.weightKg} kg</p>
             </div>
           </div>
           <DeliveryConfirmation id={shipment.id} role="driver" />
@@ -204,39 +213,33 @@ export default function DriverDeliveriesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-end">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">
-              Delivery queue
-            </p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">
-              Deliveries
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
-              Follow your assigned deliveries and confirm handover using the recipient code.
-            </p>
-          </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search tracking or city"
-              className="w-full rounded-md border border-white/[0.08] bg-black/25 py-3 pl-10 pr-3 text-sm font-bold text-stone-100 outline-none placeholder:text-stone-700 focus:border-teal-400/40"
-            />
-          </div>
-        </div>
-      </section>
+    <div className="mx-auto max-w-[1440px] space-y-8">
+      <DriverHeading eyebrow="Driver workspace" title="Deliveries">
+        Follow your assigned packages and confirm each handover with the recipient code.
+      </DriverHeading>
+      <label className="block max-w-xl text-sm text-[var(--landing-muted)]">
+        Search loaded deliveries
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Tracking ID or city"
+          className={`${driverField} mt-2`}
+        />
+      </label>
 
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
+      <section className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Radio className={cn("h-4 w-4", broadcasting ? "text-teal-200" : "text-stone-600")} />
+            <Radio
+              className={cn(
+                "h-4 w-4",
+                broadcasting ? "text-[var(--landing-accent)]" : "text-[var(--landing-muted)]",
+              )}
+            />
             <div>
-              <p className="text-sm font-black text-stone-100">Live GPS broadcast</p>
-              <p className="text-xs text-stone-600">
+              <p className="text-sm font-semibold text-[var(--landing-ink)]">Live GPS broadcast</p>
+              <p className="text-xs text-[var(--landing-muted)]">
                 {broadcasting
                   ? "Broadcasting location to active tracking pages"
                   : "Turn on during active deliveries"}
@@ -246,9 +249,9 @@ export default function DriverDeliveriesPage() {
           <button
             onClick={() => setGpsOn((value) => !value)}
             className={cn(
-              "rounded-md px-4 py-2.5 text-sm font-black transition",
+              "rounded-md px-4 py-2.5 text-sm font-semibold transition",
               gpsOn
-                ? "border border-teal-400/25 bg-teal-400/10 text-teal-100"
+                ? "border border-teal-400/25 bg-teal-400/10 text-[var(--landing-accent)]"
                 : "bg-amber-300 text-black hover:bg-amber-200",
             )}
           >
@@ -256,12 +259,12 @@ export default function DriverDeliveriesPage() {
           </button>
         </div>
         {position && (
-          <p className="mt-3 text-xs font-bold text-stone-600">
+          <p className="mt-3 text-xs font-medium text-[var(--landing-muted)]">
             Last fix: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
           </p>
         )}
         {gpsError && (
-          <p className="mt-3 rounded-md border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-bold text-rose-100">
+          <p className="mt-3 rounded-md border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-medium text-[var(--landing-danger)]">
             {gpsError}
           </p>
         )}
@@ -273,17 +276,19 @@ export default function DriverDeliveriesPage() {
             key={value}
             onClick={() => setFilter(value)}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-black capitalize transition",
+              "flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold capitalize transition",
               filter === value
-                ? "border-teal-400/30 bg-teal-400/10 text-teal-100"
-                : "border-white/[0.07] bg-white/[0.03] text-stone-500 hover:text-stone-200",
+                ? "border-teal-400/30 bg-teal-400/10 text-[var(--landing-accent)]"
+                : "border-[var(--landing-border)] bg-[var(--landing-tint)] text-[var(--landing-muted)] hover:text-[var(--landing-ink)]",
             )}
           >
             {value === "held" ? "Held packages" : value}
             <span
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px]",
-                filter === value ? "bg-teal-300 text-black" : "bg-white/[0.06] text-stone-500",
+                "rounded px-1.5 py-0.5 text-xs",
+                filter === value
+                  ? "bg-teal-300 text-black"
+                  : "bg-[var(--landing-tint)] text-[var(--landing-muted)]",
               )}
             >
               {counts[value]}
@@ -292,14 +297,14 @@ export default function DriverDeliveriesPage() {
         ))}
       </div>
 
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-[var(--landing-muted)]">
         Search and counts cover {deliveries.length} loaded records. Load older deliveries to include
         more history.
       </p>
       {queue.isError && (
         <div
           role="alert"
-          className="rounded-md border border-rose-400/20 p-4 text-sm text-rose-200"
+          className="rounded-md border border-rose-400/20 p-4 text-sm text-[var(--landing-danger)]"
         >
           Could not refresh deliveries.{" "}
           <button onClick={() => void queue.refetch()} className="underline">
@@ -308,13 +313,15 @@ export default function DriverDeliveriesPage() {
         </div>
       )}
       {isLoading ? (
-        <div className="flex items-center justify-center rounded-md border border-white/[0.07] bg-[#0d1412] py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-teal-200" />
+        <div className="flex items-center justify-center rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--landing-accent)]" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-md border border-white/[0.07] bg-[#0d1412] px-5 py-14 text-center">
-          <MapPin className="mx-auto h-6 w-6 text-stone-700" />
-          <p className="mt-3 text-sm font-black text-stone-200">No deliveries match this view</p>
+        <div className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] px-5 py-14 text-center">
+          <MapPin className="mx-auto h-6 w-6 text-[var(--landing-muted)]" />
+          <p className="mt-3 text-sm font-semibold text-[var(--landing-ink)]">
+            No deliveries match this view
+          </p>
         </div>
       ) : (
         <ul className="space-y-2">
@@ -332,7 +339,7 @@ export default function DriverDeliveriesPage() {
         <button
           onClick={() => void queue.fetchNextPage()}
           disabled={queue.isFetchingNextPage}
-          className="rounded-md border border-white/15 px-4 py-3 text-sm text-stone-100 disabled:opacity-50"
+          className="rounded-md border border-[var(--landing-border)] px-4 py-3 text-sm text-[var(--landing-ink)] disabled:opacity-50"
         >
           {queue.isFetchingNextPage ? "Loading..." : "Load older deliveries"}
         </button>

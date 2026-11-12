@@ -34,14 +34,14 @@ export function ExistingFleetEnrollment() {
     }
   }
   return (
-    <section className="rounded-lg border border-teal-400/25 bg-[#0d211a] p-5 text-stone-100">
+    <section className="rounded-lg border border-[var(--landing-border)] bg-[var(--landing-section)] p-5 text-[var(--landing-ink)]">
       <h2 className="text-lg font-semibold">Join your business fleet</h2>
-      <p className="mt-2 text-sm leading-6 text-stone-300">
+      <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
         Use the token sent privately by your business. Sign in with the email address named on the
         invitation. Drivers can belong to one business at a time.
       </p>
       {joined ? (
-        <p role="status" className="mt-4 text-teal-200">
+        <p role="status" className="mt-4 text-[var(--landing-accent)]">
           Fleet joined. Your profile is refreshing.
         </p>
       ) : (
@@ -60,7 +60,7 @@ export function ExistingFleetEnrollment() {
             required
             aria-invalid={!!error}
             aria-describedby={error ? "existing-fleet-error" : undefined}
-            className="min-h-12 w-full rounded-md border border-white/20 bg-[#080d0b] px-3 font-mono text-sm"
+            className="min-h-12 w-full rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] px-3 font-mono text-sm"
           />
           <button
             type="submit"
@@ -70,7 +70,11 @@ export function ExistingFleetEnrollment() {
             {accept.isPending ? "Joining…" : "Accept invitation"}
           </button>
           {error && (
-            <p id="existing-fleet-error" role="alert" className="text-sm text-rose-200">
+            <p
+              id="existing-fleet-error"
+              role="alert"
+              className="text-sm text-[var(--landing-danger)]"
+            >
               {error}
             </p>
           )}

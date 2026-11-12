@@ -23,7 +23,6 @@ import {
 } from "@/lib/shipment-exceptions";
 import { uncertainShipmentError } from "@/lib/shipment-workspace";
 import { shipmentButton, shipmentField } from "./shipment-ui";
-import { driverTheme } from "./delivery-confirmation";
 
 export function ShipmentExceptions({ id, role }: { id: string; role: "business" | "driver" }) {
   const shipmentDate = useWorkspaceDate();
@@ -89,7 +88,6 @@ export function ShipmentExceptions({ id, role }: { id: string; role: "business" 
     shipment?.status === "failed" && !!shipment.actualPickup && shipment.returnState !== "received";
   return (
     <section
-      style={role === "driver" ? driverTheme : undefined}
       className="space-y-4 rounded-lg border border-[var(--landing-border)] bg-[var(--landing-panel)] p-4 text-[var(--landing-ink)] sm:p-5"
       aria-label="Failures and returns"
     >

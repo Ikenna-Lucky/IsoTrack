@@ -71,36 +71,6 @@ export function useShipment(id: string | null | undefined) {
   });
 }
 
-/**
- * Fetches ALL shipments ever assigned to the current driver, including
- * delivered, failed, and cancelled ones. Used for earnings calculations.
- */
-export function useDriverHistory({ pageSize = 200 }: { pageSize?: number } = {}) {
-  return useQuery({
-    queryKey: [...shipmentKeys.all, "driver-history", { pageSize }],
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<Shipment[]>>("/shipments", {
-        params: { includeCompleted: "true", pageSize },
-      });
-      return (data as unknown as { data: Shipment[] }).data ?? [];
-    },
-  });
-}
-
-/**
- * Convenience hook for driver pages: returns the first shipment that is
- * actively in-progress (out_for_delivery or in_transit).
- */
-export function useActiveDelivery() {
-  const query = useShipments();
-  const shipments = getShipmentList(query.data);
-  const active = shipments.find(
-    (s) => s.status === "out_for_delivery" || s.status === "in_transit",
-  ) ?? null;
-
-  return { ...query, activeDelivery: active };
-}
-
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 
