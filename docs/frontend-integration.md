@@ -147,6 +147,14 @@ for the field/action matrix, privacy boundaries, local Docker/browser evidence
 and recovery limits. All 30 frontend tests pass. Legacy driver overview/earnings,
 customer journeys and authenticated tracking/socket adoption remain separate work.
 
+### Business Analytics
+
+Analytics now uses validated whole-business aggregates and the backend's latest
+ten records. The former partial weekly revenue chart is replaced by current-status
+distribution, explicit delivered share, exact shipment value and separate
+unsuccessful/cancelled totals. See [analytics mapping and verification](business-analytics.md).
+All 34 frontend tests pass. Business Settings and Help are the next slices.
+
 Wire remaining role dashboards and shipment workflows to the frozen backend
 contract. Replace remaining page-based list consumers and legacy mock/fallback
 behaviors as each journey is integrated. Shipment commands need versions and

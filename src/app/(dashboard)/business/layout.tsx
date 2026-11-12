@@ -18,6 +18,7 @@ function BusinessWorkspace({ children }: { children: React.ReactNode }) {
   const isOverview =
     pathname === "/business" ||
     pathname === "/business/drivers" ||
+    pathname === "/business/analytics" ||
     pathname.startsWith("/business/shipments");
   const title =
     pathname === "/business"

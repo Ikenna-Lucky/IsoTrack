@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { validateBusinessAnalytics } from "@/lib/business-analytics";
 import type { Business, Shipment, ApiResponse } from "@/types";
 
 // ─── Query key factory ────────────────────────────────────────────────────────
@@ -38,15 +39,15 @@ export function useBusinessProfile() {
 
 /**
  * Returns aggregated analytics for the business:
- * status breakdown, total shipments, total revenue, recent shipments.
+ * status breakdown, total shipments, total shipment value, latest ten shipments.
  * Refetches every 60 s.
  */
 export function useBusinessAnalytics() {
   return useQuery({
     queryKey: businessKeys.analytics(),
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<BusinessAnalytics>>("/business/analytics");
-      return data.data;
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<ApiResponse<BusinessAnalytics>>("/business/analytics", { signal });
+      return validateBusinessAnalytics(data.data);
     },
     refetchInterval: 60_000,
   });
