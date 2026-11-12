@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
-import { useChangePassword, useUpdateProfile } from "@/hooks/use-user";
+import { useUpdateProfile } from "@/hooks/use-user";
 import {
   type BusinessNotifPrefs,
   useBusinessNotifPrefs,
@@ -30,6 +30,9 @@ import {
   useUpdateBusinessProfile,
 } from "@/hooks/use-business";
 import { extractErrorMessage } from "@/lib/errors";
+import { api } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { changedSettings, passwordProblem } from "@/lib/business-settings";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -53,10 +56,15 @@ const NOTIF_DEFAULT: BusinessNotifPrefs = {
 };
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-xs font-black text-stone-400">{children}</label>;
+  return (
+    <span className="mb-1.5 block text-xs font-semibold text-[var(--landing-muted)]">
+      {children}
+    </span>
+  );
 }
 
 function Input({
+  label,
   value,
   onChange,
   placeholder,
@@ -65,6 +73,7 @@ function Input({
   disabled,
   suffix,
 }: {
+  label?: string;
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string | undefined;
@@ -75,15 +84,19 @@ function Input({
 }) {
   return (
     <div className="relative">
-      {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />}
+      {Icon && (
+        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--landing-muted)]" />
+      )}
       <input
+        aria-label={label}
+        autoComplete={type === "password" ? "off" : undefined}
         type={type}
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "w-full rounded-md border border-white/[0.08] bg-black/25 py-3 pr-3 text-sm font-bold text-stone-100 outline-none transition placeholder:text-stone-700 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10",
+          "w-full rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] py-3 pr-3 text-sm font-bold text-[var(--landing-ink)] outline-none transition placeholder:text-stone-700 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10",
           Icon ? "pl-10" : "pl-3",
           suffix && "pr-11",
           disabled && "cursor-not-allowed opacity-55",
@@ -99,43 +112,77 @@ function Panel({
   title,
   description,
   children,
+  disabled = false,
 }: {
+  disabled?: boolean;
   eyebrow: string;
   title: string;
   description?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-white/[0.07] bg-[#0d1412]">
-      <div className="border-b border-white/[0.07] px-4 py-4 sm:px-5">
-        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-teal-200">{eyebrow}</p>
-        <h3 className="mt-1 text-base font-black text-stone-50">{title}</h3>
-        {description && <p className="mt-1 text-xs leading-5 text-stone-500">{description}</p>}
+    <section className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-panel)]">
+      <div className="border-b border-[var(--landing-border)] px-4 py-4 sm:px-5">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--landing-accent)]">
+          {eyebrow}
+        </p>
+        <h3 className="mt-1 text-base font-semibold text-[var(--landing-ink)]">{title}</h3>
+        {description && (
+          <p className="mt-1 text-xs leading-5 text-[var(--landing-muted)]">{description}</p>
+        )}
       </div>
-      <div className="space-y-4 p-4 sm:p-5">{children}</div>
+      <fieldset disabled={disabled} className="space-y-4 p-4 sm:p-5">
+        {children}
+      </fieldset>
     </section>
   );
 }
 
-function SaveButton({ saved, loading, onClick }: { saved: boolean; loading?: boolean; onClick: () => void }) {
+function SaveButton({
+  saved,
+  loading,
+  onClick,
+  label = "Save changes",
+}: {
+  label?: string;
+  saved: boolean;
+  loading?: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       disabled={loading}
       className={cn(
-        "flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-black transition disabled:opacity-60",
-        saved ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "bg-amber-300 text-black hover:bg-amber-200",
+        "flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60",
+        saved
+          ? "border border-emerald-400/25 bg-emerald-400/10 text-[var(--landing-accent)]"
+          : "bg-amber-300 text-black hover:bg-amber-200",
       )}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-      {loading ? "Saving..." : saved ? "Saved" : "Save changes"}
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : saved ? (
+        <Check className="h-4 w-4" />
+      ) : (
+        <Save className="h-4 w-4" />
+      )}
+      {loading ? "Saving..." : saved ? "Saved" : label}
     </button>
   );
 }
 
 function Notice({ tone, children }: { tone: "error" | "success"; children: React.ReactNode }) {
   return (
-    <p className={cn("rounded-md border px-3 py-2 text-xs font-bold leading-5", tone === "error" ? "border-rose-400/20 bg-rose-400/10 text-rose-100" : "border-emerald-400/20 bg-emerald-400/10 text-emerald-100")}>
+    <p
+      role={tone === "error" ? "alert" : "status"}
+      className={cn(
+        "rounded-md border px-3 py-2 text-xs font-bold leading-5",
+        tone === "error"
+          ? "border-rose-400/20 bg-rose-400/10 text-[var(--landing-danger)]"
+          : "border-emerald-400/20 bg-emerald-400/10 text-[var(--landing-accent)]",
+      )}
+    >
       {children}
     </p>
   );
@@ -143,20 +190,39 @@ function Notice({ tone, children }: { tone: "error" | "success"; children: React
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={cn("relative h-6 w-11 rounded-full border transition", value ? "border-teal-400/30 bg-teal-400/30" : "border-white/[0.08] bg-white/[0.04]")}
-      aria-pressed={value}
+    <input
+      type="checkbox"
+      checked={value}
+      onChange={(event) => onChange(event.target.checked)}
+      className="h-5 w-5 accent-teal-600"
+    />
+  );
+}
+
+function LoadState({ error, retry }: { error: boolean; retry: () => void }) {
+  return (
+    <div
+      role={error ? "alert" : "status"}
+      className="rounded-md border border-[var(--landing-border)] bg-[var(--landing-panel)] p-6 text-sm"
     >
-      <span className={cn("absolute top-0.5 h-4.5 w-4.5 rounded-full bg-stone-100 transition", value ? "left-5" : "left-0.5")} />
-    </button>
+      {error
+        ? "Settings could not be loaded. Your saved values have not been changed."
+        : "Loading saved settings…"}
+      {error && (
+        <button onClick={retry} className="ml-3 underline">
+          Try again
+        </button>
+      )}
+    </div>
   );
 }
 
 function ProfileTab() {
   const user = useAuthStore((state) => state.user);
-  const { data: business } = useBusinessProfile();
+  const profile = useBusinessProfile();
+  const business = profile.data;
+  const [initialized, setInitialized] = useState(false);
+  const [baseline, setBaseline] = useState<Record<string, unknown>>({});
   const updateUser = useUpdateProfile();
   const updateBusiness = useUpdateBusinessProfile();
   const [name, setName] = useState(user?.name ?? "");
@@ -169,90 +235,150 @@ function ProfileTab() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setName(user?.name ?? "");
-    setPhone(user?.phone ?? "");
-  }, [user?.id, user?.name, user?.phone]);
-
-  useEffect(() => {
-    if (!business) return;
+    if (!business || initialized) return;
+    setName(business.user?.name ?? user?.name ?? "");
+    setPhone(business.user?.phone ?? user?.phone ?? "");
     setBusinessName(business.businessName ?? "");
     setStreet(business.address?.street ?? "");
     setCity(business.address?.city ?? "");
     setStateName(business.address?.state ?? "");
-  }, [business]);
+    setBaseline({
+      name: business.user?.name ?? user?.name ?? "",
+      phone: business.user?.phone ?? user?.phone ?? "",
+      businessName: business.businessName ?? "",
+      address: business.address ?? null,
+    });
+    setInitialized(true);
+  }, [business, initialized, user]);
 
   async function handleSave() {
     setError("");
     try {
-      await updateUser.mutateAsync({ name: name.trim(), phone: phone.trim() });
-      await updateBusiness.mutateAsync({
-        businessName: businessName.trim(),
-        address: { street: street.trim(), city: city.trim(), state: stateName.trim() },
-      });
+      if (
+        name.trim().length < 2 ||
+        name.trim().length > 100 ||
+        businessName.trim().length < 2 ||
+        businessName.trim().length > 100
+      )
+        throw new Error("Account and business names must contain 2–100 characters.");
+      if (phone.trim() && !/^\+?[1-9]\d{6,14}$/.test(phone.trim()))
+        throw new Error("Enter a valid international phone number, for example +2348012345678.");
+      const account = changedSettings(
+        { name: String(baseline.name ?? ""), phone: String(baseline.phone ?? "") },
+        { name: name.trim(), phone: phone.trim() },
+      );
+      if (Object.keys(account).length) {
+        await updateUser.mutateAsync(account);
+        setBaseline((previous) => ({ ...previous, name: name.trim(), phone: phone.trim() }));
+      }
+      const identity: {
+        businessName?: string;
+        address?: { street: string; city: string; state: string };
+      } = {};
+      if (businessName.trim() !== baseline.businessName)
+        identity.businessName = businessName.trim();
+      const address = { street: street.trim(), city: city.trim(), state: stateName.trim() };
+      const previousAddress = baseline.address as typeof address | null;
+      if (
+        Object.entries(address).some(
+          ([key, value]) => value !== (previousAddress?.[key as keyof typeof address] ?? ""),
+        )
+      )
+        identity.address = address;
+      if (Object.keys(identity).length) await updateBusiness.mutateAsync(identity);
+      setBaseline((previous) => ({ ...previous, ...identity }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
-      setError(extractErrorMessage(err, "Failed to save business profile."));
+      setError(
+        extractErrorMessage(
+          err,
+          "Could not complete the save. Account contact changes may already be saved; retry to finish the business details.",
+        ),
+      );
     }
   }
 
+  if (!initialized)
+    return <LoadState error={profile.isError} retry={() => void profile.refetch()} />;
+
   return (
-    <Panel eyebrow="Identity" title="Business profile" description="Keep sender identity and dispatch address details accurate.">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <Panel
+      disabled={updateUser.isPending || updateBusiness.isPending}
+      eyebrow="Identity"
+      title="Business profile"
+      description="Keep sender identity and dispatch address details accurate."
+    >
+      <div onChange={() => setSaved(false)} className="grid gap-4 sm:grid-cols-2">
         <div>
           <FieldLabel>Business name</FieldLabel>
-          <Input value={businessName} onChange={setBusinessName} icon={Building2} />
+          <Input
+            label="Business name"
+            value={businessName}
+            onChange={setBusinessName}
+            icon={Building2}
+          />
         </div>
         <div>
           <FieldLabel>Account owner</FieldLabel>
-          <Input value={name} onChange={setName} icon={User} />
+          <Input label="Account owner" value={name} onChange={setName} icon={User} />
         </div>
         <div>
           <FieldLabel>Email</FieldLabel>
-          <Input value={user?.email ?? ""} icon={Mail} disabled />
+          <Input label="Email" value={user?.email ?? ""} icon={Mail} disabled />
         </div>
         <div>
           <FieldLabel>Phone</FieldLabel>
-          <Input value={phone} onChange={setPhone} icon={Phone} />
+          <Input label="Phone" value={phone} onChange={setPhone} icon={Phone} />
         </div>
         <div>
           <FieldLabel>Street address</FieldLabel>
-          <Input value={street} onChange={setStreet} icon={MapPin} />
+          <Input label="Street address" value={street} onChange={setStreet} icon={MapPin} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <FieldLabel>City</FieldLabel>
-            <Input value={city} onChange={setCity} />
+            <Input label="City" value={city} onChange={setCity} />
           </div>
           <div>
             <FieldLabel>State</FieldLabel>
-            <Input value={stateName} onChange={setStateName} />
+            <Input label="State" value={stateName} onChange={setStateName} />
           </div>
         </div>
       </div>
       {error && <Notice tone="error">{error}</Notice>}
       <div className="flex justify-end">
-        <SaveButton saved={saved} loading={updateUser.isPending || updateBusiness.isPending} onClick={handleSave} />
+        <SaveButton
+          saved={saved}
+          loading={updateUser.isPending || updateBusiness.isPending}
+          onClick={handleSave}
+        />
       </div>
     </Panel>
   );
 }
 
 function NotificationsTab() {
-  const { data: remote, isLoading } = useBusinessNotifPrefs();
+  const query = useBusinessNotifPrefs();
+  const remote = query.data;
+  const [baseline, setBaseline] = useState<BusinessNotifPrefs | null>(null);
   const update = useUpdateBusinessNotifPrefs();
   const [prefs, setPrefs] = useState<BusinessNotifPrefs>(NOTIF_DEFAULT);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (remote) setPrefs(remote);
-  }, [remote]);
+    if (remote && !baseline) {
+      setPrefs(remote);
+      setBaseline(remote);
+    }
+  }, [remote, baseline]);
 
   async function handleSave() {
     setError("");
     try {
-      await update.mutateAsync(prefs);
+      await update.mutateAsync(changedSettings(baseline!, prefs));
+      setBaseline(prefs);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
@@ -260,27 +386,51 @@ function NotificationsTab() {
     }
   }
 
-  if (isLoading) return <div className="rounded-md border border-white/[0.07] bg-[#0d1412] py-16 text-center text-sm font-bold text-stone-600">Loading notification settings...</div>;
+  if (!baseline) return <LoadState error={query.isError} retry={() => void query.refetch()} />;
 
   return (
-    <Panel eyebrow="Signals" title="Notification routing" description="Choose which business events should reach you by email or SMS.">
+    <Panel
+      disabled={update.isPending}
+      eyebrow="Signals"
+      title="Notification routing"
+      description="These choices are saved to your business account. The current backend does not use them to control email or SMS delivery."
+    >
       <div className="divide-y divide-white/[0.07]">
-        {Object.entries(prefs).map(([key, value]) => (
-          <div key={key} className="grid gap-3 py-3 sm:grid-cols-[1fr,auto,auto] sm:items-center">
-            <div>
-              <p className="text-sm font-black capitalize text-stone-100">{key.replace(/([A-Z])/g, " $1").trim()}</p>
-              <p className="mt-0.5 text-xs text-stone-600">Dispatch event alert</p>
+        {Object.entries(NOTIF_DEFAULT).map(([key]) => {
+          const value = prefs[key as keyof BusinessNotifPrefs];
+          return (
+            <div key={key} className="grid gap-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+              <div>
+                <p className="text-sm font-semibold capitalize text-[var(--landing-ink)]">
+                  {key.replace(/([A-Z])/g, " $1").trim()}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--landing-muted)]">
+                  Saved channel preference
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[var(--landing-muted)]">
+                <span className="sr-only">{key.replace(/([A-Z])/g, " $1")} </span>Email
+                <Toggle
+                  value={value.email}
+                  onChange={(next) => {
+                    setSaved(false);
+                    setPrefs((previous) => ({ ...previous, [key]: { ...value, email: next } }));
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[var(--landing-muted)]">
+                <span className="sr-only">{key.replace(/([A-Z])/g, " $1")} </span>SMS
+                <Toggle
+                  value={value.sms}
+                  onChange={(next) => {
+                    setSaved(false);
+                    setPrefs((previous) => ({ ...previous, [key]: { ...value, sms: next } }));
+                  }}
+                />
+              </label>
             </div>
-            <label className="flex items-center gap-2 text-xs font-black text-stone-400">
-              Email
-              <Toggle value={value.email} onChange={(next) => setPrefs((previous) => ({ ...previous, [key]: { ...value, email: next } }))} />
-            </label>
-            <label className="flex items-center gap-2 text-xs font-black text-stone-400">
-              SMS
-              <Toggle value={value.sms} onChange={(next) => setPrefs((previous) => ({ ...previous, [key]: { ...value, sms: next } }))} />
-            </label>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {error && <Notice tone="error">{error}</Notice>}
       <div className="flex justify-end">
@@ -292,15 +442,20 @@ function NotificationsTab() {
 
 function PasswordButton({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-stone-600 transition hover:text-stone-200" aria-label={active ? "Hide password" : "Show password"}>
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[var(--landing-muted)] transition hover:text-[var(--landing-ink)]"
+      aria-label={active ? "Hide password" : "Show password"}
+    >
       {active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
     </button>
   );
 }
 
 function SecurityTab() {
-  const logout = useAuthStore((state) => state.logout);
-  const changePassword = useChangePassword();
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -312,48 +467,99 @@ function SecurityTab() {
   async function handlePassword() {
     setError("");
     if (!current || !next || !confirm) return setError("Please fill in all password fields.");
-    if (next.length < 8) return setError("New password must be at least 8 characters.");
+    const problem = passwordProblem(next);
+    if (problem) return setError(problem);
     if (next !== confirm) return setError("Passwords do not match.");
+    if (pending) return;
+    setPending(true);
     try {
-      await changePassword.mutateAsync({ currentPassword: current, newPassword: next });
+      await api.patch("/auth/password", { currentPassword: current, newPassword: next });
       setSaved(true);
-      setTimeout(() => logout(), 1500);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      useAuthStore.getState().clearAuth();
+      router.replace("/login");
     } catch (err: unknown) {
       setError(extractErrorMessage(err, "Failed to change password."));
+    } finally {
+      setPending(false);
     }
   }
 
   return (
     <div className="space-y-4">
-      <Panel eyebrow="Access" title="Change password" description="You will be signed out after a successful password change.">
-        <div>
-          <FieldLabel>Current password</FieldLabel>
-          <Input type={showCurrent ? "text" : "password"} value={current} onChange={setCurrent} icon={LockKeyhole} suffix={<PasswordButton active={showCurrent} onClick={() => setShowCurrent((value) => !value)} />} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <fieldset disabled={pending}>
+        <Panel
+          eyebrow="Access"
+          title="Change password"
+          description="Use 8–72 characters, including an uppercase letter and a number (maximum 72 UTF-8 bytes). A successful change signs out all devices."
+        >
           <div>
-            <FieldLabel>New password</FieldLabel>
-            <Input type={showNext ? "text" : "password"} value={next} onChange={setNext} icon={Shield} suffix={<PasswordButton active={showNext} onClick={() => setShowNext((value) => !value)} />} />
+            <FieldLabel>Current password</FieldLabel>
+            <Input
+              label="Current password"
+              type={showCurrent ? "text" : "password"}
+              value={current}
+              onChange={setCurrent}
+              icon={LockKeyhole}
+              suffix={
+                <PasswordButton
+                  active={showCurrent}
+                  onClick={() => setShowCurrent((value) => !value)}
+                />
+              }
+            />
           </div>
-          <div>
-            <FieldLabel>Confirm password</FieldLabel>
-            <Input type="password" value={confirm} onChange={setConfirm} icon={Shield} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel>New password</FieldLabel>
+              <Input
+                label="New password"
+                type={showNext ? "text" : "password"}
+                value={next}
+                onChange={setNext}
+                icon={Shield}
+                suffix={
+                  <PasswordButton
+                    active={showNext}
+                    onClick={() => setShowNext((value) => !value)}
+                  />
+                }
+              />
+            </div>
+            <div>
+              <FieldLabel>Confirm password</FieldLabel>
+              <Input
+                label="Confirm password"
+                type="password"
+                value={confirm}
+                onChange={setConfirm}
+                icon={Shield}
+              />
+            </div>
           </div>
-        </div>
-        {error && <Notice tone="error">{error}</Notice>}
-        {saved && <Notice tone="success">Password changed. Signing you out...</Notice>}
-        <div className="flex justify-end">
-          <SaveButton saved={saved} loading={changePassword.isPending} onClick={handlePassword} />
-        </div>
-      </Panel>
-
-      <AccountDeactivation />
+          {error && <Notice tone="error">{error}</Notice>}
+          {saved && <Notice tone="success">Password changed. Signing you out...</Notice>}
+          <div className="flex justify-end">
+            <SaveButton
+              saved={saved}
+              label="Change password"
+              loading={pending}
+              onClick={handlePassword}
+            />
+          </div>
+        </Panel>
+      </fieldset>
+      <AccountDeactivation themed />
     </div>
   );
 }
 
 function PreferencesTab() {
-  const { data: remote, isLoading } = useBusinessPreferences();
+  const query = useBusinessPreferences();
+  const remote = query.data;
+  const [baseline, setBaseline] = useState<typeof remote>(undefined);
   const update = useUpdateBusinessPreferences();
   const [timezone, setTimezone] = useState("Africa/Lagos");
   const [currency, setCurrency] = useState("NGN");
@@ -365,19 +571,22 @@ function PreferencesTab() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!remote) return;
+    if (!remote || baseline) return;
+    setBaseline(remote);
     setTimezone(remote.timezone);
     setCurrency(remote.currency);
     setLanguage(remote.language);
     setDateFormat(remote.dateFormat);
     setCompactView(remote.compactView);
     setAutoRefresh(remote.autoRefresh);
-  }, [remote]);
+  }, [remote, baseline]);
 
   async function handleSave() {
     setError("");
     try {
-      await update.mutateAsync({ timezone, currency, language, dateFormat, compactView, autoRefresh });
+      const values = { timezone, currency, language, dateFormat, compactView, autoRefresh };
+      await update.mutateAsync(changedSettings(baseline!, values));
+      setBaseline(values);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
@@ -385,67 +594,89 @@ function PreferencesTab() {
     }
   }
 
-  if (isLoading) return <div className="rounded-md border border-white/[0.07] bg-[#0d1412] py-16 text-center text-sm font-bold text-stone-600">Loading preferences...</div>;
+  if (!baseline) return <LoadState error={query.isError} retry={() => void query.refetch()} />;
 
   return (
-    <Panel eyebrow="Workspace" title="Business preferences" description="Set defaults for how this dashboard presents operational data.">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <FieldLabel>Timezone</FieldLabel>
-          <Input value={timezone} onChange={setTimezone} />
+    <div onChange={() => setSaved(false)}>
+      <Panel
+        disabled={update.isPending}
+        eyebrow="Workspace"
+        title="Saved workspace defaults"
+        description="These defaults are stored for your account. They do not currently change dashboard formatting, currency, density or refresh timing. Use the theme control in the top bar to change appearance."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel>Timezone</FieldLabel>
+            <Input label="Timezone" value={timezone} onChange={setTimezone} />
+          </div>
+          <div>
+            <FieldLabel>Currency</FieldLabel>
+            <Input label="Currency" value={currency} onChange={setCurrency} />
+          </div>
+          <div>
+            <FieldLabel>Language</FieldLabel>
+            <Input label="Language" value={language} onChange={setLanguage} />
+          </div>
+          <div>
+            <FieldLabel>Date format</FieldLabel>
+            <Input label="Date format" value={dateFormat} onChange={setDateFormat} />
+          </div>
         </div>
-        <div>
-          <FieldLabel>Currency</FieldLabel>
-          <Input value={currency} onChange={setCurrency} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-md border border-[var(--landing-border)] bg-[var(--landing-section)] p-3">
+            <label className="flex w-full items-center justify-between gap-3 text-sm">
+              Compact view
+              <Toggle value={compactView} onChange={setCompactView} />
+            </label>
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-[var(--landing-border)] bg-[var(--landing-section)] p-3">
+            <label className="flex w-full items-center justify-between gap-3 text-sm">
+              Auto refresh
+              <Toggle value={autoRefresh} onChange={setAutoRefresh} />
+            </label>
+          </div>
         </div>
-        <div>
-          <FieldLabel>Language</FieldLabel>
-          <Input value={language} onChange={setLanguage} />
+        {error && <Notice tone="error">{error}</Notice>}
+        <div className="flex justify-end">
+          <SaveButton saved={saved} loading={update.isPending} onClick={handleSave} />
         </div>
-        <div>
-          <FieldLabel>Date format</FieldLabel>
-          <Input value={dateFormat} onChange={setDateFormat} />
-        </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center justify-between rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-          <span className="text-sm font-black text-stone-100">Compact view</span>
-          <Toggle value={compactView} onChange={setCompactView} />
-        </div>
-        <div className="flex items-center justify-between rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-          <span className="text-sm font-black text-stone-100">Auto refresh</span>
-          <Toggle value={autoRefresh} onChange={setAutoRefresh} />
-        </div>
-      </div>
-      {error && <Notice tone="error">{error}</Notice>}
-      <div className="flex justify-end">
-        <SaveButton saved={saved} loading={update.isPending} onClick={handleSave} />
-      </div>
-    </Panel>
+      </Panel>
+    </div>
   );
 }
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [visited, setVisited] = useState<Tab[]>(["profile"]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Business control</p>
-        <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Settings</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+      <section className="pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--landing-accent)]">
+          Business control
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--landing-ink)] sm:text-3xl">
+          Settings
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--landing-muted)]">
           Manage business identity, alerts, security, and dashboard preferences.
         </p>
       </section>
 
-      <div className="grid gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] p-1 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-[var(--landing-border)] bg-[var(--landing-section)] p-1 sm:grid-cols-4">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key)}
+            aria-pressed={activeTab === key}
+            onClick={() => {
+              setActiveTab(key);
+              setVisited((previous) => (previous.includes(key) ? previous : [...previous, key]));
+            }}
             className={cn(
-              "flex items-center justify-center gap-2 rounded px-3 py-2.5 text-xs font-black transition",
-              activeTab === key ? "bg-teal-400/10 text-teal-100 ring-1 ring-teal-400/25" : "text-stone-500 hover:text-stone-200",
+              "flex items-center justify-center gap-2 rounded px-3 py-2.5 text-xs font-semibold transition",
+              activeTab === key
+                ? "bg-teal-400/10 text-[var(--landing-accent)] ring-1 ring-teal-400/25"
+                : "text-[var(--landing-muted)] hover:text-[var(--landing-ink)]",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -454,10 +685,22 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {activeTab === "profile" && <ProfileTab />}
-      {activeTab === "notifications" && <NotificationsTab />}
+      {visited.includes("profile") && (
+        <div hidden={activeTab !== "profile"}>
+          <ProfileTab />
+        </div>
+      )}
+      {visited.includes("notifications") && (
+        <div hidden={activeTab !== "notifications"}>
+          <NotificationsTab />
+        </div>
+      )}
       {activeTab === "security" && <SecurityTab />}
-      {activeTab === "preferences" && <PreferencesTab />}
+      {visited.includes("preferences") && (
+        <div hidden={activeTab !== "preferences"}>
+          <PreferencesTab />
+        </div>
+      )}
     </div>
   );
 }
