@@ -64,15 +64,18 @@ export default function NewShipmentPage() {
     setReview(parsed.data);
   }
   async function submit(command: ShipmentAction) {
-    setRequest(command);
+    if (!setRequest(command)) {
+      setError("Recover the pending creation request before starting another shipment.");
+      return;
+    }
     setError("");
     try {
       const shipment = await action.mutateAsync(command);
       setTracking(shipment.trackingId);
-      setRequest(null);
+      setRequest(null, command);
     } catch (err) {
       setError(extractErrorMessage(err, "Creation could not be confirmed."));
-      if (!uncertainShipmentError(err)) setRequest(null);
+      if (!uncertainShipmentError(err)) setRequest(null, command);
     }
   }
   if (tracking)

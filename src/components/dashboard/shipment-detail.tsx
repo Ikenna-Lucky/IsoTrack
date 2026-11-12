@@ -35,12 +35,15 @@ export function ShipmentDetail({ id }: { id: string }) {
   const [notice, setNotice] = useState("");
   const [needsReload, setNeedsReload] = useState(false);
   async function execute(command: ShipmentAction) {
-    setPending(command);
+    if (!setPending(command)) {
+      setError("Resolve the pending shipment action before starting another.");
+      return;
+    }
     setError("");
     setNotice("");
     try {
       await action.mutateAsync(command);
-      setPending(null);
+      setPending(null, command);
       setCancelOpen(false);
       setDriverId("");
       setNotice(
@@ -52,7 +55,7 @@ export function ShipmentDetail({ id }: { id: string }) {
     } catch (err) {
       setError(extractErrorMessage(err, "The action could not be confirmed."));
       if (!uncertainShipmentError(err)) {
-        setPending(null);
+        setPending(null, command);
         setNeedsReload(true);
       }
     }
@@ -65,6 +68,22 @@ export function ShipmentDetail({ id }: { id: string }) {
         <button className={shipmentButton} onClick={() => void detail.refetch()}>
           Retry details
         </button>
+        {pending && (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm">
+              A {pending.kind} request is still unresolved. You can recover its result without
+              loading the current details first.
+            </p>
+            <button
+              className={shipmentButton}
+              disabled={action.isPending}
+              onClick={() => void execute(pending)}
+            >
+              {action.isPending ? "Confirming action…" : "Retry same action"}
+            </button>
+            {error && <p className="text-sm text-[var(--landing-danger)]">{error}</p>}
+          </div>
+        )}
       </div>
     );
   const available = drivers.data?.pages.flatMap((page) => page.data) ?? [];

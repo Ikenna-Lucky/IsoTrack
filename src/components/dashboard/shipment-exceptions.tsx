@@ -55,13 +55,16 @@ export function ShipmentExceptions({ id, role }: { id: string; role: "business" 
     void cache.invalidateQueries({ queryKey: ["shipments", "exception-history", id] });
   }
   async function execute(command: ExceptionRequest) {
-    setRequest(command);
+    if (!setRequest(command)) {
+      setError("Resolve the pending shipment action before starting another.");
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
     try {
       await sendException(id, command);
-      setRequest(null);
+      setRequest(null, command);
       setReview(null);
       setChoice(null);
       setNotice(`${exceptionLabels[command.body.action]}: confirmed.`);
@@ -71,7 +74,7 @@ export function ShipmentExceptions({ id, role }: { id: string; role: "business" 
     } catch (err) {
       setError(exceptionError(err));
       if (!uncertainShipmentError(err)) {
-        setRequest(null);
+        setRequest(null, command);
         setReview(null);
         setNeedsReload(true);
       }

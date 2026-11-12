@@ -10,6 +10,7 @@ import {
 } from "@/hooks/use-delivery";
 import {
   challengeUsable,
+  deliveryPanelVisible,
   deliveryEmailLabels,
   deliveryErrorMessage,
   recipientConfirmationEmail,
@@ -62,8 +63,10 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
   }, [challenge.data?.challengeId, challenge.data?.version, usable]);
   async function refresh() {
     const result = await detail.refetch();
-    const metadata = await challenge.refetch();
-    if (!result.isError && !metadata.isError) {
+    // Once another actor closes or fails the shipment, challenge metadata is no
+    // longer required to recover the delivery panel.
+    const metadata = result.data?.status === "out_for_delivery" ? await challenge.refetch() : null;
+    if (!result.isError && !metadata?.isError) {
       setNeedsRefresh(false);
       setError("");
       setCode("");
@@ -72,13 +75,16 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
     void cache.invalidateQueries({ queryKey: ["shipments", "driver-delivery-cursor"] });
   }
   async function execute(command: DeliveryRequest) {
-    setRequest(command);
+    if (!setRequest(command)) {
+      setError("Resolve the pending shipment action before starting another.");
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
     try {
       await sendDeliveryRequest(id, command);
-      setRequest(null);
+      setRequest(null, command);
       setCode("");
       setNotice(
         command.kind === "issue"
@@ -93,7 +99,7 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
     } catch (err) {
       setError(deliveryErrorMessage(err));
       if (!uncertainShipmentError(err)) {
-        setRequest(null);
+        setRequest(null, command);
         setCode("");
         setNeedsRefresh(true);
       }
@@ -102,15 +108,7 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
     }
   }
   const advance = shipment ? nextStatus[shipment.status as keyof typeof nextStatus] : undefined;
-  if (
-    shipment &&
-    !request &&
-    !busy &&
-    !notice &&
-    !error &&
-    !live &&
-    (role === "business" || (!advance && shipment?.status !== "delivered"))
-  )
+  if (!deliveryPanelVisible(role, shipment?.status, !!request, busy || !!notice || !!error))
     return null;
   if (detail.isPending) return <p role="status">Loading delivery controls…</p>;
   return (

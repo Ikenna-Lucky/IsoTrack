@@ -1,5 +1,10 @@
 # Frontend integration
 
+Current remaining work and the 12 November Business recovery review are tracked
+in [frontend closeout](frontend-roadmap.md). The chronological slices below retain
+their original verification scope; later slices supersede earlier next-step notes.
+Use Swagger (`/docs/`) and the exported OpenAPI contract for API fields and responses.
+
 Work stays on `isoTrack-dev-branch`. The backend preview is a separate deployment;
 the existing main frontend/backend are not promoted by this work.
 

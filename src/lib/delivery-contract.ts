@@ -50,3 +50,21 @@ export function deliveryErrorMessage(error: unknown) {
     ? messages[code]
     : "The action could not be confirmed. Refresh the shipment or retry the same request if its result is uncertain.";
 }
+
+/** Recovery must remain reachable even when another actor advances the shipment. */
+export function deliveryPanelVisible(
+  role: "business" | "driver",
+  status: string | undefined,
+  hasRequest: boolean,
+  hasFeedback = false,
+) {
+  return (
+    !status ||
+    hasRequest ||
+    hasFeedback ||
+    status === "out_for_delivery" ||
+    (role === "driver" &&
+      !!status &&
+      ["assigned", "picked_up", "in_transit", "delivered"].includes(status))
+  );
+}

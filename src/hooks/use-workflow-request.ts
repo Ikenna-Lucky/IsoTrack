@@ -1,44 +1,37 @@
 "use client";
 import { useSyncExternalStore } from "react";
 import { useAuthStore } from "@/store/auth";
+import { createWorkflowRequests } from "@/lib/workflow-requests";
 
-// Shared, account-scoped memory prevents competing actions across shipment panels.
-const requests = new Map<string, unknown>();
-const listeners = new Set<() => void>();
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-};
+const requests = createWorkflowRequests();
+requests.setAccount(useAuthStore.getState().user?.id ?? null);
+useAuthStore.subscribe((state) => requests.setAccount(state.user?.id ?? null));
 if (typeof window !== "undefined")
   window.addEventListener("beforeunload", (event) => {
-    if (requests.size) {
+    if (requests.pending(useAuthStore.getState().user?.id ?? null)) {
       event.preventDefault();
       event.returnValue = "";
     }
   });
 export function useWorkflowRequest<T>(namespace: string, id: string) {
-  const accountId = useAuthStore((state) => state.user?.id);
-  const key = `${accountId}:${id}:${namespace}`;
+  const accountId = useAuthStore((state) => state.user?.id ?? null);
+  const generation = requests.generation();
   const value = useSyncExternalStore(
-    subscribe,
-    () => (requests.get(key) as T | undefined) ?? null,
+    requests.subscribe,
+    () => requests.get<T>(accountId, id, namespace),
     () => null,
   );
-  function update(next: T | null) {
-    if (next === null) requests.delete(key);
-    else requests.set(key, next);
-    listeners.forEach((listener) => listener());
-  }
-  return [value, update] as const;
+  return [
+    value,
+    (next: T | null, expectedRequest?: T) =>
+      requests.set(accountId, id, namespace, next, generation, expectedRequest),
+  ] as const;
 }
 export function useWorkflowPending(id: string) {
-  const accountId = useAuthStore((state) => state.user?.id);
-  const prefix = `${accountId}:${id}:`;
+  const accountId = useAuthStore((state) => state.user?.id ?? null);
   return useSyncExternalStore(
-    subscribe,
-    () => [...requests.keys()].some((key) => key.startsWith(prefix)),
+    requests.subscribe,
+    () => requests.pending(accountId, id),
     () => false,
   );
 }
