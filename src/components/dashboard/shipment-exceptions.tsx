@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceShipment } from "@/hooks/use-shipment-workspace";
@@ -21,10 +22,11 @@ import {
   type ExceptionAction,
 } from "@/lib/shipment-exceptions";
 import { uncertainShipmentError } from "@/lib/shipment-workspace";
-import { shipmentButton, shipmentField, shipmentDate } from "./shipment-ui";
+import { shipmentButton, shipmentField } from "./shipment-ui";
 import { driverTheme } from "./delivery-confirmation";
 
 export function ShipmentExceptions({ id, role }: { id: string; role: "business" | "driver" }) {
+  const shipmentDate = useWorkspaceDate();
   const detail = useWorkspaceShipment(id);
   const shipment = detail.data;
   const [historyOpen, setHistoryOpen] = useState(false);

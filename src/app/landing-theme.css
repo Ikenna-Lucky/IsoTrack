@@ -92,6 +92,19 @@ html[data-landing-theme="light"]:has(.landing-page) {
 .landing-page :focus-visible {
   outline-color: var(--landing-accent);
 }
+
+/* Density changes content spacing, never the hit area or text size of controls. */
+[data-business-density="compact"] #business-content {
+  padding: 1rem;
+}
+[data-business-density="compact"] #business-content .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1rem;
+}
+[data-business-density="compact"] #business-content section > fieldset,
+[data-business-density="compact"] #business-content li > button {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+}
 html[data-landing-theme="light"] body:has(.landing-page) {
   background: #faf9f5;
 }

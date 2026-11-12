@@ -9,6 +9,7 @@ import { ProfileCompletionBanner } from "@/components/dashboard/profile-completi
 import { useBusinessProfileCompletion } from "@/hooks/use-profile-completion";
 import { useAuthStore } from "@/store/auth";
 import "../../landing-theme.css";
+import { BusinessPreferencesProvider } from "@/providers/business-preferences-provider";
 
 function BusinessWorkspace({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,7 +69,9 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
   const accountId = useAuthStore((state) => state.user?.id);
   return (
     <AuthGuard role="business">
-      <BusinessWorkspace key={accountId}>{children}</BusinessWorkspace>
+      <BusinessPreferencesProvider key={accountId}>
+        <BusinessWorkspace>{children}</BusinessWorkspace>
+      </BusinessPreferencesProvider>
     </AuthGuard>
   );
 }

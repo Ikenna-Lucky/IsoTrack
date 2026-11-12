@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useEffect, useState } from "react";
 import { Check, Copy, MailPlus, X } from "lucide-react";
 import {
@@ -16,6 +17,7 @@ import { extractErrorMessage } from "@/lib/errors";
 import { FleetDialog } from "./fleet-dialog";
 
 export function FleetInvitations() {
+  const shipmentDate = useWorkspaceDate();
   const invitations = useFleetInvitations();
   const create = useCreateFleetInvitation();
   const revoke = useRevokeFleetInvitation();
@@ -190,7 +192,7 @@ export function FleetInvitations() {
               {copied ? "Token copied" : "Copy token"}
             </button>
             <p className="text-xs text-[var(--landing-muted)]">
-              Expires {new Date(created.expiresAt).toLocaleString("en-NG")}
+              Expires {shipmentDate(created.expiresAt)}
             </p>
           </div>
           <p aria-live="polite" className="text-xs">
@@ -255,15 +257,15 @@ export function FleetInvitations() {
                   <div className="min-w-0">
                     <p className="break-all text-sm font-medium">{invitation.email}</p>
                     <p className="mt-1 text-xs text-[var(--landing-muted)]">
-                      {state} · Expires {new Date(invitation.expiresAt).toLocaleString("en-NG")}
+                      {state} · Expires {shipmentDate(invitation.expiresAt)}
                     </p>
                     {(invitation.acceptedAt || invitation.revokedAt || invitation.createdAt) && (
                       <p className="mt-1 text-xs text-[var(--landing-muted)]">
                         {invitation.acceptedAt
-                          ? `Accepted ${new Date(invitation.acceptedAt).toLocaleString("en-NG")}`
+                          ? `Accepted ${shipmentDate(invitation.acceptedAt)}`
                           : invitation.revokedAt
-                            ? `Revoked ${new Date(invitation.revokedAt).toLocaleString("en-NG")}`
-                            : `Created ${new Date(invitation.createdAt!).toLocaleString("en-NG")}`}
+                            ? `Revoked ${shipmentDate(invitation.revokedAt)}`
+                            : `Created ${shipmentDate(invitation.createdAt!)}`}
                       </p>
                     )}
                   </div>

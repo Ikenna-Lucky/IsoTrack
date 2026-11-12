@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronDown, Package, Plus, Search } from "lucide-react";
@@ -11,11 +12,11 @@ import {
   shipmentButton,
   shipmentField,
   shipmentPanel,
-  shipmentDate,
 } from "@/components/dashboard/shipment-detail";
 import { shipmentMoney } from "@/lib/shipment-workspace";
 
 export default function ShipmentsPage() {
+  const shipmentDate = useWorkspaceDate();
   const manifest = useShipmentManifest();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");

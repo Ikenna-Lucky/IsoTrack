@@ -1,12 +1,12 @@
 # Frontend closeout
 
 Reviewed 12 November 2026 against the Swagger/OpenAPI contract and the current
-frontend. Scope is frontend work; no backend implementation or deployment changed.
+frontend. Item 1 was frontend-only. Item 2 includes a focused backend notification-worker change; no deployment was changed.
 
 | Priority | Area                        | Current state / remaining work                                                                                                                                                                                                                                                |
 | -------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1        | Business workflow review    | Main screens and forms exist. Recovery hardening and direct local HTTP journey checks passed in this review. Browser fault-injection acceptance remains blocked because local browser use is disabled in Work settings. Do not call this fully accepted yet.                  |
-| 2        | Apply saved preferences     | Business timezone/language/date format/density/refresh choices are stored but not applied consistently. Notification delivery behavior belongs to the backend; stored settings alone do not enable channels.                                                                  |
+| 2        | Apply saved preferences     | Timezone, date format, compact spacing and automatic refresh are applied across Business. Six shipment email choices control dispatch. English and NGN are the supported interface/payment options; SMS, weekly reports and driver-online alerts are unavailable. Local browser acceptance remains outstanding.                                                                  |
 | 3        | Driver dashboard            | Rebuild overview, Settings and Help against actual contracts. Replace unsupported 40% earnings and Friday payout claims with supported delivery history/operational summaries. Deliveries already has versioned proof/exception workflows; shared recovery fixes apply there. |
 | 4        | Customer dashboard          | Align overview, cursor shipment lists, limited public versus private tracking, checkout/review/cancellation states and Settings. Payment hook still lacks initialization idempotency and treats provider-paid as confirmation without checking applied/requiresReview.        |
 | 5        | Authenticated live tracking | Add token-based sockets, token rotation/reconnect/rejoin, acknowledgements, access/freshness feedback and bounded location delivery. Current socket hooks lack auth.token.                                                                                                    |
@@ -90,3 +90,44 @@ Browser checks were attempted but the tool reported that local browser use is
 disabled in Work settings. The changes have not been visually reverified in this
 review. Prior slice documents retain historical browser evidence; they are not a
 new passing result for the changed recovery paths.
+
+
+## Saved preferences (item 2)
+
+Business settings apply after a successful save and reload from the account on
+sign-in. Dates across shipment records, fleet invitations, delivery confirmation,
+exception history and analytics use the saved IANA timezone and supported date
+order. Invalid older values fall back to Lagos/DD-MM ordering without silently
+rewriting the stored record. Scheduled-pickup entry remains explicitly device-local.
+Compact mode reduces content spacing while retaining control sizes. Auto refresh
+controls polling and focus/reconnect refreshes of operational queries; explicit
+refreshes, navigation reads and mutation-driven invalidation still work.
+
+English is the available interface language and NGN is the payment currency.
+Older language/currency settings are retained but do not pretend to translate or
+convert money. SMS, weekly reports and driver-online alerts are disabled in the UI
+because delivery is unavailable.
+
+The backend now checks six Business shipment email choices before creating an
+email outbox job from an in-app event and checks again before sending/retrying.
+In-app notifications remain available. Already sending email cannot be recalled;
+previously completed events are not backfilled. Account recovery, verification,
+recipient delivery-code and customer-email policies remain separate. Runtime
+email delivery still requires the configured notification worker and mail transport.
+Local delivery checks use a disposable SMTP catcher and do not send real mail.
+
+Browser acceptance: save each preference, navigate and reload, check date rollover,
+compact spacing, polling/focus behavior and explicit refresh in both themes.
+Verify saved choices and pending local requests do not cross account switches.
+Local browser automation remains disabled in Work settings, so visual acceptance
+has not been claimed.
+
+
+Verification for item 2: 45 frontend unit/client tests passed; frontend lint,
+TypeScript and production build passed. Backend unit suite passed 101 tests,
+followed by four focused preference/email tests after the email-link correction.
+All 12 local PostgreSQL/Redis/BullMQ/SMTP integration tests passed, including
+opt-out before enqueue, suppression of queued mail, customer independence,
+duplicate processing, ownership changes, retry and worker-crash recovery.
+Backend TypeScript, lint and generated OpenAPI checks passed. Local browser
+checks and actual external email receipt remain unverified.

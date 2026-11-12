@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import Link from "next/link";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { useBusinessAnalytics } from "@/hooks/use-business";
@@ -10,7 +11,7 @@ import {
 } from "@/lib/business-analytics";
 import { shipmentLabels } from "@/lib/business-overview";
 import { shipmentMoney } from "@/lib/shipment-workspace";
-import { shipmentButton, shipmentPanel, shipmentDate } from "@/components/dashboard/shipment-ui";
+import { shipmentButton, shipmentPanel } from "@/components/dashboard/shipment-ui";
 import type { ShipmentStatus } from "@/types";
 
 const muted = "text-[var(--landing-muted)]";
@@ -26,6 +27,7 @@ const barColors: Record<ShipmentStatus, string> = {
 };
 const number = (value: number) => value.toLocaleString("en-NG");
 export default function AnalyticsPage() {
+  const shipmentDate = useWorkspaceDate();
   const query = useBusinessAnalytics();
   const data = query.data;
   const summary = data ? analyticsSummary(data) : null;
@@ -57,7 +59,7 @@ export default function AnalyticsPage() {
         <p>All time · current shipment statuses</p>
         <p role="status">
           {data && query.dataUpdatedAt
-            ? `Last successful refresh: ${new Date(query.dataUpdatedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+            ? `Last successful refresh: ${shipmentDate(query.dataUpdatedAt)}`
             : query.isPending
               ? "Loading business totals…"
               : "No figures loaded"}

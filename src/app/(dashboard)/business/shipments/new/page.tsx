@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePendingShipmentAction } from "@/hooks/use-pending-shipment-action";
@@ -19,6 +20,7 @@ import {
 import { shipmentMoney } from "@/lib/shipment-workspace";
 
 export default function NewShipmentPage() {
+  const shipmentDate = useWorkspaceDate();
   const action = useShipmentAction();
   const [review, setReview] = useState<NewShipment | null>(null);
   const [request, setRequest] = usePendingShipmentAction("create");
@@ -254,7 +256,7 @@ export default function NewShipmentPage() {
               label="Scheduled pickup"
               value={
                 review.scheduledPickup
-                  ? new Date(review.scheduledPickup).toLocaleString()
+                  ? shipmentDate(review.scheduledPickup)
                   : "Not scheduled"
               }
             />

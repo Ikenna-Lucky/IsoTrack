@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useState } from "react";
 import { ShipmentExceptions } from "./shipment-exceptions";
 import { useWorkflowPending } from "@/hooks/use-workflow-request";
@@ -17,10 +18,11 @@ import { shipmentLabels } from "@/lib/business-overview";
 import { extractErrorMessage } from "@/lib/errors";
 import { shipmentMoney } from "@/lib/shipment-workspace";
 
-import { shipmentButton, shipmentField, shipmentDate } from "./shipment-ui";
-export { shipmentButton, shipmentField, shipmentPanel, shipmentDate } from "./shipment-ui";
+import { shipmentButton, shipmentField } from "./shipment-ui";
+export { shipmentButton, shipmentField, shipmentPanel } from "./shipment-ui";
 
 export function ShipmentDetail({ id }: { id: string }) {
+  const shipmentDate = useWorkspaceDate();
   const cache = useQueryClient();
   const workflowPending = useWorkflowPending(id);
   const detail = useWorkspaceShipment(id);

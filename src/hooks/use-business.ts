@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { validateBusinessAnalytics } from "@/lib/business-analytics";
 import type { Business, Shipment, ApiResponse } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { workspaceRefresh } from "@/lib/business-preferences";
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -40,9 +42,10 @@ export function useBusinessProfile() {
 /**
  * Returns aggregated analytics for the business:
  * status breakdown, total shipments, total shipment value, latest ten shipments.
- * Refetches every 60 s.
+ * Refetches every 60 s when workspace auto refresh is enabled.
  */
 export function useBusinessAnalytics() {
+  const preferences = useBusinessPreferences();
   return useQuery({
     queryKey: businessKeys.analytics(),
     queryFn: async ({ signal }) => {
@@ -51,7 +54,9 @@ export function useBusinessAnalytics() {
       });
       return validateBusinessAnalytics(data.data);
     },
-    refetchInterval: 60_000,
+    refetchInterval: workspaceRefresh(preferences.data?.autoRefresh === true, 60_000),
+    refetchOnWindowFocus: preferences.data?.autoRefresh === true,
+    refetchOnReconnect: preferences.data?.autoRefresh === true,
   });
 }
 
@@ -128,11 +133,13 @@ export function useUpdateBusinessNotifPrefs() {
 }
 
 /** GET /business/preferences */
-export function useBusinessPreferences() {
+export function useBusinessPreferences(enabled = true) {
+  const accountId = useAuthStore((state) => state.user?.id);
   return useQuery({
     queryKey: [...businessKeys.all, "preferences"],
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<BusinessPreferences>>("/business/preferences");
+    enabled: enabled && !!accountId,
+    queryFn: async ({signal}) => {
+      const { data } = await api.get<ApiResponse<BusinessPreferences>>("/business/preferences", {signal});
       return data.data;
     },
   });

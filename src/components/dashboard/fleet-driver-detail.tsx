@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useFleetAssignments } from "@/hooks/use-fleet";
 import { driverHasCustody, type FleetDriver } from "@/lib/fleet-contract";
 import { shipmentLabels } from "@/lib/business-overview";
@@ -11,6 +12,7 @@ export function FleetDriverDetail({
   driver: FleetDriver;
   onClose: () => void;
 }) {
+  const shipmentDate = useWorkspaceDate();
   const work = useFleetAssignments();
   const loaded = work.data?.pages.flatMap((page) => page.data) ?? [];
   const assignments = loaded.filter(
@@ -29,7 +31,7 @@ export function FleetDriverDetail({
     ["Insurance", driver.vehicleInsurance],
     ["Profile delivery count", String(driver.totalDeliveries)],
     ["Profile rating", Number.isFinite(driver.rating) ? driver.rating.toFixed(1) : "Not provided"],
-    ["Joined", new Date(driver.createdAt).toLocaleDateString("en-NG")],
+    ["Joined", shipmentDate(driver.createdAt)],
   ];
   return (
     <FleetDialog title={driver.user.name} onClose={onClose}>

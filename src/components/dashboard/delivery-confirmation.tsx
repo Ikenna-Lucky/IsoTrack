@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceShipment } from "@/hooks/use-shipment-workspace";
@@ -18,7 +19,7 @@ import {
 } from "@/lib/delivery-contract";
 import { useWorkflowPending } from "@/hooks/use-workflow-request";
 import { uncertainShipmentError } from "@/lib/shipment-workspace";
-import { shipmentButton, shipmentField, shipmentDate } from "./shipment-ui";
+import { shipmentButton, shipmentField } from "./shipment-ui";
 
 const nextStatus = {
   assigned: { label: "Confirm pickup", status: "picked_up" },
@@ -38,6 +39,7 @@ export const driverTheme = {
 } as CSSProperties;
 
 export function DeliveryConfirmation({ id, role }: { id: string; role: "business" | "driver" }) {
+  const shipmentDate = useWorkspaceDate();
   const detail = useWorkspaceShipment(id);
   const shipment = detail.data;
   const challenge = useDeliveryChallenge(id, shipment?.status === "out_for_delivery");

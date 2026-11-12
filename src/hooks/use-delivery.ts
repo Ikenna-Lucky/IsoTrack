@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceRefresh } from "./use-workspace-refresh";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useWorkflowRequest } from "./use-workflow-request";
@@ -26,11 +27,12 @@ export function useDriverDeliveryQueue() {
   });
 }
 export function useDeliveryChallenge(id: string, enabled: boolean) {
+  const refresh = useWorkspaceRefresh(10000, 10000);
   return useQuery({
+    ...refresh,
     queryKey: ["shipments", "delivery-challenge", id],
     enabled,
     retry: false,
-    refetchInterval: 10000,
     queryFn: async ({ signal }) => {
       try {
         return (

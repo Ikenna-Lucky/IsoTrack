@@ -188,7 +188,7 @@ const guides: Guide[] = [
     topic: "account",
     title: "What do notification and workspace preferences change?",
     paragraphs: [
-      "The current backend saves notification channel choices but does not use them to control email or SMS delivery. Saved timezone, currency, language, date format, compact view and auto refresh preferences do not yet change dashboard behavior.",
+      "Timezone and date format control Business timestamps; compact view changes workspace spacing. Auto refresh controls polling and refresh on focus or reconnect. Email choices apply to the six supported shipment updates, including queued emails checked before dispatch. In-app updates remain available. SMS, driver-online alerts and weekly reports are unavailable. The interface supports English and NGN payments.",
       "Use the theme control in the top bar to switch the working light/dark appearance. Saving a currency preference does not convert shipment prices.",
     ],
     href: "/business/settings",

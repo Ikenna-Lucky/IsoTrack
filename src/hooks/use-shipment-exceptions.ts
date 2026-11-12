@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceRefresh } from "./use-workspace-refresh";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
@@ -8,7 +9,9 @@ import {
 } from "@/lib/shipment-exceptions";
 import { useWorkflowRequest } from "./use-workflow-request";
 export function useExceptionHistory(id: string, enabled: boolean) {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["shipments", "exception-history", id],
     enabled,
     initialPageParam: null as number | null,

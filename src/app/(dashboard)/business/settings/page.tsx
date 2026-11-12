@@ -34,6 +34,7 @@ import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { changedSettings, passwordProblem } from "@/lib/business-settings";
 import { cn } from "@/lib/utils";
+import { dateFormats, validTimezone } from "@/lib/business-preferences";
 
 const TABS = [
   { key: "profile", label: "Profile", icon: User },
@@ -188,11 +189,12 @@ function Notice({ tone, children }: { tone: "error" | "success"; children: React
   );
 }
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
+function Toggle({ value, onChange, disabled = false }: { value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   return (
     <input
       type="checkbox"
       checked={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.checked)}
       className="h-5 w-5 accent-teal-600"
     />
@@ -393,7 +395,7 @@ function NotificationsTab() {
       disabled={update.isPending}
       eyebrow="Signals"
       title="Notification routing"
-      description="These choices are saved to your business account. The current backend does not use them to control email or SMS delivery."
+      description="Email choices control the six supported shipment updates sent to your business email. In-app updates remain available. Recovery, verification, payment and recipient delivery-code emails are separate. SMS, driver-online alerts and weekly reports are not available."
     >
       <div className="divide-y divide-white/[0.07]">
         {Object.entries(NOTIF_DEFAULT).map(([key]) => {
@@ -405,13 +407,14 @@ function NotificationsTab() {
                   {key.replace(/([A-Z])/g, " $1").trim()}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--landing-muted)]">
-                  Saved channel preference
+                  {key === "driverOnline" || key === "weeklyReport" ? "Not available yet · saved choice retained" : "Checked before email dispatch; already sending messages cannot be recalled"}
                 </p>
               </div>
               <label className="flex items-center gap-2 text-xs font-semibold text-[var(--landing-muted)]">
                 <span className="sr-only">{key.replace(/([A-Z])/g, " $1")} </span>Email
                 <Toggle
                   value={value.email}
+                  disabled={key === "driverOnline" || key === "weeklyReport"}
                   onChange={(next) => {
                     setSaved(false);
                     setPrefs((previous) => ({ ...previous, [key]: { ...value, email: next } }));
@@ -422,6 +425,7 @@ function NotificationsTab() {
                 <span className="sr-only">{key.replace(/([A-Z])/g, " $1")} </span>SMS
                 <Toggle
                   value={value.sms}
+                  disabled
                   onChange={(next) => {
                     setSaved(false);
                     setPrefs((previous) => ({ ...previous, [key]: { ...value, sms: next } }));
@@ -583,6 +587,14 @@ function PreferencesTab() {
 
   async function handleSave() {
     setError("");
+    if (!validTimezone(timezone)) {
+      setError("Enter a valid IANA timezone, such as Africa/Lagos or Europe/London.");
+      return;
+    }
+    if (!dateFormats.includes(dateFormat as typeof dateFormats[number])) {
+      setError("Choose one of the supported date formats before saving.");
+      return;
+    }
     try {
       const values = { timezone, currency, language, dateFormat, compactView, autoRefresh };
       await update.mutateAsync(changedSettings(baseline!, values));
@@ -601,25 +613,31 @@ function PreferencesTab() {
       <Panel
         disabled={update.isPending}
         eyebrow="Workspace"
-        title="Saved workspace defaults"
-        description="These defaults are stored for your account. They do not currently change dashboard formatting, currency, density or refresh timing. Use the theme control in the top bar to change appearance."
+        title="Workspace preferences"
+        description="Saved changes apply across the Business workspace. Automatic refresh controls polling, focus and reconnect refreshes; manual refresh and updates after your actions remain available. Appearance uses the theme control in the top bar."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <FieldLabel>Timezone</FieldLabel>
             <Input label="Timezone" value={timezone} onChange={setTimezone} />
+            <p className="mt-2 text-xs text-[var(--landing-muted)]">IANA timezone, for example Africa/Lagos. Existing shipment times stay the same instant; their displayed time changes.</p>
           </div>
           <div>
             <FieldLabel>Currency</FieldLabel>
-            <Input label="Currency" value={currency} onChange={setCurrency} />
+            <Input label="Currency" value="NGN — Nigerian naira" disabled />
+            <p className="mt-2 text-xs text-[var(--landing-muted)]">Shipments and payments use NGN. No currency conversion is available.{currency !== "NGN" ? ` Your older saved value (${currency}) is retained but is not applied.` : ""}</p>
           </div>
           <div>
             <FieldLabel>Language</FieldLabel>
-            <Input label="Language" value={language} onChange={setLanguage} />
+            <Input label="Language" value="English" disabled />
+            <p className="mt-2 text-xs text-[var(--landing-muted)]">English is the available interface language.{language !== "en" ? ` Your older saved value (${language}) is retained; translations are not yet available.` : ""}</p>
           </div>
           <div>
             <FieldLabel>Date format</FieldLabel>
-            <Input label="Date format" value={dateFormat} onChange={setDateFormat} />
+            <select aria-label="Date format" className="min-h-12 w-full rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] px-3 text-sm" value={dateFormat} onChange={(event) => setDateFormat(event.target.value)}>
+              {!dateFormats.includes(dateFormat as typeof dateFormats[number]) && <option value={dateFormat} disabled>{dateFormat} (unsupported — choose a format)</option>}
+              {dateFormats.map((format) => <option key={format} value={format}>{format}</option>)}
+            </select>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -636,6 +654,7 @@ function PreferencesTab() {
             </label>
           </div>
         </div>
+        <p className="text-xs leading-5 text-[var(--landing-muted)]">Dates use your saved timezone and format. The optional scheduled-pickup input remains explicitly in your device local timezone. Compact view reduces content spacing without shrinking controls.</p>
         {error && <Notice tone="error">{error}</Notice>}
         <div className="flex justify-end">
           <SaveButton saved={saved} loading={update.isPending} onClick={handleSave} />

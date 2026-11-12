@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceRefresh } from "./use-workspace-refresh";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { nextPageCursor, type CursorPage } from "@/lib/business-overview";
@@ -7,7 +8,9 @@ import type { ApiResponse, ShipmentEvent } from "@/types";
 import type { FleetDriver } from "@/lib/fleet-contract";
 
 export function useShipmentManifest() {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["shipments", "business-manifest"],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam, signal }) =>
@@ -21,7 +24,9 @@ export function useShipmentManifest() {
   });
 }
 export function useWorkspaceShipment(id: string) {
+  const refresh = useWorkspaceRefresh(60000);
   return useQuery({
+    ...refresh,
     queryKey: ["shipments", "workspace-detail", id],
     queryFn: async ({ signal }) =>
       (
@@ -32,7 +37,9 @@ export function useWorkspaceShipment(id: string) {
   });
 }
 export function useShipmentHistory(id: string) {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["shipments", "workspace-history", id],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam, signal }) =>
@@ -46,7 +53,9 @@ export function useShipmentHistory(id: string) {
   });
 }
 export function useDispatchDrivers(enabled: boolean) {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["drivers", "dispatch-available"],
     enabled,
     initialPageParam: null as string | null,

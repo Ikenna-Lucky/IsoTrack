@@ -4,8 +4,3 @@ export const shipmentField =
   "w-full min-w-0 rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] px-3 py-3 text-sm";
 export const shipmentPanel =
   "rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)]";
-export function shipmentDate(value?: string | null) {
-  return value
-    ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
-    : "Not recorded";
-}

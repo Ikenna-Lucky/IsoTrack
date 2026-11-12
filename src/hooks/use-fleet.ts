@@ -1,4 +1,5 @@
 "use client";
+import { useWorkspaceRefresh } from "./use-workspace-refresh";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -13,7 +14,9 @@ import { driverKeys } from "./use-driver";
 import type { ApiResponse } from "@/types";
 
 export function useFleet() {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["drivers", "fleet-cursor"],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam, signal }) => {
@@ -27,7 +30,9 @@ export function useFleet() {
   });
 }
 export function useFleetInvitations() {
+  const refresh = useWorkspaceRefresh(60000);
   return useQuery({
+    ...refresh,
     queryKey: ["fleet-invitations"],
     queryFn: async ({ signal }) => {
       const response = await api.get<ApiResponse<FleetInvitation[]>>("/driver-invitations", {
@@ -68,7 +73,9 @@ export function useRevokeFleetInvitation() {
   });
 }
 export function useFleetAssignments() {
+  const refresh = useWorkspaceRefresh(60000);
   return useInfiniteQuery({
+    ...refresh,
     queryKey: ["shipments", "fleet-assignments-cursor"],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam, signal }) => {
