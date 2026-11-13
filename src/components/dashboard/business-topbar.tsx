@@ -1,223 +1,219 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import {
-  AlertCircle,
-  Bell,
-  CheckCircle2,
-  Info,
-  Loader2,
-  Menu,
-  Package,
-  Search,
-  Truck,
-  X,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Bell, Check, Menu, UserRound, X } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { useOverviewNotifications } from "@/hooks/use-business-overview";
 import { useAuthStore } from "@/store/auth";
-import {
-  useMarkAllNotificationsRead,
-  useMarkNotificationRead,
-  useNotifications,
-} from "@/hooks/use-notifications";
-import type { Notification } from "@/types";
-import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
-function notifIcon(notification: Notification): { Icon: React.ElementType; color: string; bg: string } {
-  const title = notification.title.toLowerCase();
-  if (title.includes("delivered") || title.includes("picked up") || title.includes("assigned")) {
-    return { Icon: CheckCircle2, color: "text-emerald-200", bg: "border-emerald-400/20 bg-emerald-400/10" };
-  }
-  if (title.includes("transit") || title.includes("delivery")) {
-    return { Icon: Truck, color: "text-teal-200", bg: "border-teal-400/20 bg-teal-400/10" };
-  }
-  if (title.includes("failed") || title.includes("cancel")) {
-    return { Icon: AlertCircle, color: "text-rose-200", bg: "border-rose-400/20 bg-rose-400/10" };
-  }
-  if (title.includes("created")) {
-    return { Icon: Package, color: "text-amber-200", bg: "border-amber-400/20 bg-amber-400/10" };
-  }
-  return { Icon: Info, color: "text-stone-400", bg: "border-white/[0.07] bg-white/[0.04]" };
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-interface Props {
+export function BusinessTopbar({
+  title,
+  onMenuClick,
+  menuOpen = false,
+}: {
   title: string;
   onMenuClick: () => void;
-}
-
-export function BusinessTopbar({ title, onMenuClick }: Props) {
-  const user = useAuthStore((state) => state.user);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const { notifications, unreadCount, isLoading } = useNotifications();
-  const markRead = useMarkNotificationRead();
-  const markAllRead = useMarkAllNotificationsRead();
+  menuOpen?: boolean;
+}) {
+  const user = useAuthStore((s) => s.user);
+  const [open, setOpen] = useState(false);
+  const [moreUnread, setMoreUnread] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const query = useOverviewNotifications();
+  const cache = useQueryClient();
+  const notifications = query.data?.pages.flatMap((page) => page.data) ?? [];
+  const unread = notifications.some((item) => !item.isRead);
+  const mark = useMutation({
+    mutationFn: async (id: string | null) => {
+      if (id) {
+        await api.patch(`/notifications/${encodeURIComponent(id)}/read`);
+        return;
+      }
+      const result = await api.patch<{ data: { updated: number; hasMore: boolean } }>(
+        "/notifications/read-all",
+      );
+      setMoreUnread(result.data.data.hasMore);
+    },
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!panel.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-white/[0.07] bg-[#080b0a]/92 px-4 backdrop-blur-xl sm:px-6">
+    <header className="relative z-20 flex min-h-20 items-center gap-3 border-b border-[var(--landing-border)] bg-[var(--landing-panel)] px-4 sm:px-8">
       <button
+        type="button"
         onClick={onMenuClick}
-        className="flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 lg:hidden"
+        aria-expanded={menuOpen}
         aria-label="Open navigation"
+        className="grid size-11 place-items-center rounded-md hover:bg-[var(--landing-tint)] lg:hidden"
       >
-        <Menu className="h-4 w-4" />
+        <Menu className="size-5" />
       </button>
-
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <h1 className="truncate text-sm font-black text-stone-50">{title}</h1>
-        <span className="hidden h-3.5 w-px bg-white/[0.08] sm:block" />
-        <span className="hidden text-[11px] font-bold text-stone-600 sm:block">
-          {new Date().toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" })}
-        </span>
+      <div className="min-w-0 flex-1">
+        <p className="hidden text-xs text-[var(--landing-muted)] sm:block">Workspace / Business</p>
+        <p className="truncate text-sm font-medium sm:mt-1">{title}</p>
       </div>
-
-      <div className="flex items-center gap-1.5">
-        <div className="relative">
-          {searchOpen ? (
-            <div className="hidden w-52 items-center gap-2 rounded-md border border-white/[0.1] bg-white/[0.04] px-3 py-2 sm:flex">
-              <Search className="h-3.5 w-3.5 shrink-0 text-stone-500" />
-              <input
-                autoFocus
-                placeholder="Search shipments..."
-                className="min-w-0 flex-1 bg-transparent text-xs font-bold text-stone-100 outline-none placeholder:text-stone-600"
-                onBlur={() => setSearchOpen(false)}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="hidden h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200 sm:flex"
-              aria-label="Open search"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={() => setNotifOpen((value) => !value)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-white/[0.06] hover:text-stone-200"
-            aria-label="Open notifications"
+      <ThemeToggle />
+      <div ref={panel} className="relative">
+        <button
+          ref={trigger}
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="Notifications"
+          aria-expanded={open}
+          aria-controls="business-notifications"
+          className="relative grid size-11 place-items-center rounded-md border border-[var(--landing-border)] hover:bg-[var(--landing-tint)]"
+        >
+          <Bell className="size-4" />
+          {unread && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-amber-400" />}
+        </button>
+        {open && (
+          <section
+            id="business-notifications"
+            aria-label="Notifications"
+            className="absolute -right-1 top-14 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[var(--landing-border)] bg-[var(--landing-panel)] shadow-xl"
           >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#080b0a]">
-                <span className="absolute h-2 w-2 animate-ping rounded-full bg-amber-300 opacity-75" />
-              </span>
-            )}
-          </button>
-
-          {notifOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 top-11 z-20 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-white/[0.08] bg-[#0d1412] shadow-2xl shadow-black/50">
-                <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-black text-stone-100">Notifications</p>
-                    {unreadCount > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded bg-amber-400/15 px-1 text-[9px] font-black text-amber-200">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={() => void markAllRead.mutateAsync()}
-                        disabled={markAllRead.isPending}
-                        className="text-[10px] font-black text-teal-200 transition hover:text-teal-100 disabled:opacity-50"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                    <button onClick={() => setNotifOpen(false)} className="text-stone-600 transition hover:text-stone-300" aria-label="Close notifications">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-80 divide-y divide-white/[0.05] overflow-y-auto">
-                  {isLoading && (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-teal-200" />
-                    </div>
-                  )}
-
-                  {!isLoading && notifications.length === 0 && (
-                    <div className="px-4 py-10 text-center">
-                      <Bell className="mx-auto h-6 w-6 text-stone-700" />
-                      <p className="mt-2 text-xs font-black text-stone-400">No notifications yet</p>
-                      <p className="mt-1 text-[10px] text-stone-700">Shipment updates will appear here.</p>
-                    </div>
-                  )}
-
-                  {!isLoading &&
-                    notifications.map((notification) => {
-                      const { Icon, color, bg } = notifIcon(notification);
-                      return (
-                        <button
-                          key={notification.id}
-                          onClick={() => {
-                            if (!notification.isRead) void markRead.mutateAsync(notification.id);
-                          }}
-                          className={cn(
-                            "flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition",
-                            !notification.isRead ? "bg-teal-400/[0.04] hover:bg-teal-400/[0.07]" : "hover:bg-white/[0.03]",
-                          )}
-                        >
-                          <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", bg)}>
-                            <Icon className={cn("h-3.5 w-3.5", color)} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={cn("text-xs leading-snug", !notification.isRead ? "font-black text-stone-100" : "font-bold text-stone-500")}>
-                              {notification.title}
-                            </p>
-                            <p className="mt-0.5 line-clamp-2 text-[10px] text-stone-600">{notification.message}</p>
-                            <p className="mt-1 text-[10px] text-stone-700">{timeAgo(notification.createdAt)}</p>
-                          </div>
-                          {!notification.isRead && <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <div className="border-t border-white/[0.07] px-4 py-2.5 text-center">
-                  <Link href="/business/settings" onClick={() => setNotifOpen(false)} className="text-[11px] font-bold text-stone-600 transition hover:text-stone-300">
-                    Notification settings
-                  </Link>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <span className="mx-0.5 h-5 w-px bg-white/[0.07]" />
-
-        <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-white/[0.04]">
-          {user?.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar} alt={user?.name ?? ""} className="h-7 w-7 shrink-0 rounded object-cover ring-1 ring-teal-400/20" />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-teal-400/10 text-[11px] font-black uppercase text-teal-200 ring-1 ring-teal-400/20">
-              {(user?.name ?? "BU").slice(0, 2).toUpperCase()}
+            <div className="flex items-center justify-between border-b border-[var(--landing-border)] p-4">
+              <h2 className="font-semibold">Notifications</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  trigger.current?.focus();
+                }}
+                aria-label="Close notifications"
+                className="grid size-9 place-items-center"
+              >
+                <X className="size-4" />
+              </button>
             </div>
-          )}
-          <span className="hidden max-w-[90px] truncate text-[12px] font-bold text-stone-400 md:block">
-            {user?.name?.split(" ")[0] ?? "Business"}
-          </span>
-        </div>
+            <div className="max-h-[55dvh] overflow-y-auto">
+              {query.isPending && (
+                <p role="status" className="p-6 text-sm text-[var(--landing-muted)]">
+                  Loading updates…
+                </p>
+              )}
+              {query.isError && (
+                <div role="alert" className="p-4 text-sm">
+                  <p>Could not load updates.</p>
+                  <button
+                    type="button"
+                    onClick={() => void query.refetch()}
+                    className="mt-2 underline"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+              {!query.isPending && !query.isError && !notifications.length && (
+                <p className="p-6 text-sm text-[var(--landing-muted)]">
+                  No updates yet. Shipment notifications will appear here.
+                </p>
+              )}
+              {notifications.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  disabled={mark.isPending || item.isRead}
+                  onClick={() => mark.mutate(item.id)}
+                  className="flex w-full gap-3 border-b border-[var(--landing-border)] p-4 text-left hover:bg-[var(--landing-tint)] disabled:cursor-default"
+                >
+                  <span className="mt-1 text-[var(--landing-accent)]">
+                    {item.isRead ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <span className="block size-2 rounded-full bg-amber-400" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{item.title}</span>
+                    <span className="mt-1 block text-xs leading-5 text-[var(--landing-muted)]">
+                      {item.message}
+                    </span>
+                  </span>
+                </button>
+              ))}
+              {query.hasNextPage && (
+                <button
+                  type="button"
+                  disabled={query.isFetchingNextPage}
+                  onClick={() => void query.fetchNextPage()}
+                  className="min-h-11 w-full text-sm text-[var(--landing-accent)]"
+                >
+                  {query.isFetchingNextPage ? "Loading…" : "Load older updates"}
+                </button>
+              )}
+            </div>
+            <div className="space-y-2 p-4 text-xs text-[var(--landing-muted)]">
+              {(unread || moreUnread) && (
+                <button
+                  type="button"
+                  disabled={mark.isPending}
+                  onClick={() => mark.mutate(null)}
+                  className="min-h-9 text-[var(--landing-accent)] disabled:opacity-50"
+                >
+                  {mark.isPending
+                    ? "Marking read…"
+                    : moreUnread
+                      ? "Mark next batch read"
+                      : "Mark all read"}
+                </button>
+              )}
+              {moreUnread && (
+                <p role="status">More unread updates remain. Continue with the next batch.</p>
+              )}
+              {mark.isError && (
+                <p role="alert" className="text-[var(--landing-danger)]">
+                  Could not mark updates read. Please try again.
+                </p>
+              )}
+              <Link
+                href="/business/settings"
+                onClick={() => setOpen(false)}
+                className="block underline underline-offset-4"
+              >
+                Notification settings
+              </Link>
+            </div>
+          </section>
+        )}
       </div>
+      <Link
+        href="/business/settings"
+        aria-label="Account settings"
+        className="ml-2 hidden min-h-11 items-center gap-3 border-l border-[var(--landing-border)] pl-5 sm:flex"
+      >
+        {user?.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar} alt="" className="size-9 rounded-full object-cover" />
+        ) : (
+          <span className="grid size-9 place-items-center rounded-full bg-[var(--landing-selection)] text-[var(--landing-accent)]">
+            <UserRound className="size-4" />
+          </span>
+        )}
+        <span className="hidden max-w-32 truncate text-sm xl:block">{user?.name ?? "Account"}</span>
+      </Link>
     </header>
   );
 }

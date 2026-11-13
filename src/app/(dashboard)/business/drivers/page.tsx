@@ -1,225 +1,306 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Bike, Car, Grid2X2, List, Loader2, Search, Star, Truck } from "lucide-react";
-import { getShipmentList, useShipments } from "@/hooks/use-shipments";
-import { useDrivers } from "@/hooks/use-driver";
-import type { Driver, DriverStatus, VehicleType } from "@/types";
+import { useState } from "react";
+import { Bike, Car, Grid2X2, List, RefreshCw, Search, Star, Truck, UserRound } from "lucide-react";
+import { useFleet } from "@/hooks/use-fleet";
+import { FleetDriverDetail } from "@/components/dashboard/fleet-driver-detail";
+import { FleetInvitations } from "@/components/dashboard/fleet-invitations";
+import type { FleetDriver } from "@/lib/fleet-contract";
+import type { DriverStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = DriverStatus | "all";
-
-const STATUS_META: Record<DriverStatus, { label: string; tone: string; dot: string }> = {
-  available: { label: "Available", tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200", dot: "bg-emerald-300" },
-  on_delivery: { label: "On delivery", tone: "border-teal-400/25 bg-teal-400/10 text-teal-200", dot: "bg-teal-300" },
-  offline: { label: "Offline", tone: "border-stone-600 bg-white/[0.04] text-stone-400", dot: "bg-stone-500" },
+const statuses = {
+  available: "Available",
+  on_delivery: "On delivery",
+  offline: "Offline",
+} as const;
+const tones = {
+  available: "text-[var(--landing-accent)]",
+  on_delivery: "text-[var(--landing-warning)]",
+  offline: "text-[var(--landing-muted)]",
 };
-
-const VEHICLE_ICONS: Record<VehicleType, typeof Truck> = {
-  bike: Bike,
-  car: Car,
-  van: Truck,
-  truck: Truck,
-};
-
-function formatNaira(kobo: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "DV";
-}
-
 function DriverCard({
   driver,
-  earnings,
-  activeTrackingId,
   list,
+  onSelect,
 }: {
-  driver: Driver;
-  earnings: number;
-  activeTrackingId: string | null;
-  list?: boolean;
+  driver: FleetDriver;
+  list: boolean;
+  onSelect: () => void;
 }) {
-  const status = STATUS_META[driver.status];
-  const VehicleIcon = VEHICLE_ICONS[driver.vehicleType] ?? Truck;
-
+  const Icon = driver.vehicleType === "bike" ? Bike : driver.vehicleType === "car" ? Car : Truck;
   return (
-    <article className={cn("rounded-md border border-white/[0.07] bg-[#0d1412] p-4", list && "grid gap-4 sm:grid-cols-[1fr,auto] sm:items-center")}>
-      <div className="flex min-w-0 items-start gap-3">
-        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-teal-400/10 text-sm font-black text-teal-200 ring-1 ring-teal-400/20">
-          {initials(driver.user.name)}
-          <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#0d1412]", status.dot)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-black text-stone-50">{driver.user.name}</h3>
-            <span className={cn("rounded border px-2 py-0.5 text-[10px] font-black", status.tone)}>{status.label}</span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-            <span className="flex items-center gap-1">
-              <VehicleIcon className="h-3.5 w-3.5 text-stone-600" />
-              {driver.vehicleType}
-            </span>
+    <article
+      className={cn(
+        "min-w-0 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] p-5",
+        list && "sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-5",
+      )}
+    >
+      <div className="flex min-w-0 gap-4">
+        {driver.user.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={driver.user.avatar}
+            alt=""
+            className="size-12 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--landing-selection)] text-[var(--landing-accent)]">
+            <UserRound className="size-5" />
+          </span>
+        )}
+        <div className="min-w-0">
+          <h3 className="break-words text-base font-semibold">{driver.user.name}</h3>
+          <p className={cn("mt-1 inline-flex items-center gap-2 text-xs", tones[driver.status])}>
+            <span className="size-1.5 rounded-full bg-current" />
+            {statuses[driver.status]}
+            {driver.user.isActive === false ? " · Account inactive" : ""}
+          </p>
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--landing-muted)]">
+            <Icon className="size-4" />
+            <span className="capitalize">{driver.vehicleType}</span>
+            <span aria-hidden="true">·</span>
             <span className="font-mono">{driver.vehiclePlate}</span>
-            <span className="flex items-center gap-1 text-amber-200">
-              <Star className="h-3.5 w-3.5 fill-amber-200" />
-              {driver.rating.toFixed(1)}
-            </span>
-          </div>
-          {activeTrackingId && (
-            <p className="mt-3 rounded-md border border-teal-400/20 bg-teal-400/10 px-2.5 py-1.5 font-mono text-[11px] font-black text-teal-100">
-              Active: {activeTrackingId}
-            </p>
+          </p>
+          <p className="mt-2 break-all text-xs text-[var(--landing-muted)]">{driver.user.email}</p>
+          {driver.user.phone && (
+            <p className="mt-1 text-xs text-[var(--landing-muted)]">{driver.user.phone}</p>
           )}
         </div>
       </div>
-
-      <div className={cn("mt-4 grid grid-cols-2 gap-2", list && "mt-0 min-w-56")}>
-        <div className="rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-          <p className="text-[10px] font-black uppercase tracking-wider text-stone-600">Deliveries</p>
-          <p className="mt-1 text-sm font-black text-stone-100">{driver.totalDeliveries}</p>
+      <div className={cn("mt-5", list && "sm:mt-0 sm:min-w-44")}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--landing-border)] pt-4 text-xs">
+          <span className="text-[var(--landing-muted)]">
+            {driver.totalDeliveries} profile deliveries
+          </span>
+          <span className="inline-flex items-center gap-1 text-[var(--landing-warning)]">
+            <Star className="size-3.5" />
+            {Number.isFinite(driver.rating) ? driver.rating.toFixed(1) : "—"}
+            <span className="sr-only"> profile rating</span>
+          </span>
         </div>
-        <div className="rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-          <p className="text-[10px] font-black uppercase tracking-wider text-stone-600">Earnings</p>
-          <p className="mt-1 text-sm font-black text-stone-100">{formatNaira(earnings)}</p>
-        </div>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="mt-3 min-h-11 w-full rounded-md border border-[var(--landing-border)] px-3 text-sm font-medium text-[var(--landing-accent)] hover:bg-[var(--landing-tint)]"
+        >
+          View driver<span className="sr-only"> {driver.user.name}</span>
+        </button>
       </div>
     </article>
   );
 }
 
 export default function DriversPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const fleet = useFleet();
+  const [filter, setFilter] = useState<DriverStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const { data: drivers = [], isLoading: driversLoading } = useDrivers();
-  const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments({ pageSize: 200 });
-  const shipments = getShipmentList(shipmentsData);
-  const loading = driversLoading || shipmentsLoading;
-
-  const driverStats = useMemo(() => {
-    return new Map(
-      drivers.map((driver) => {
-        const assigned = shipments.filter((shipment) => shipment.driverId === driver.id);
-        const active = assigned.find((shipment) => ["assigned", "picked_up", "in_transit", "out_for_delivery"].includes(shipment.status));
-        const earnings = assigned
-          .filter((shipment) => shipment.status === "delivered")
-          .reduce((sum, shipment) => sum + Math.round(shipment.priceKobo * 0.4), 0);
-        return [driver.id, { activeTrackingId: active?.trackingId ?? null, earnings }];
-      }),
-    );
-  }, [drivers, shipments]);
-
+  const [selected, setSelected] = useState<FleetDriver | null>(null);
+  const drivers = fleet.data?.pages.flatMap((page) => page.data) ?? [];
   const filtered = drivers.filter((driver) => {
-    const q = search.trim().toLowerCase();
-    const matchesStatus = statusFilter === "all" || driver.status === statusFilter;
-    const matchesSearch =
-      !q ||
-      driver.user.name.toLowerCase().includes(q) ||
-      driver.vehiclePlate.toLowerCase().includes(q) ||
-      driver.vehicleType.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    const text = [driver.user.name, driver.user.email, driver.vehiclePlate, driver.vehicleType]
+      .join(" ")
+      .toLowerCase();
+    return (
+      (filter === "all" || driver.status === filter) && text.includes(search.trim().toLowerCase())
+    );
   });
-
   const counts = {
     all: drivers.length,
-    available: drivers.filter((driver) => driver.status === "available").length,
-    on_delivery: drivers.filter((driver) => driver.status === "on_delivery").length,
-    offline: drivers.filter((driver) => driver.status === "offline").length,
+    available: drivers.filter((d) => d.status === "available").length,
+    on_delivery: drivers.filter((d) => d.status === "on_delivery").length,
+    offline: drivers.filter((d) => d.status === "offline").length,
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr,360px] lg:items-end">
+    <div className="mx-auto max-w-[1440px] space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Your private fleet<span className="text-[var(--landing-accent)]">.</span>
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--landing-muted)]">
+            The people behind your deliveries. Invite drivers, review their vehicles and check
+            availability before dispatch.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void fleet.refetch()}
+          disabled={fleet.isFetching}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--landing-border)] px-4 text-sm disabled:opacity-50"
+        >
+          <RefreshCw
+            className={cn("size-4", fleet.isFetching && "animate-spin motion-reduce:animate-none")}
+          />
+          Refresh fleet
+        </button>
+      </div>
+      <FleetInvitations />
+      <section aria-labelledby="roster-heading" className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Fleet roster</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Drivers</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
-              See availability, vehicle details, active assignments, and delivery performance for your driver pool.
+            <h2 id="roster-heading" className="text-xl font-semibold">
+              Fleet roster
+            </h2>
+            <p className="mt-2 text-xs leading-5 text-[var(--landing-muted)]">
+              {fleet.data
+                ? `${drivers.length} drivers loaded. ${fleet.hasNextPage ? "More drivers are available." : "You’ve reached the end of this list."}`
+                : "Your business drivers appear here."}{" "}
+              Search and status filters apply to loaded drivers.
             </p>
           </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />
+          <div
+            className="flex gap-2 rounded-md border border-[var(--landing-border)] p-1"
+            role="group"
+            aria-label="Roster layout"
+          >
+            {[
+              { value: "grid", Icon: Grid2X2 },
+              { value: "list", Icon: List },
+            ].map(({ value, Icon }) => (
+              <button
+                type="button"
+                key={value}
+                aria-label={`Show ${value} view`}
+                aria-pressed={view === value}
+                onClick={() => setView(value as "grid" | "list")}
+                className={cn(
+                  "grid size-11 place-items-center rounded",
+                  view === value
+                    ? "bg-[var(--landing-selection)] text-[var(--landing-accent)]"
+                    : "text-[var(--landing-muted)]",
+                )}
+              >
+                <Icon className="size-4" />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Driver availability">
+            {(["all", "available", "on_delivery", "offline"] as const).map((value) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm",
+                  filter === value
+                    ? "border-[var(--landing-accent)] bg-[var(--landing-selection)] text-[var(--landing-accent)]"
+                    : "border-[var(--landing-border)] text-[var(--landing-muted)]",
+                )}
+              >
+                {value === "all" ? "All loaded" : statuses[value]}
+                <span className="text-xs tabular-nums">{fleet.data ? counts[value] : "—"}</span>
+              </button>
+            ))}
+          </div>
+          <div className="relative min-w-0 flex-1 basis-60 sm:max-w-sm">
+            <label htmlFor="fleet-search" className="sr-only">
+              Search loaded drivers by name, email, plate or vehicle
+            </label>
+            <Search className="pointer-events-none absolute left-3 top-4 size-4 text-[var(--landing-muted)]" />
             <input
+              id="fleet-search"
+              type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search driver, plate, vehicle"
-              className="w-full rounded-md border border-white/[0.08] bg-black/25 py-3 pl-10 pr-3 text-sm font-bold text-stone-100 outline-none transition placeholder:text-stone-700 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10"
+              placeholder="Search loaded drivers"
+              className="min-h-12 w-full rounded-md border border-[var(--landing-border)] bg-[var(--landing-field)] pl-10 pr-3 text-sm"
             />
           </div>
         </div>
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2 overflow-x-auto">
-          {([
-            ["all", "All"],
-            ["available", "Available"],
-            ["on_delivery", "On delivery"],
-            ["offline", "Offline"],
-          ] as Array<[StatusFilter, string]>).map(([value, label]) => (
+        {fleet.isPending && (
+          <p
+            role="status"
+            className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] p-10 text-sm text-[var(--landing-muted)]"
+          >
+            Loading your fleet…
+          </p>
+        )}
+        {fleet.isError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-[var(--landing-border)] p-5 text-sm"
+          >
+            <p>
+              Could not load{" "}
+              {drivers.length
+                ? "more fleet records. Loaded drivers are still shown."
+                : "your fleet."}
+            </p>
             <button
-              key={value}
-              onClick={() => setStatusFilter(value)}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition",
-                statusFilter === value
-                  ? "border-teal-400/30 bg-teal-400/10 text-teal-100"
-                  : "border-white/[0.07] bg-white/[0.03] text-stone-500 hover:text-stone-200",
-              )}
+              type="button"
+              onClick={() => {
+                if (fleet.isFetchNextPageError) void fleet.fetchNextPage();
+                else void fleet.refetch();
+              }}
+              className="mt-2 min-h-11 text-[var(--landing-accent)] underline"
             >
-              {label}
-              <span className={cn("rounded px-1.5 py-0.5 text-[10px]", statusFilter === value ? "bg-teal-300 text-black" : "bg-white/[0.06] text-stone-500")}>
-                {counts[value]}
-              </span>
+              Try again
             </button>
+          </div>
+        )}
+        {!fleet.isPending && !fleet.isError && !filtered.length && (
+          <div className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)] px-6 py-12 text-center">
+            <Truck className="mx-auto size-8 text-[var(--landing-accent)]" />
+            <h3 className="mt-4 text-base font-medium">
+              {drivers.length || search || filter !== "all"
+                ? "No loaded drivers match this view"
+                : "Your fleet starts with an invitation"}
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--landing-muted)]">
+              {drivers.length || search || filter !== "all"
+                ? "Try another filter, clear your search or load more drivers."
+                : "Create an invitation above. Drivers appear here after accepting it."}
+            </p>
+            {(search || filter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("all");
+                }}
+                className="mt-4 min-h-11 text-sm text-[var(--landing-accent)]"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+        <div
+          className={view === "grid" ? "grid gap-4 md:grid-cols-2 2xl:grid-cols-3" : "space-y-4"}
+        >
+          {filtered.map((driver) => (
+            <DriverCard
+              key={driver.id}
+              driver={driver}
+              list={view === "list"}
+              onSelect={() => setSelected(driver)}
+            />
           ))}
         </div>
-        <div className="flex rounded-md border border-white/[0.07] bg-white/[0.03] p-1">
-          <button onClick={() => setView("grid")} className={cn("rounded px-2.5 py-1.5", view === "grid" ? "bg-teal-400/10 text-teal-100" : "text-stone-600")}>
-            <Grid2X2 className="h-4 w-4" />
-          </button>
-          <button onClick={() => setView("list")} className={cn("rounded px-2.5 py-1.5", view === "list" ? "bg-teal-400/10 text-teal-100" : "text-stone-600")}>
-            <List className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center rounded-md border border-white/[0.07] bg-[#0d1412] py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-teal-200" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-md border border-white/[0.07] bg-[#0d1412] px-5 py-14 text-center">
-          <Truck className="mx-auto h-6 w-6 text-stone-700" />
-          <p className="mt-3 text-sm font-black text-stone-200">No drivers match this view</p>
-        </div>
-      ) : (
-        <div className={cn(view === "grid" ? "grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "space-y-3")}>
-          {filtered.map((driver) => {
-            const stats = driverStats.get(driver.id);
-            return (
-              <DriverCard
-                key={driver.id}
-                driver={driver}
-                earnings={stats?.earnings ?? 0}
-                activeTrackingId={stats?.activeTrackingId ?? null}
-                list={view === "list"}
-              />
-            );
-          })}
-        </div>
+        {fleet.hasNextPage && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => void fleet.fetchNextPage()}
+              disabled={fleet.isFetchingNextPage}
+              className="min-h-12 rounded-md border border-[var(--landing-border)] px-6 text-sm text-[var(--landing-accent)] disabled:opacity-50"
+            >
+              {fleet.isFetchingNextPage ? "Loading…" : "Load more drivers"}
+            </button>
+          </div>
+        )}
+      </section>
+      {selected && (
+        <FleetDriverDetail
+          driver={drivers.find((driver) => driver.id === selected.id) ?? selected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

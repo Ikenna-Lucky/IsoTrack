@@ -29,20 +29,3 @@ export function useUpdateProfile() {
     },
   });
 }
-
-export interface ChangePasswordInput {
-  currentPassword: string;
-  newPassword: string;
-}
-
-/**
- * PATCH /auth/password — Validates current password, updates to new one.
- */
-export function useChangePassword() {
-  return useMutation({
-    mutationFn: async (input: ChangePasswordInput) => {
-      const { data } = await api.patch<ApiResponse<unknown>>("/auth/password", input);
-      return data;
-    },
-  });
-}

@@ -1,5 +1,10 @@
 # Frontend integration
 
+Current remaining work and the 12 November Business recovery review are tracked
+in [frontend closeout](frontend-roadmap.md). The chronological slices below retain
+their original verification scope; later slices supersede earlier next-step notes.
+Use Swagger (`/docs/`) and the exported OpenAPI contract for API fields and responses.
+
 Work stays on `isoTrack-dev-branch`. The backend preview is a separate deployment;
 the existing main frontend/backend are not promoted by this work.
 
@@ -66,12 +71,101 @@ Before accepting this slice on preview:
 
 ## Next slice
 
-Wire role dashboards and fleet management to the frozen backend contract. Adopt
-cursor pagination rather than treating the first page as the complete fleet,
-shipment or notification collection. Add business invitation creation/revocation,
-existing-driver acceptance and remove legacy mock/fallback behaviors as each
-journey is integrated. Shipment commands then need versions and stable per-action
-idempotency keys; payment completion must use backend settlement state.
+### Business overview and navigation
+
+The business shell and `/business` overview now share the landing theme preference
+and tokens. Navigation adapts to a native modal drawer on narrow screens. The
+overview uses business-wide analytics for summary counts and a separate cursor
+shipment query (`limit=6`, opaque `cursor`) for the recent list. It does not derive
+business totals from loaded shipment pages. `totalRevenueKobo` is presented as
+total shipment value, including unpaid/cancelled records, not collected revenue.
+Failed deliveries and cancellations are separate; no unsupported fleet total,
+driver earnings, payout timing or invented charts appear on the overview.
+
+The business notification panel reads cursor pages and exposes continuation for
+bounded mark-all-read batches, with mutation/load errors. It uses distinct cache
+keys so legacy dashboard consumers do not receive incompatible response shapes.
+
+This slice targets the development backend contract, including the bounded
+collections build. The existing shipment workspace, fleet, analytics, driver and
+customer screens still need the integration work below. Links from the overview
+are navigation to those existing screens, not proof those workflows are accepted.
+Backend promotion and hosted Vercel/Render session acceptance remain separate.
+
+Local visual QA on 2026-11-11 used an external temporary API fixture with fictional
+business/shipment records; no authentication bypass or sample records were added
+to the application. Checks covered light/dark themes, 1440px desktop, 768px tablet
+and 390px phone layouts, cursor continuation, notification read batches, empty
+results, initial dependency failures and retained totals after a failed refresh.
+The modal drawer was checked for Escape dismissal and focus restoration; phone
+and tablet document widths did not overflow. The temporary services were stopped
+after inspection. This is UI/contract-fixture evidence, not hosted API acceptance.
+
+### Private fleet management
+
+The business fleet screen now uses the development backend's cursor driver list,
+invitation creation/latest-50 history/revocation, and paged shipment reads for
+assigned-work detail. It preserves grid/list views, search, availability filters,
+vehicle/contact fields, backend rating/delivery profile values and driver detail.
+Search/counts explicitly cover loaded records. Invitation tokens stay in page
+memory and are shared separately from the join-page address. Existing unlinked
+drivers have a signed-in acceptance form on their overview. Other driver controls
+were not redesigned in this slice. See [field mapping](fleet-integration.md) for
+backend sources, field visibility, behavior preserved and intentional corrections.
+
+Local verification used a separate fictional review business in Docker: 13 new
+drivers plus one legacy-driver acceptance, cursor continuation, populated profile
+fields, an active assignment and cross-business driver denial. Browser checks
+covered token copy, create validation, revoke cancellation/confirmation, existing
+driver acceptance/profile refresh, grid/list/search, dark/light themes and
+1440/768/390px layouts. All 18 frontend unit tests, TypeScript and lint passed;
+production validation uses an isolated source copy so it cannot disrupt `.next`
+on the running dev server. Hosted acceptance and browser dependency-failure
+injection for this slice remain separate checks.
+
+### Business shipment workspace
+
+The business manifest and intake now use cursor reads, full current details,
+paged events, available private-fleet drivers, versioned assignment/cancellation
+and per-action idempotency keys. Customer-account and recipient-confirmation
+emails are separate fields. See [shipment field mapping and validation](shipment-workspace.md)
+for coverage, preserved fields, local Docker/browser evidence and retry limits.
+All 22 frontend tests pass. Delivery confirmation and exception/return actions,
+along with other role dashboards, remain to be integrated.
+
+### Recipient delivery confirmation
+
+Business code issuance/replacement and driver code confirmation now use the
+development delivery API. Driver Deliveries has cursor reads and versioned
+pickup/transit/out-for-delivery steps. See [delivery integration](delivery-confirmation.md)
+for privacy, retry limits, local browser evidence and outstanding real-email
+verification. All 25 frontend tests pass. Structured failure, retry and return
+actions are covered by the following integration slice.
+
+### Failed deliveries and returns
+
+Business and driver shipment panels now support structured failure, retries,
+return request/transit/receipt and cancellation before pickup. Private history is
+bounded and role-scoped. Shared pending-request memory prevents competing actions
+while a result is unresolved. See [exception integration](shipment-exceptions.md)
+for the field/action matrix, privacy boundaries, local Docker/browser evidence
+and recovery limits. All 30 frontend tests pass. Legacy driver overview/earnings,
+customer journeys and authenticated tracking/socket adoption remain separate work.
+
+### Business Analytics
+
+Analytics now uses validated whole-business aggregates and the backend's latest
+ten records. The former partial weekly revenue chart is replaced by current-status
+distribution, explicit delivered share, exact shipment value and separate
+unsuccessful/cancelled totals. See [analytics mapping and verification](business-analytics.md).
+All 34 frontend tests pass. Business Settings and Help are the next slices.
+
+Wire remaining role dashboards and shipment workflows to the frozen backend
+contract. Replace remaining page-based list consumers and legacy mock/fallback
+behaviors as each journey is integrated. Shipment commands need versions and
+stable per-action idempotency keys; payment completion must use backend settlement
+state. The business overview, business fleet and business notification panel now
+have cursor-aware reads; this does not migrate every consumer in other screens.
 
 The complete API contract is in the sibling backend repository's
 `docs/frontend-handoff.md`. Dashboard, shipment, tracking and payment browser

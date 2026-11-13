@@ -1,66 +1,30 @@
 "use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { publicTrackingSchema, type PublicTracking } from "@/lib/tracking-contract";
 import type { ApiResponse } from "@/types";
-
-// ─── Query key factory ────────────────────────────────────────────────────────
-
+export type TrackingInfo = PublicTracking;
 export const trackingKeys = {
-  all:    ["tracking"] as const,
-  detail: (trackingId: string) => [...trackingKeys.all, trackingId] as const,
+  all: ["tracking"] as const,
+  detail: (id: string) => ["tracking", id] as const,
 };
-
-// ─── Public tracking response shape ───────────────────────────────────────────
-
-export interface TrackingInfo {
-  trackingId: string;
-  status: string;
-  description: string;
-  pickupAddress: { street: string; city: string; state: string };
-  deliveryAddress: { street: string; city: string; state: string };
-  currentLocation: { lat: number; lng: number } | null;
-  scheduledPickup: string | null;
-  estimatedDelivery: string | null;
-  actualDelivery: string | null;
-  events: Array<{
-    id: string;
-    status: string;
-    message: string;
-    createdAt: string;
-  }>;
-  driver: {
-    name: string;
-    vehicleType: string;
-    vehiclePlate: string;
-    rating: number;
-    currentLocation: { lat: number; lng: number } | null;
-  } | null;
-}
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
-/**
- * Public tracking hook — no auth required.
- * Refetches every 15 s when the shipment is actively in transit.
- */
-export function useTracking(trackingId: string | null | undefined) {
+export function useTracking(id: string | null | undefined) {
   return useQuery({
-    queryKey: trackingKeys.detail(trackingId ?? ""),
-    queryFn: async () => {
-      const { data } = await api.get<ApiResponse<TrackingInfo>>(
-        `/track/${trackingId}`,
-      );
-      return data.data;
-    },
-    enabled: !!trackingId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      const isActive =
-        status === "in_transit" ||
-        status === "out_for_delivery" ||
-        status === "picked_up";
-      return isActive ? 15_000 : false;
-    },
+    queryKey: trackingKeys.detail(id ?? ""),
+    enabled: !!id,
+    queryFn: async ({ signal }) =>
+      publicTrackingSchema.parse(
+        (
+          await api.get<ApiResponse<PublicTracking>>(`/track/${encodeURIComponent(id ?? "")}`, {
+            signal,
+          })
+        ).data.data,
+      ),
+    refetchInterval: (query) =>
+      ["assigned", "picked_up", "in_transit", "out_for_delivery"].includes(
+        query.state.data?.status ?? "",
+      )
+        ? 15000
+        : false,
   });
 }

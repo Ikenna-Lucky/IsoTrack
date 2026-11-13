@@ -1,300 +1,397 @@
 "use client";
 
 import Link from "next/link";
-import type { Route } from "next";
 import {
   AlertCircle,
+  ArrowDownLeft,
   ArrowRight,
+  ArrowUpRight,
   CheckCircle2,
-  Clock,
-  MapPin,
+  Clock3,
   Package,
   Plus,
+  RefreshCw,
   Truck,
-  UserCheck,
-  XCircle,
 } from "lucide-react";
-import { getShipmentList, useShipments } from "@/hooks/use-shipments";
-import { useBusinessAnalytics } from "@/hooks/use-business";
-import { useDrivers } from "@/hooks/use-driver";
-import type { Driver, Shipment, ShipmentStatus } from "@/types";
+import { useBusinessAnalytics, useBusinessProfile } from "@/hooks/use-business";
+import { useOverviewShipments } from "@/hooks/use-business-overview";
+import { useBusinessProfileCompletion } from "@/hooks/use-profile-completion";
+import { overviewCounts, shipmentLabels } from "@/lib/business-overview";
+import { formatKobo, type ShipmentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-function formatNaira(kobo: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
-}
+const panel = "rounded-xl border border-[var(--landing-border)] bg-[var(--landing-panel)]";
+const muted = "text-[var(--landing-muted)]";
 
-const STATUS_META: Record<
-  ShipmentStatus,
-  { label: string; tone: string; bar: string; Icon: typeof Package }
-> = {
-  pending: { label: "Pending", tone: "border-amber-400/25 bg-amber-400/10 text-amber-200", bar: "bg-amber-300", Icon: Clock },
-  assigned: { label: "Assigned", tone: "border-teal-400/25 bg-teal-400/10 text-teal-200", bar: "bg-teal-300", Icon: UserCheck },
-  picked_up: { label: "Picked up", tone: "border-teal-400/25 bg-teal-400/10 text-teal-200", bar: "bg-teal-300", Icon: Package },
-  in_transit: { label: "In transit", tone: "border-teal-400/25 bg-teal-400/10 text-teal-200", bar: "bg-teal-300", Icon: Truck },
-  out_for_delivery: { label: "Out for delivery", tone: "border-teal-400/25 bg-teal-400/10 text-teal-200", bar: "bg-teal-300", Icon: MapPin },
-  delivered: { label: "Delivered", tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200", bar: "bg-emerald-300", Icon: CheckCircle2 },
-  failed: { label: "Failed", tone: "border-rose-400/25 bg-rose-400/10 text-rose-200", bar: "bg-rose-300", Icon: XCircle },
-  cancelled: { label: "Cancelled", tone: "border-stone-600 bg-white/[0.04] text-stone-400", bar: "bg-stone-500", Icon: XCircle },
-};
-
-const ACTIVE_STATUSES: ShipmentStatus[] = ["assigned", "picked_up", "in_transit", "out_for_delivery"];
-
-function StatTile({
-  label,
-  value,
-  sub,
-  Icon,
-  accent = "teal",
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  Icon: typeof Package;
-  accent?: "teal" | "amber" | "emerald" | "rose";
-}) {
-  const tone = {
-    teal: "border-teal-400/20 bg-teal-400/10 text-teal-200",
-    amber: "border-amber-400/20 bg-amber-400/10 text-amber-200",
-    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
-    rose: "border-rose-400/20 bg-rose-400/10 text-rose-200",
-  }[accent];
-
+function Notice({ title, onRetry }: { title: string; onRetry: () => void }) {
   return (
-    <div className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-600">{label}</p>
-          <p className="mt-3 truncate text-2xl font-black tracking-tight text-stone-50">{value}</p>
-          <p className="mt-1 text-xs font-bold text-stone-600">{sub}</p>
-        </div>
-        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md border", tone)}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ShipmentRow({ shipment }: { shipment: Shipment }) {
-  const meta = STATUS_META[shipment.status];
-  const Icon = meta.Icon;
-
-  return (
-    <Link
-      href={("/business/shipments" as Route)}
-      className="grid grid-cols-[auto,1fr,auto] items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]"
+    <div
+      role="alert"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--landing-border)] bg-[var(--landing-tint)] p-4 text-sm"
     >
-      <div className={cn("flex h-8 w-8 items-center justify-center rounded-md border", meta.tone)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate font-mono text-xs font-black text-stone-100">{shipment.trackingId}</p>
-        <p className="mt-0.5 truncate text-[11px] text-stone-600">
-          {shipment.pickupAddress.city} to {shipment.deliveryAddress.city}
-        </p>
-      </div>
-      <div className="text-right">
-        <p className="text-xs font-black text-stone-100">{formatNaira(shipment.priceKobo)}</p>
-        <p className="mt-0.5 text-[10px] font-bold text-stone-600">{meta.label}</p>
-      </div>
-    </Link>
-  );
-}
-
-function StatusBreakdown({
-  shipments,
-  breakdown,
-}: {
-  shipments: Shipment[];
-  breakdown: Record<string, number>;
-}) {
-  const total = shipments.length || Object.values(breakdown).reduce((sum, value) => sum + value, 0);
-
-  return (
-    <section className="rounded-md border border-white/[0.07] bg-[#0d1412]">
-      <div className="border-b border-white/[0.07] px-4 py-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Status board</p>
-        <h3 className="mt-1 text-base font-black text-stone-50">Shipment mix</h3>
-      </div>
-      <div className="space-y-3 p-4">
-        {Object.entries(STATUS_META).map(([status, meta]) => {
-          const count = breakdown[status] ?? shipments.filter((shipment) => shipment.status === status).length;
-          const percent = total > 0 ? Math.round((count / total) * 100) : 0;
-          return (
-            <div key={status}>
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <span className="text-[11px] font-black text-stone-300">{meta.label}</span>
-                <span className="text-[10px] font-bold text-stone-600">{count} ({percent}%)</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <div className={cn("h-full rounded-full transition-all", meta.bar)} style={{ width: `${percent}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function FleetStrip({ drivers }: { drivers: Driver[] }) {
-  if (!drivers.length) {
-    return (
-      <div className="rounded-md border border-dashed border-white/[0.1] bg-white/[0.02] px-4 py-8 text-center">
-        <Truck className="mx-auto h-5 w-5 text-stone-700" />
-        <p className="mt-2 text-sm font-black text-stone-300">No drivers registered yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-2 overflow-x-auto p-4">
-      {drivers.slice(0, 8).map((driver) => {
-        const initials = driver.user?.name
-          ?.split(" ")
-          .map((part) => part[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase() || "DV";
-        const online = driver.status === "available" || driver.status === "on_delivery";
-
-        return (
-          <div key={driver.id} className="min-w-32 rounded-md border border-white/[0.07] bg-white/[0.03] p-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-8 w-8 items-center justify-center rounded bg-teal-400/10 text-[11px] font-black text-teal-200 ring-1 ring-teal-400/20">
-                {initials}
-                <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#0d1412]", online ? "bg-emerald-300" : "bg-stone-600")} />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-black text-stone-100">{driver.user?.name ?? "Driver"}</p>
-                <p className="text-[10px] font-bold capitalize text-stone-600">{driver.status.replace("_", " ")}</p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      <AlertCircle className="size-5 shrink-0 text-[var(--landing-warning)]" />
+      <span className="flex-1">{title}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="min-h-11 px-3 font-medium text-[var(--landing-accent)] underline underline-offset-4"
+      >
+        Try again
+      </button>
     </div>
+  );
+}
+
+function Status({ status }: { status: ShipmentStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 whitespace-nowrap text-xs",
+        status === "failed"
+          ? "text-[var(--landing-danger)]"
+          : status === "pending"
+            ? "text-[var(--landing-warning)]"
+            : status === "cancelled"
+              ? muted
+              : "text-[var(--landing-accent)]",
+      )}
+    >
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
+      {shipmentLabels[status]}
+    </span>
   );
 }
 
 export default function BusinessOverviewPage() {
-  const { data: analytics } = useBusinessAnalytics();
-  const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments({ pageSize: 40 });
-  const { data: drivers = [], isLoading: driversLoading } = useDrivers();
-  const shipments = getShipmentList(shipmentsData);
-
-  const totalShipments = analytics?.totalShipments ?? shipments.length;
-  const statusBreakdown = analytics?.statusBreakdown ?? {};
-  const deliveredCount = statusBreakdown.delivered ?? shipments.filter((shipment) => shipment.status === "delivered").length;
-  const activeShipments = shipments.filter((shipment) => ACTIVE_STATUSES.includes(shipment.status)).length;
-  const exceptions = shipments.filter((shipment) => shipment.status === "failed" || shipment.status === "cancelled").length;
-  const onlineDrivers = drivers.filter((driver) => driver.status === "available" || driver.status === "on_delivery").length;
-  const successRate = totalShipments > 0 ? Math.round((deliveredCount / totalShipments) * 100) : 0;
-  const nextShipment = shipments.find((shipment) => ACTIVE_STATUSES.includes(shipment.status)) ?? shipments[0];
+  const analytics = useBusinessAnalytics();
+  const profile = useBusinessProfile();
+  const completion = useBusinessProfileCompletion();
+  const history = useOverviewShipments();
+  const counts = analytics.data ? overviewCounts(analytics.data.statusBreakdown) : null;
+  const shipments = history.data?.pages.flatMap((page) => page.data) ?? [];
+  const total = analytics.data?.totalShipments;
+  const fetching = analytics.isFetching || history.isFetching || profile.isFetching;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <section className="rounded-md border border-white/[0.07] bg-[#0d1412] p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr,auto] lg:items-end">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">Business control room</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-50 sm:text-3xl">Operations Overview</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
-              Monitor shipment flow, driver capacity, payment value, and exceptions from one dispatch board.
-            </p>
-          </div>
+    <div className="mx-auto max-w-[1440px] space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className={cn("mb-2 text-sm", muted)}>
+            {profile.data?.businessName ?? "Your business"}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Delivery overview<span className="text-[var(--landing-accent)]">.</span>
+          </h1>
+          <p className={cn("mt-3 max-w-xl text-sm leading-6", muted)}>
+            A clear view of your shipments, from assignment to handover.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={fetching}
+            onClick={() => {
+              void analytics.refetch();
+              void history.refetch();
+              void profile.refetch();
+            }}
+            aria-label="Refresh overview"
+            className="grid size-11 place-items-center rounded-md border border-[var(--landing-border)] hover:bg-[var(--landing-tint)] disabled:opacity-50"
+          >
+            <RefreshCw
+              className={cn("size-4", fetching && "animate-spin motion-reduce:animate-none")}
+            />
+          </button>
           <Link
             href="/business/shipments/new"
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-amber-300 px-4 py-2.5 text-sm font-black text-black transition hover:bg-amber-200"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-amber-300 px-5 text-sm font-semibold text-stone-950 hover:bg-amber-200"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="size-4" />
             New shipment
           </Link>
         </div>
-      </section>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Shipments" value={String(totalShipments)} sub={`${activeShipments} active right now`} Icon={Package} />
-        <StatTile label="Revenue" value={formatNaira(analytics?.totalRevenueKobo ?? 0)} sub="Total shipment value" Icon={ArrowRight} accent="amber" />
-        <StatTile label="Drivers" value={`${onlineDrivers}/${drivers.length}`} sub="Available or on delivery" Icon={Truck} accent="emerald" />
-        <StatTile label="Success rate" value={`${successRate}%`} sub={`${exceptions} exceptions recorded`} Icon={exceptions > 0 ? AlertCircle : CheckCircle2} accent={exceptions > 0 ? "rose" : "teal"} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr,360px]">
-        <section className="overflow-hidden rounded-md border border-white/[0.07] bg-[#0d1412]">
-          <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-4">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Manifest feed</p>
-              <h3 className="mt-1 text-base font-black text-stone-50">Recent shipments</h3>
+      {profile.isError && (
+        <Notice
+          title="Business details could not be loaded."
+          onRetry={() => void profile.refetch()}
+        />
+      )}
+      {profile.data && !completion.isComplete && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-l-2 border-[var(--landing-accent)] bg-[var(--landing-selection)] px-5 py-4">
+          <div>
+            <p className="text-sm font-medium">Finish your business profile</p>
+            <p className={cn("mt-1 text-xs leading-5", muted)}>
+              {completion.items
+                .filter((item) => !item.done)
+                .map((item) => item.label)
+                .join(" · ")}
+            </p>
+          </div>
+          <Link
+            href="/business/settings"
+            className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--landing-accent)]"
+          >
+            Update details
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      )}
+
+      {analytics.isError && (
+        <Notice
+          title={
+            analytics.data
+              ? "Summary refresh failed. Showing the last loaded totals."
+              : "Shipment totals are unavailable. Please retry."
+          }
+          onRetry={() => void analytics.refetch()}
+        />
+      )}
+      <section
+        aria-label="Shipment summary"
+        aria-busy={analytics.isPending}
+        className={cn(panel, "grid grid-cols-2 overflow-hidden xl:grid-cols-4")}
+      >
+        {[
+          { label: "All shipments", value: total, Icon: Package, detail: "Across your business" },
+          {
+            label: "Awaiting assignment",
+            value: counts?.pending,
+            Icon: Clock3,
+            detail: "Ready for dispatch",
+          },
+          {
+            label: "Active deliveries",
+            value: counts?.active,
+            Icon: Truck,
+            detail: "Assigned through out for delivery",
+          },
+          {
+            label: "Delivered",
+            value: counts?.delivered,
+            Icon: CheckCircle2,
+            detail: "Completed handovers",
+          },
+        ].map(({ label, value, Icon, detail }, index) => (
+          <div
+            key={label}
+            className={cn(
+              "min-w-0 border-[var(--landing-border)] p-4 sm:p-7",
+              index % 2 === 1 && "border-l",
+              index === 2 && "border-t xl:border-l xl:border-t-0",
+              index === 3 && "border-t xl:border-t-0",
+            )}
+          >
+            <div
+              className={cn(
+                "flex min-h-10 items-center justify-between gap-2 text-xs sm:min-h-0 sm:text-sm",
+                muted,
+              )}
+            >
+              <span>{label}</span>
+              <Icon className="hidden size-4 shrink-0 sm:block" />
             </div>
-            <Link href="/business/shipments" className="text-xs font-black text-teal-200 hover:text-teal-100">
-              View all
+            <p className="mt-3 text-3xl font-medium tabular-nums tracking-tight sm:mt-5 sm:text-4xl">
+              {value === undefined ? (
+                <span aria-label={analytics.isPending ? "Loading" : "Unavailable"}>—</span>
+              ) : (
+                value.toLocaleString("en-NG")
+              )}
+            </p>
+            <p className={cn("mt-2 text-xs leading-5", muted)}>{detail}</p>
+          </div>
+        ))}
+      </section>
+
+      {!!counts?.failed && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-l-2 border-[var(--landing-warning)] pl-4 xl:hidden">
+          <p className="text-sm">
+            <span className="font-semibold text-[var(--landing-danger)]">
+              {counts.failed} unsuccessful deliveries
+            </span>
+            <span className={cn("mt-1 block text-xs", muted)}>
+              Review the next step with your driver.
+            </span>
+          </p>
+          <Link
+            href="/business/shipments"
+            className="inline-flex min-h-11 items-center gap-2 text-sm text-[var(--landing-accent)]"
+          >
+            Review
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      )}
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className={panel} aria-labelledby="shipment-heading">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--landing-border)] p-5 sm:px-7">
+            <div>
+              <h2 id="shipment-heading" className="text-lg font-semibold">
+                Recent shipments
+              </h2>
+              <p className={cn("mt-1 text-xs", muted)}>Newest first · {shipments.length} loaded</p>
+            </div>
+            <Link
+              href="/business/shipments"
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-[var(--landing-accent)]"
+            >
+              Shipment workspace
+              <ArrowUpRight className="size-4" />
             </Link>
           </div>
-
-          {shipmentsLoading ? (
-            <div className="flex items-center justify-center py-14">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" />
+          {history.isPending && (
+            <div role="status" className={cn("space-y-4 p-7 text-sm", muted)}>
+              <p>Loading shipments…</p>
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="h-14 rounded-md bg-[var(--landing-tint)]" />
+              ))}
             </div>
-          ) : shipments.length === 0 ? (
-            <div className="px-4 py-12 text-center">
-              <Package className="mx-auto h-6 w-6 text-stone-700" />
-              <p className="mt-3 text-sm font-black text-stone-200">No shipments yet</p>
-              <Link href="/business/shipments/new" className="mt-2 inline-flex text-xs font-black text-amber-200 hover:text-amber-100">
-                Create your first shipment
+          )}
+          {history.isError && (
+            <div className="p-5">
+              <Notice
+                title={
+                  shipments.length
+                    ? "Could not load more shipments. Your loaded records are still shown."
+                    : "Could not load shipments."
+                }
+                onRetry={() => {
+                  if (history.isFetchNextPageError) void history.fetchNextPage();
+                  else void history.refetch();
+                }}
+              />
+            </div>
+          )}
+          {!history.isPending && !history.isError && !shipments.length && (
+            <div className="px-6 py-16 text-center">
+              <Package className="mx-auto size-9 text-[var(--landing-accent)]" />
+              <h3 className="mt-5 text-lg font-medium">Your first delivery starts here</h3>
+              <p className={cn("mx-auto mt-2 max-w-sm text-sm leading-6", muted)}>
+                Create a shipment, then assign a driver from your private fleet.
+              </p>
+              <Link
+                href="/business/shipments/new"
+                className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--landing-accent)]"
+              >
+                Create a shipment
+                <ArrowRight className="size-4" />
               </Link>
             </div>
-          ) : (
-            <div className="divide-y divide-white/[0.05]">
-              {shipments.slice(0, 7).map((shipment) => <ShipmentRow key={shipment.id} shipment={shipment} />)}
+          )}
+          {shipments.length > 0 && (
+            <ul className="divide-y divide-[var(--landing-border)]">
+              {shipments.map((shipment) => (
+                <li
+                  key={shipment.id}
+                  className="grid gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-7"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-medium">{shipment.trackingId}</p>
+                    <p
+                      className={cn(
+                        "mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5",
+                        muted,
+                      )}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        <ArrowUpRight className="size-3" />
+                        {shipment.pickupAddress.city}
+                      </span>
+                      <span aria-hidden="true">→</span>
+                      <span>{shipment.deliveryAddress.city}</span>
+                    </p>
+                    <p className={cn("mt-1 truncate text-xs", muted)}>{shipment.description}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-2">
+                    <Status status={shipment.status} />
+                    <p className="text-sm tabular-nums">{formatKobo(shipment.priceKobo)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {history.hasNextPage && (
+            <div className="border-t border-[var(--landing-border)] p-4 text-center">
+              <button
+                type="button"
+                disabled={history.isFetchingNextPage}
+                onClick={() => void history.fetchNextPage()}
+                className="min-h-11 rounded-md border border-[var(--landing-border)] px-6 text-sm font-medium hover:bg-[var(--landing-tint)] disabled:opacity-50"
+              >
+                {history.isFetchingNextPage ? "Loading…" : "Load more shipments"}
+              </button>
             </div>
           )}
         </section>
 
-        <div className="space-y-4">
-          {nextShipment && (
-            <section className="rounded-md border border-teal-400/20 bg-teal-400/10 p-4">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-teal-200">Priority shipment</p>
-              <p className="mt-3 font-mono text-sm font-black text-stone-100">{nextShipment.trackingId}</p>
-              <p className="mt-2 text-xs leading-5 text-stone-500">
-                {nextShipment.pickupAddress.city} to {nextShipment.deliveryAddress.city}
-              </p>
-              <Link
-                href="/business/shipments"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md border border-teal-400/25 bg-black/20 px-3 py-2 text-xs font-black text-teal-100 transition hover:bg-teal-400/[0.16]"
-              >
-                Open shipment file
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </section>
-          )}
-          <StatusBreakdown shipments={shipments} breakdown={statusBreakdown} />
+        <div className="space-y-6">
+          <section className={cn(panel, "p-6")} aria-labelledby="attention-heading">
+            <div className="flex items-center justify-between">
+              <h2 id="attention-heading" className="text-lg font-semibold">
+                Keep in view
+              </h2>
+              <AlertCircle className="size-5 text-[var(--landing-warning)]" />
+            </div>
+            <div className="mt-6 flex items-baseline gap-3">
+              <p className="text-4xl font-medium tabular-nums">{counts?.failed ?? "—"}</p>
+              <p className="text-sm text-[var(--landing-danger)]">unsuccessful deliveries</p>
+            </div>
+            <p className={cn("mt-4 text-sm leading-6", muted)}>
+              Review unsuccessful deliveries before deciding on a retry or return. A package may
+              still be with its driver.
+            </p>
+            <Link
+              href="/business/shipments"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--landing-accent)]"
+            >
+              Review shipments
+              <ArrowRight className="size-4" />
+            </Link>
+            <div
+              className={cn(
+                "mt-4 flex items-center justify-between border-t border-[var(--landing-border)] pt-4 text-xs",
+                muted,
+              )}
+            >
+              <span>Cancelled shipments</span>
+              <span className="tabular-nums">{counts?.cancelled ?? "—"}</span>
+            </div>
+          </section>
+          <section className="px-1 py-2" aria-labelledby="value-heading">
+            <h2 id="value-heading" className={cn("text-sm", muted)}>
+              Total shipment value
+            </h2>
+            <p className="mt-3 break-words text-3xl font-medium tabular-nums tracking-tight">
+              {analytics.data ? formatKobo(analytics.data.totalRevenueKobo) : "—"}
+            </p>
+            <p className={cn("mt-3 text-xs leading-5", muted)}>
+              Combined prices of all shipments, including unpaid and cancelled records. This is not
+              money collected.
+            </p>
+          </section>
+          <section className="border-t border-[var(--landing-border)] px-1 pt-5">
+            <Truck className="size-5 text-[var(--landing-accent)]" />
+            <h2 className="mt-3 text-base font-semibold">Built around your fleet</h2>
+            <p className={cn("mt-2 text-sm leading-6", muted)}>
+              View your drivers and their availability before assigning the next delivery.
+            </p>
+            <Link
+              href="/business/drivers"
+              className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm text-[var(--landing-accent)]"
+            >
+              Open private fleet
+              <ArrowRight className="size-4" />
+            </Link>
+          </section>
         </div>
       </div>
-
-      <section className="overflow-hidden rounded-md border border-white/[0.07] bg-[#0d1412]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-4">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-600">Fleet board</p>
-            <h3 className="mt-1 text-base font-black text-stone-50">Driver availability</h3>
-          </div>
-          <Link href="/business/drivers" className="text-xs font-black text-teal-200 hover:text-teal-100">
-            Manage fleet
-          </Link>
-        </div>
-        {driversLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" />
-          </div>
-        ) : (
-          <FleetStrip drivers={drivers} />
-        )}
-      </section>
+      <p className={cn("flex flex-wrap items-center gap-2 text-xs leading-5", muted)}>
+        <ArrowDownLeft className="size-3.5" />
+        Summary totals cover all shipments. The recent list loads in batches of six.
+      </p>
     </div>
   );
 }

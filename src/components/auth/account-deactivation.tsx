@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/auth";
 
-export function AccountDeactivation() {
+export function AccountDeactivation({ themed = false }: { themed?: boolean }) {
   const router = useRouter();
   const passwordId = useId();
   const [open, setOpen] = useState(false);
@@ -30,7 +30,9 @@ export function AccountDeactivation() {
     }
   }
   return (
-    <section className="rounded-md border border-rose-400/20 bg-[#0d1412] p-4 sm:p-5">
+    <section
+      className={`rounded-md border border-rose-400/20 p-4 sm:p-5 ${themed ? "bg-[var(--landing-panel)] [&_h3]:text-[var(--landing-ink)] [&_p]:text-[var(--landing-muted)] [&_label]:text-[var(--landing-ink)] [&_input]:bg-[var(--landing-field)] [&_input]:text-[var(--landing-ink)] [&_button]:text-[var(--landing-danger)]" : "bg-[#0d1412]"}`}
+    >
       <h3 className="text-base font-bold text-stone-100">Deactivate account</h3>
       <p className="mt-2 text-sm leading-6 text-stone-400">
         Deactivation signs you out and prevents future sign-ins. Shipment, payment and audit records
