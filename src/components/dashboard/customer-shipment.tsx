@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { ShipmentLiveTracking } from "./shipment-live-tracking";
+import { trackingAllowed } from "@/lib/live-tracking";
 import { useCustomerShipment, useCustomerHistory } from "@/hooks/use-customer";
 import { workspaceDateTime } from "@/lib/workspace-format";
 import { shipmentLabels } from "@/lib/business-overview";
@@ -110,6 +112,9 @@ export function CustomerShipment({
                   <p className="mt-1 text-sm">Contact: {shipment.driver.user.phone}</p>
                 )}
               </section>
+            )}
+            {trackingAllowed(shipment.status, shipment.returnState) && (
+              <ShipmentLiveTracking key={shipment.trackingId} trackingId={shipment.trackingId} />
             )}
             <section className="border-t border-[var(--landing-border)] pt-5">
               <ShipmentCheckout

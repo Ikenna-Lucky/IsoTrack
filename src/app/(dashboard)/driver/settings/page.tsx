@@ -1,4 +1,5 @@
 "use client";
+import { DriverProfileLocation } from "@/components/dashboard/driver-profile-location";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -545,6 +546,7 @@ export default function DriverSettingsPage() {
       <div hidden={section !== "notifications"}>
         <NotificationsPanel />
       </div>
+      {section === "profile" && <DriverProfileLocation />}
       {section === "security" && <SecurityPanel />}
     </div>
   );

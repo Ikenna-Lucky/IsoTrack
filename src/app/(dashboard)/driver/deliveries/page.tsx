@@ -169,6 +169,8 @@ export default function DriverDeliveriesPage() {
   const {
     broadcasting,
     position,
+    profileSavedAt,
+    retry: retryGps,
     error: gpsError,
   } = useDriverLocation({
     trackingIds: deliveries
@@ -238,11 +240,13 @@ export default function DriverDeliveriesPage() {
               )}
             />
             <div>
-              <p className="text-sm font-semibold text-[var(--landing-ink)]">Live GPS broadcast</p>
+              <p className="text-sm font-semibold text-[var(--landing-ink)]">Location sharing</p>
               <p className="text-xs text-[var(--landing-muted)]">
                 {broadcasting
-                  ? "Broadcasting location to active tracking pages"
-                  : "Turn on during active deliveries"}
+                  ? "Shipment position accepted by the server"
+                  : gpsOn
+                    ? "Waiting for a fresh position and server confirmation"
+                    : "Start to update your profile and loaded active shipments"}
               </p>
             </div>
           </div>
@@ -255,9 +259,25 @@ export default function DriverDeliveriesPage() {
                 : "bg-amber-300 text-black hover:bg-amber-200",
             )}
           >
-            {gpsOn ? "Stop GPS" : "Start GPS"}
+            {gpsOn ? "Stop sharing" : "Start sharing"}
           </button>
         </div>
+        <p className="mt-3 text-xs leading-5 text-[var(--landing-muted)]">
+          Keep this page open while sharing. Your fleet business can see your profile position;
+          authorized shipment participants can receive shipment positions. Stopping prevents new
+          updates but does not erase the last recorded position. Load more deliveries to include
+          them.
+        </p>
+        {profileSavedAt && (
+          <p className="mt-2 text-xs text-[var(--landing-muted)]">
+            Profile position saved at {new Date(profileSavedAt).toLocaleTimeString()}.
+          </p>
+        )}
+        {gpsOn && gpsError && (
+          <button className="mt-3 min-h-11 text-sm underline" onClick={retryGps}>
+            Retry location sharing
+          </button>
+        )}
         {position && (
           <p className="mt-3 text-xs font-medium text-[var(--landing-muted)]">
             Last fix: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}

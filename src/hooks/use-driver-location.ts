@@ -1,157 +1,143 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-// How often (ms) to emit even if the position has not changed
-const EMIT_INTERVAL_MS = 5_000;
-// Minimum metres moved before we emit immediately
-const MIN_DISTANCE_M = 10;
-
-function haversineMetres(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-export interface DriverPosition {
-  lat: number;
-  lng: number;
-  heading: number;
-  speed: number;
-}
-
-interface UseDriverLocationOptions {
-  trackingIds: string[];
-  enabled?: boolean | undefined;
-}
-
-interface UseDriverLocationResult {
-  broadcasting: boolean;
-  position: DriverPosition | null;
-  error: string;
-}
-
+import { api } from "@/lib/api";
+import { locationIsFresh, type LocationUpdate } from "@/lib/live-tracking";
+import { useTrackingConnection } from "./use-tracking-connection";
+import { publishDriverLocation } from "@/lib/publish-driver-location";
 export function useDriverLocation({
   trackingIds,
-  enabled = true,
-}: UseDriverLocationOptions): UseDriverLocationResult {
-  const [position, setPosition]         = useState<DriverPosition | null>(null);
-  const [error, setError]               = useState("");
+  enabled = false,
+}: {
+  trackingIds: string[];
+  enabled?: boolean;
+}) {
+  const connection = useTrackingConnection(enabled && trackingIds.length > 0);
+  const ids = useRef(trackingIds);
+  useEffect(() => {
+    ids.current = trackingIds;
+  }, [trackingIds]);
+  const [position, setPosition] = useState<Omit<LocationUpdate, "trackingId"> | null>(null);
   const [broadcasting, setBroadcasting] = useState(false);
-
-  const socketRef      = useRef<Socket | null>(null);
-  const lastPos        = useRef<DriverPosition | null>(null);
-  const lastEmitAt     = useRef<number>(0);
-  const watchId        = useRef<number | null>(null);
-  const trackingIdsRef = useRef<string[]>(trackingIds);
-
-  // Sync ref on every render so emitPosition always reads the latest list
+  const [error, setError] = useState("");
+  const [profileSavedAt, setProfileSavedAt] = useState<number | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const account = useRef(0);
   useEffect(() => {
-    trackingIdsRef.current = trackingIds;
-  });
-
-  const active = enabled && trackingIds.length > 0;
-
-  useEffect(() => {
-    if (!active) {
-      if (watchId.current != null) {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
-      }
-      socketRef.current?.disconnect();
-      socketRef.current = null;
-      setBroadcasting(false);
+    const generation = ++account.current;
+    setBroadcasting(false);
+    setPosition(null);
+    setError("");
+    setProfileSavedAt(null);
+    if (!enabled) return;
+    if (!navigator.geolocation) {
+      setError("This browser does not support location sharing.");
       return;
     }
-
-    if (!("geolocation" in navigator)) {
-      setError("Geolocation is not supported on this device.");
-      return;
-    }
-
-    // polling-first avoids "WebSocket closed before established" in StrictMode.
-    // See use-socket.ts for the full explanation.
-    const socket = io(SOCKET_URL, {
-      transports: ["polling", "websocket"],
-      withCredentials: true,
-    });
-    socketRef.current = socket;
-
-    socket.on("connect",    () => setBroadcasting(true));
-    socket.on("disconnect", () => setBroadcasting(false));
-
-    function emitPosition(pos: DriverPosition) {
-      if (!socketRef.current) return;
-      for (const tid of trackingIdsRef.current) {
-        socketRef.current.emit("driver:location", {
-          trackingId: tid,
-          lat:       pos.lat,
-          lng:       pos.lng,
-          heading:   pos.heading,
-          speed:     pos.speed,
-          timestamp: Date.now(),
-        });
-      }
-      lastEmitAt.current = Date.now();
-    }
-
-    watchId.current = navigator.geolocation.watchPosition(
-      (geo) => {
-        const pos: DriverPosition = {
-          lat:     geo.coords.latitude,
-          lng:     geo.coords.longitude,
-          heading: geo.coords.heading ?? 0,
-          speed:   geo.coords.speed   ?? 0,
+    let disposed = false,
+      sending = false,
+      profileAt = 0;
+    let sample: Omit<LocationUpdate, "trackingId"> | null = null;
+    const published = new Map<string, number>();
+    let cursor = 0;
+    const controller = new AbortController();
+    const watch = navigator.geolocation.watchPosition(
+      (fix) => {
+        if (disposed) return;
+        sample = {
+          lat: fix.coords.latitude,
+          lng: fix.coords.longitude,
+          timestamp: fix.timestamp,
+          ...(fix.coords.heading != null && fix.coords.heading >= 0 && fix.coords.heading < 360
+            ? { heading: fix.coords.heading }
+            : {}),
+          ...(fix.coords.speed != null && fix.coords.speed >= 0 && fix.coords.speed <= 100
+            ? { speed: fix.coords.speed }
+            : {}),
         };
-
-        setPosition(pos);
-        setError("");
-
-        const prev = lastPos.current;
-        const movedEnough =
-          !prev ||
-          haversineMetres(prev.lat, prev.lng, pos.lat, pos.lng) >= MIN_DISTANCE_M;
-        const heartbeatDue = Date.now() - lastEmitAt.current >= EMIT_INTERVAL_MS;
-
-        if (movedEnough || heartbeatDue) {
-          emitPosition(pos);
-          lastPos.current = pos;
-        }
+        setPosition(sample);
       },
-      (geoError) => {
-        const msgs: Record<number, string> = {
-          1: "Location access denied. Please enable it in your browser settings.",
-          2: "Your location could not be determined. Check your GPS signal.",
-          3: "Location request timed out. Please try again.",
-        };
-        setError(msgs[geoError.code] ?? "An unknown location error occurred.");
+      (cause) => {
+        if (disposed) return;
+        sample = null;
+        setPosition(null);
         setBroadcasting(false);
+        setError(
+          cause.code === 1
+            ? "Location permission denied. Enable it in browser settings, then retry."
+            : "GPS position unavailable. Check your signal and retry.",
+        );
       },
-      { enableHighAccuracy: true, maximumAge: 3_000, timeout: 15_000 },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 },
     );
-
-    return () => {
-      if (watchId.current != null) {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
+    async function send() {
+      if (disposed || sending) return;
+      if (!sample || !locationIsFresh(sample.timestamp)) {
+        setBroadcasting(false);
+        return;
       }
-      socket.disconnect();
-      socketRef.current = null;
-      setBroadcasting(false);
+      const current = sample;
+      sending = true;
+      try {
+        if (Date.now() - profileAt >= 30000) {
+          await api.patch(
+            "/drivers/me/location",
+            { lat: current.lat, lng: current.lng },
+            { signal: controller.signal },
+          );
+          if (disposed) return;
+          profileAt = Date.now();
+          setProfileSavedAt(profileAt);
+        }
+        const all = [...new Set(ids.current)];
+        cursor = all.length ? cursor % all.length : 0;
+        const batch = [...all.slice(cursor), ...all.slice(0, cursor)].slice(0, 10);
+        cursor += batch.length;
+        const result = connection.socket
+          ? await publishDriverLocation(
+              connection.socket,
+              batch,
+              current,
+              published,
+              () => !disposed && sample !== null && generation === account.current,
+            )
+          : { accepted: 0, rejected: 0 };
+        if (!disposed) {
+          setBroadcasting(
+            sample !== null && all.some((id) => locationIsFresh(published.get(id) ?? 0)),
+          );
+          setError(
+            result.rejected
+              ? "Some shipment positions were not confirmed. Refresh your deliveries and retry; accepted shipments may still receive updates."
+              : "",
+          );
+        }
+      } catch (cause) {
+        if (!disposed) {
+          setBroadcasting(false);
+          setError(
+            cause instanceof Error ? cause.message : "Could not confirm location sharing. Retry.",
+          );
+        }
+      } finally {
+        sending = false;
+      }
+    }
+    const timer = setInterval(() => void send(), 5000);
+    return () => {
+      disposed = true;
+      controller.abort();
+      clearInterval(timer);
+      navigator.geolocation.clearWatch(watch);
     };
-  }, [active]);
-
-  return { broadcasting, position, error };
+  }, [enabled, connection.socket, attempt]);
+  return {
+    position,
+    broadcasting: connection.connected && broadcasting,
+    error: error || connection.error,
+    profileSavedAt,
+    retry: () => {
+      setAttempt((n) => n + 1);
+      connection.retry();
+    },
+  };
 }

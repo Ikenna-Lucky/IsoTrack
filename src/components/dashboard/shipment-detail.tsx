@@ -1,6 +1,8 @@
 "use client";
 import { useWorkspaceDate } from "@/providers/business-preferences-provider";
 import { useState } from "react";
+import { ShipmentLiveTracking } from "./shipment-live-tracking";
+import { trackingAllowed } from "@/lib/live-tracking";
 import { ShipmentExceptions } from "./shipment-exceptions";
 import { useWorkflowPending } from "@/hooks/use-workflow-request";
 import { DeliveryConfirmation } from "./delivery-confirmation";
@@ -103,6 +105,9 @@ export function ShipmentDetail({ id }: { id: string }) {
           {shipmentLabels[shipment.status]}
         </span>
       </div>
+      {trackingAllowed(shipment.status, shipment.returnState) && (
+        <ShipmentLiveTracking key={shipment.trackingId} trackingId={shipment.trackingId} />
+      )}
       <div className="grid gap-6 md:grid-cols-2">
         <section>
           <h4 className="font-semibold">Pickup</h4>

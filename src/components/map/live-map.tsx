@@ -1,121 +1,91 @@
 "use client";
-
-import { useEffect, useRef } from "react";
-import type { LocationUpdate } from "@/hooks/use-socket";
-
-interface LiveMapProps {
-  location: LocationUpdate | null;
-  className?: string | undefined;
-}
-
-const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
-const DEFAULT_ZOOM = 13;
-
-export function LiveMap({ location, className = "" }: LiveMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<unknown>(null);
-  const markerRef = useRef<unknown>(null);
-  const initializedRef = useRef(false);
-
+import { useEffect, useRef, useState } from "react";
+import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
+import type { LocationUpdate } from "@/lib/live-tracking";
+export function LiveMap({
+  location,
+  className = "",
+}: {
+  location: LocationUpdate;
+  className?: string;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  const map = useRef<MapLibreMap | null>(null);
+  const marker = useRef<MapLibreMarker | null>(null);
+  const latest = useRef(location);
+  const [error, setError] = useState("");
   useEffect(() => {
-    if (initializedRef.current || !containerRef.current) return;
-
-    let map: {
-      remove: () => void;
-      easeTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void;
-    };
-    let marker: {
-      setLngLat: (coords: [number, number]) => unknown;
-      remove: () => void;
-    };
-
-    async function initMap() {
-      const maplibregl = (await import("maplibre-gl")).default;
-      // @ts-expect-error — CSS import, no type declarations needed
-      await import("maplibre-gl/dist/maplibre-gl.css");
-
-      const center: [number, number] = location ? [location.lng, location.lat] : DEFAULT_CENTER;
-
-      const maptilerKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-      const mapStyle = maptilerKey
-        ? `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${maptilerKey}`
-        : {
-            version: 8 as const,
-            sources: {
-              "osm-tiles": {
-                type: "raster" as const,
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                attribution: "© OpenStreetMap contributors",
-              },
-            },
-            layers: [{ id: "osm", type: "raster" as const, source: "osm-tiles" }],
-            glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-          };
-
-      map = new maplibregl.Map({
-        container: containerRef.current!,
-        style: mapStyle,
-        center,
-        zoom: DEFAULT_ZOOM,
-        attributionControl: false,
-      });
-
-      const el = document.createElement("div");
-      el.style.cssText = [
-        "width:36px",
-        "height:36px",
-        "border-radius:50%",
-        "background:#8b5cf6",
-        "border:3px solid white",
-        "box-shadow:0 2px 12px rgba(139,92,246,0.6)",
-        "display:flex",
-        "align-items:center",
-        "justify-content:center",
-        "font-size:14px",
-        "cursor:pointer",
-        "transition:transform 0.3s ease",
-      ].join(";");
-      el.innerHTML = "🛵";
-
-      marker = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat(center)
-        .addTo(map as Parameters<typeof maplibregl.Marker.prototype.addTo>[0]);
-
-      mapRef.current = map;
-      markerRef.current = marker;
-      initializedRef.current = true;
-    }
-
-    void initMap();
-
-    return () => {
-      marker?.remove();
-      map?.remove();
-      mapRef.current = null;
-      markerRef.current = null;
-      initializedRef.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!location || !initializedRef.current) return;
-    const coords: [number, number] = [location.lng, location.lat];
-
-    const marker = markerRef.current as { setLngLat: (c: [number, number]) => unknown } | null;
-    const map = mapRef.current as {
-      easeTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void;
-    } | null;
-
-    marker?.setLngLat(coords);
-    map?.easeTo({ center: coords, zoom: DEFAULT_ZOOM, duration: 800 });
+    latest.current = location;
+    marker.current?.setLngLat([location.lng, location.lat]);
+    map.current?.jumpTo({ center: [location.lng, location.lat] });
   }, [location]);
-
+  useEffect(() => {
+    let disposed = false;
+    let ownedMap: MapLibreMap | null = null;
+    async function initialize() {
+      try {
+        const maplibre = (await import("maplibre-gl")).default;
+        // @ts-expect-error CSS is bundled by Next.
+        await import("maplibre-gl/dist/maplibre-gl.css");
+        if (disposed || !container.current) return;
+        const center: [number, number] = [latest.current.lng, latest.current.lat];
+        const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+        ownedMap = new maplibre.Map({
+          container: container.current,
+          center,
+          zoom: 14,
+          style: key
+            ? "https://api.maptiler.com/maps/streets-v2/style.json?key=" + encodeURIComponent(key)
+            : {
+                version: 8,
+                sources: {
+                  osm: {
+                    type: "raster",
+                    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                    tileSize: 256,
+                    attribution: "© OpenStreetMap contributors",
+                  },
+                },
+                layers: [{ id: "osm", type: "raster", source: "osm" }],
+              },
+        });
+        map.current = ownedMap;
+        marker.current = new maplibre.Marker({ color: "#0d9488" })
+          .setLngLat(center)
+          .addTo(ownedMap);
+        ownedMap.on("error", () => {
+          if (!disposed)
+            setError(
+              "Map tiles could not be loaded. The recorded coordinates remain available above.",
+            );
+        });
+        ownedMap.addControl(new maplibre.NavigationControl(), "top-right");
+      } catch {
+        if (!disposed)
+          setError("Map unavailable. The recorded coordinates remain available above.");
+      }
+    }
+    void initialize();
+    return () => {
+      disposed = true;
+      marker.current?.remove();
+      ownedMap?.remove();
+      marker.current = null;
+      map.current = null;
+    };
+  }, []);
   return (
-    <div
-      ref={containerRef}
-      className={["h-full w-full rounded-2xl overflow-hidden", className].filter(Boolean).join(" ")}
-    />
+    <div className={className}>
+      {error && (
+        <p role="status" className="mb-3 text-sm text-[var(--landing-warning)]">
+          {error}
+        </p>
+      )}
+      <div
+        ref={container}
+        aria-label="Last reported driver position"
+        className="h-80 w-full overflow-hidden rounded-lg"
+      />
+    </div>
   );
 }
