@@ -1,47 +1,66 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { extractErrorMessage } from "@/lib/errors";
+import { useWorkflowRequest } from "./use-workflow-request";
+import {
+  initializeCustomerCheckout,
+  checkoutFailureIsUncertain,
+  verificationSchema,
+  type CheckoutRequest,
+} from "@/lib/customer-payment";
 import { stripeCheckoutUrl } from "@/lib/checkout-url";
-
-export function usePayment() {
+import { extractErrorMessage } from "@/lib/errors";
+export function useCheckout(shipmentId: string) {
+  const [request, setRequest] = useWorkflowRequest<CheckoutRequest>("checkout", shipmentId);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const initialize = useMutation({
-    mutationFn: async ({ shipmentId }: { shipmentId: string }) => {
-      const response = await api.post<{ data: { authorizationUrl: string } }>("/payments/initialize", { shipmentId });
-      return stripeCheckoutUrl(response.data.data.authorizationUrl);
-    },
-    onSuccess: (url) => { setError(""); window.location.assign(url); },
-    onError: (cause: unknown) => setError(extractErrorMessage(cause, "Could not open Stripe Checkout.")),
-  });
-  return { pay: initialize.mutate, isPaying: initialize.isPending, error, clearError: () => setError("") };
+  async function open() {
+    if (busy) return;
+    const current = request ?? { key: crypto.randomUUID(), body: { shipmentId } };
+    if (!request && !setRequest(current)) {
+      setError("Another action is pending for this shipment.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      if (!current.checkout) {
+        const checkout = await initializeCustomerCheckout(api, current);
+        stripeCheckoutUrl(checkout.authorizationUrl);
+        // Keep returned recovery metadata on the original account-scoped request.
+        current.checkout = checkout;
+      }
+      window.location.assign(stripeCheckoutUrl(current.checkout.authorizationUrl));
+    } catch (cause) {
+      if (!checkoutFailureIsUncertain(cause) && !current.checkout) setRequest(null, current);
+      setError(
+        extractErrorMessage(
+          cause,
+          "Checkout could not be confirmed. Retry the original request; do not start a second payment.",
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return { request, busy, error, open, release: () => request && setRequest(null, request) };
 }
-
-export function usePaymentReturn() {
-  const queryClient = useQueryClient();
-  const [message, setMessage] = useState("");
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const reference = url.searchParams.get("payment_reference");
-    if (url.searchParams.get("payment_cancelled") === "1") setMessage("Checkout cancelled. Your shipment is still unpaid unless a payment is confirmed.");
-    if (!reference || !/^IST-PAY-[A-Za-z0-9_-]{24}$/.test(reference)) return;
-    const controller = new AbortController();
-    setMessage("Confirming your payment…");
-    void api.get<{ data: { paid: boolean } }>(`/payments/verify/${encodeURIComponent(reference)}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (controller.signal.aborted) return;
-        if (response.data.data.paid) {
-          setMessage("Payment confirmed.");
-          await queryClient.invalidateQueries({ queryKey: ["shipments"] });
-          url.searchParams.delete("payment_reference");
-          window.history.replaceState(null, "", url.pathname + url.search);
-        } else setMessage("Payment is not confirmed yet. Refresh this page to check again.");
-      }).catch((cause: unknown) => {
-        if (!controller.signal.aborted) setMessage(extractErrorMessage(cause, "Could not confirm payment. Refresh to try again."));
-      });
-    return () => controller.abort();
-  }, [queryClient]);
-  return message;
+export function usePaymentReference(reference: string) {
+  return useQuery({
+    queryKey: ["payments", "verify", reference],
+    enabled: !!reference,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const value = verificationSchema.parse(
+        (
+          await api.get<{ data: unknown }>(`/payments/verify/${encodeURIComponent(reference)}`, {
+            signal,
+          })
+        ).data.data,
+      );
+      if (value.reference !== reference) throw new Error("Payment reference mismatch");
+      return value;
+    },
+  });
 }

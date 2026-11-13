@@ -3,15 +3,15 @@
 Reviewed 12 November 2026 against the Swagger/OpenAPI contract and the current
 frontend. Item 1 was frontend-only. Item 2 includes a focused backend notification-worker change; no deployment was changed.
 
-| Priority | Area                        | Current state / remaining work                                                                                                                                                                                                                                                |
-| -------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1        | Business workflow review    | Main screens and forms exist. Recovery hardening and direct local HTTP journey checks passed in this review. Browser fault-injection acceptance remains blocked because local browser use is disabled in Work settings. Do not call this fully accepted yet.                  |
-| 2        | Apply saved preferences     | Timezone, date format, compact spacing and automatic refresh are applied across Business. Six shipment email choices control dispatch. English and NGN are the supported interface/payment options; SMS, weekly reports and driver-online alerts are unavailable. Local browser acceptance remains outstanding.                                                                  |
-| 3        | Driver dashboard            | Overview, Settings, Help and Delivery record now use the supported contracts and Business visual system. Unsupported earnings/payout claims removed. Cursor pagination, custody summaries and input validation implemented. Browser acceptance remains outstanding; see driver-dashboard.md. |
-| 4        | Customer dashboard          | Align overview, cursor shipment lists, limited public versus private tracking, checkout/review/cancellation states and Settings. Payment hook still lacks initialization idempotency and treats provider-paid as confirmation without checking applied/requiresReview.        |
-| 5        | Authenticated live tracking | Add token-based sockets, token rotation/reconnect/rejoin, acknowledgements, access/freshness feedback and bounded location delivery. Current socket hooks lack auth.token.                                                                                                    |
-| 6        | Hosted acceptance           | Verify actual email receipt, Stripe sandbox settlement/review and cross-domain cookies, refresh, logout and multiple tabs on the selected deployments. Local HTTP results do not establish these.                                                                             |
-| 7        | Frontend preview            | Connect a separate frontend preview to the matching backend candidate and verify together before promotion. No merge/push/deployment performed by this review.                                                                                                                |
+| Priority | Area                        | Current state / remaining work                                                                                                                                                                                                                                                                                  |
+| -------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | Business workflow review    | Main screens and forms exist. Recovery hardening and direct local HTTP journey checks passed in this review. Browser fault-injection acceptance remains blocked because local browser use is disabled in Work settings. Do not call this fully accepted yet.                                                    |
+| 2        | Apply saved preferences     | Timezone, date format, compact spacing and automatic refresh are applied across Business. Six shipment email choices control dispatch. English and NGN are the supported interface/payment options; SMS, weekly reports and driver-online alerts are unavailable. Local browser acceptance remains outstanding. |
+| 3        | Driver dashboard            | Overview, Settings, Help and Delivery record now use the supported contracts and Business visual system. Unsupported earnings/payout claims removed. Cursor pagination, custody summaries and input validation implemented. Browser acceptance remains outstanding; see driver-dashboard.md.                    |
+| 4        | Customer dashboard          | Overview, cursor shipment lists, linked detail/history, limited public tracking, idempotent sandbox checkout recovery and Settings implemented. Local contract tests passed. Visual and hosted payment acceptance remain outstanding; see customer-dashboard.md.                                                |
+| 5        | Authenticated live tracking | Add token-based sockets, token rotation/reconnect/rejoin, acknowledgements, access/freshness feedback and bounded location delivery. Current socket hooks lack auth.token.                                                                                                                                      |
+| 6        | Hosted acceptance           | Verify actual email receipt, Stripe sandbox settlement/review and cross-domain cookies, refresh, logout and multiple tabs on the selected deployments. Local HTTP results do not establish these.                                                                                                               |
+| 7        | Frontend preview            | Connect a separate frontend preview to the matching backend candidate and verify together before promotion. No merge/push/deployment performed by this review.                                                                                                                                                  |
 
 Help currently supplies guidance only; no actual support service is configured.
 Account recovery/verification browser pages should also be checked before launch:
@@ -91,7 +91,6 @@ disabled in Work settings. The changes have not been visually reverified in this
 review. Prior slice documents retain historical browser evidence; they are not a
 new passing result for the changed recovery paths.
 
-
 ## Saved preferences (item 2)
 
 Business settings apply after a successful save and reload from the account on
@@ -121,7 +120,6 @@ compact spacing, polling/focus behavior and explicit refresh in both themes.
 Verify saved choices and pending local requests do not cross account switches.
 Local browser automation remains disabled in Work settings, so visual acceptance
 has not been claimed.
-
 
 Verification for item 2: 45 frontend unit/client tests passed; frontend lint,
 TypeScript and production build passed. Backend unit suite passed 101 tests,

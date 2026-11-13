@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import LiveTrackingPage from "@/components/tracking/live-tracking-page";
+import PublicTrackingRecord from "@/components/tracking/public-tracking-page";
 import { SampleTrackingPage } from "@/components/tracking/sample-tracking-page";
 import "../../landing-theme.css";
 
@@ -10,6 +10,6 @@ export default function PublicTrackingPage() {
   return trackingId.toUpperCase() === "IST-K7X2M9PQ" ? (
     <SampleTrackingPage />
   ) : (
-    <LiveTrackingPage key={trackingId} />
+    <PublicTrackingRecord key={trackingId} />
   );
 }
