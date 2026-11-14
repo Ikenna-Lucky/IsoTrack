@@ -21,13 +21,6 @@ import { extractErrorMessage } from "@/lib/errors";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import type { UserRole } from "@/types";
-
-const ROLE_ROUTES: Record<UserRole, string> = {
-  business: "/business",
-  driver: "/driver",
-  customer: "/customer",
-};
 const ROLES = [
   { value: "customer", label: "Customer", detail: "Follow deliveries", Icon: PackageOpen },
   { value: "business", label: "Business", detail: "Manage your fleet", Icon: Building2 },
@@ -141,7 +134,13 @@ export function RegisterForm({ invitation = false }: { invitation?: boolean }) {
           ? { businessName: values.businessName }
           : {}),
       });
-      router.push(ROLE_ROUTES[values.role] as Route);
+      // Account creation remains successful even if email dispatch is unavailable.
+      try {
+        await api.post("/auth/verification/request", { email: values.email });
+        router.push("/verify-email?requested=1" as Route);
+      } catch {
+        router.push("/verify-email" as Route);
+      }
     } catch (err: unknown) {
       setServerError(extractErrorMessage(err));
     }
