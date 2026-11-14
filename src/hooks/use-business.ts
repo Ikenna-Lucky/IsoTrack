@@ -7,15 +7,11 @@ import type { Business, Shipment, ApiResponse } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import { workspaceRefresh } from "@/lib/business-preferences";
 
-// ─── Query key factory ────────────────────────────────────────────────────────
-
 export const businessKeys = {
   all: ["business"] as const,
   profile: () => [...businessKeys.all, "profile"] as const,
   analytics: () => [...businessKeys.all, "analytics"] as const,
 };
-
-// ─── Analytics response shape ─────────────────────────────────────────────────
 
 export interface BusinessAnalytics {
   statusBreakdown: Record<string, number>;
@@ -24,11 +20,6 @@ export interface BusinessAnalytics {
   recentShipments: Shipment[];
 }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-
-/**
- * Returns the logged-in business's profile (name, address, etc.)
- */
 export function useBusinessProfile() {
   return useQuery({
     queryKey: businessKeys.profile(),
@@ -39,11 +30,7 @@ export function useBusinessProfile() {
   });
 }
 
-/**
- * Returns aggregated analytics for the business:
- * status breakdown, total shipments, total shipment value, latest ten shipments.
- * Refetches every 60 s when workspace auto refresh is enabled.
- */
+// Polling, focus and reconnect refreshes follow the saved auto-refresh preference.
 export function useBusinessAnalytics() {
   const preferences = useBusinessPreferences();
   return useQuery({
@@ -60,9 +47,6 @@ export function useBusinessAnalytics() {
   });
 }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
-
-/** Update the business profile (name, address). */
 export function useUpdateBusinessProfile() {
   const qc = useQueryClient();
   return useMutation({
@@ -79,7 +63,6 @@ export function useUpdateBusinessProfile() {
   });
 }
 
-// Notification preferences shape
 export interface BusinessNotifPrefs {
   shipmentCreated: { email: boolean; sms: boolean };
   driverAssigned: { email: boolean; sms: boolean };
@@ -91,7 +74,6 @@ export interface BusinessNotifPrefs {
   weeklyReport: { email: boolean; sms: boolean };
 }
 
-// Preferences shape
 export interface BusinessPreferences {
   timezone: string;
   currency: string;
@@ -101,7 +83,6 @@ export interface BusinessPreferences {
   autoRefresh: boolean;
 }
 
-/** GET /business/notifications */
 export function useBusinessNotifPrefs() {
   return useQuery({
     queryKey: [...businessKeys.all, "notifications"],
@@ -112,7 +93,6 @@ export function useBusinessNotifPrefs() {
   });
 }
 
-/** PATCH /business/notifications */
 export function useUpdateBusinessNotifPrefs() {
   const qc = useQueryClient();
   return useMutation({
@@ -132,7 +112,6 @@ export function useUpdateBusinessNotifPrefs() {
   });
 }
 
-/** GET /business/preferences */
 export function useBusinessPreferences(enabled = true) {
   const accountId = useAuthStore((state) => state.user?.id);
   return useQuery({
@@ -145,7 +124,6 @@ export function useBusinessPreferences(enabled = true) {
   });
 }
 
-/** PATCH /business/preferences */
 export function useUpdateBusinessPreferences() {
   const qc = useQueryClient();
   return useMutation({

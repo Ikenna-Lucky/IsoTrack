@@ -53,8 +53,7 @@ export function DeliveryConfirmation({ id, role }: { id: string; role: "business
   }, [challenge.data?.challengeId, challenge.data?.version, usable]);
   async function refresh() {
     const result = await detail.refetch();
-    // Once another actor closes or fails the shipment, challenge metadata is no
-    // longer required to recover the delivery panel.
+    // Only fetch challenge metadata while the shipment still needs a delivery code.
     const metadata = result.data?.status === "out_for_delivery" ? await challenge.refetch() : null;
     if (!result.isError && !metadata?.isError) {
       setNeedsRefresh(false);

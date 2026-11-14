@@ -1,5 +1,3 @@
-// User & Auth
-
 export type UserRole = "business" | "driver" | "customer";
 
 export interface User {
@@ -28,8 +26,6 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-// Shipment
-
 export type ShipmentStatus =
   | "pending"
   | "assigned"
@@ -45,7 +41,6 @@ export interface Coordinates {
   lng: number;
 }
 
-// Matches the jsonb shape stored in the backend
 export interface Address {
   street: string;
   city: string;
@@ -59,12 +54,10 @@ export interface Shipment {
   trackingId: string;
   status: ShipmentStatus;
 
-  // Parties
   businessId: string;
   driverId?: string | null;
   customerId?: string | null;
 
-  // Package info
   description: string;
   weightKg: number;
   dimensions?: {
@@ -73,12 +66,10 @@ export interface Shipment {
     height: number;
   } | null;
 
-  // Locations
   pickupAddress: Address;
   deliveryAddress: Address;
   currentLocation?: Coordinates | null;
 
-  // Timestamps
   scheduledPickup?: string | null;
   actualPickup?: string | null;
   estimatedDelivery?: string | null;
@@ -86,11 +77,11 @@ export interface Shipment {
   createdAt: string;
   updatedAt: string;
 
-  // Financials — stored in kobo (1 NGN = 100 kobo)
+  // 100 kobo = ₦1.
   priceKobo: number;
   isPaid: boolean;
 
-  // Populated relations (present when backend joins them)
+  // Relations are only present when included by the backend.
   driver?: Driver | null;
   customer?: User | null;
   business?: Business | null;
@@ -105,8 +96,6 @@ export interface ShipmentEvent {
   location?: Coordinates | null;
   createdAt: string;
 }
-
-// Driver
 
 export type DriverStatus = "available" | "on_delivery" | "offline";
 export type VehicleType = "bike" | "car" | "van" | "truck";
@@ -142,8 +131,6 @@ export interface Driver {
   updatedAt: string;
 }
 
-// Business
-
 export interface Business {
   id: string;
   userId: string;
@@ -155,16 +142,12 @@ export interface Business {
   updatedAt: string;
 }
 
-// Business analytics (returned by GET /business/analytics)
-
 export interface BusinessAnalytics {
   statusBreakdown: Partial<Record<ShipmentStatus, number>>;
   totalShipments: number;
   totalRevenueKobo: number;
   recentShipments: Shipment[];
 }
-
-// Notifications
 
 export type NotificationType = "email" | "sms" | "push";
 
@@ -179,8 +162,6 @@ export interface Notification {
   metadata?: string | null;
   createdAt: string;
 }
-
-// API helpers
 
 export interface ApiResponse<T> {
   data: T;
@@ -198,9 +179,6 @@ export interface PaginatedResponse<T> {
   message?: string;
 }
 
-// Formatting helpers
-
-/** Format kobo (1/100 NGN) as a Naira currency string */
 export function formatKobo(kobo: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

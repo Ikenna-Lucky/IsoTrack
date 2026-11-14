@@ -7,10 +7,6 @@ interface UseInViewOptions extends IntersectionObserverInit {
   once?: boolean | undefined;
 }
 
-/**
- * Fires `inView = true` when the returned `ref` element enters the viewport.
- * By default triggers once and disconnects — perfect for scroll-reveal animations.
- */
 export function useInView(options?: UseInViewOptions) {
   const { once = true, ...observerOptions } = options ?? {};
   const ref = useRef<HTMLDivElement>(null);

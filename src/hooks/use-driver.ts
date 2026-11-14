@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Driver, NotificationPreferences, ApiResponse } from "@/types";
 
-// ─── Query key factory ────────────────────────────────────────────────────────
-
 export const driverKeys = {
   all: ["drivers"] as const,
   me: () => [...driverKeys.all, "me"] as const,
@@ -14,12 +12,7 @@ export const driverKeys = {
   available: () => [...driverKeys.all, "available"] as const,
 };
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-
-/**
- * Returns the logged-in driver's own profile (vehicle, status, rating, etc.)
- * Only usable when role === "driver".
- */
+// Requires a driver session.
 export function useDriverProfile() {
   return useQuery({
     queryKey: driverKeys.me(),
@@ -30,10 +23,7 @@ export function useDriverProfile() {
   });
 }
 
-/**
- * Returns a specific driver by database ID.
- * Usable by business users to view a driver's details.
- */
+// Business users can only read drivers in their own fleet.
 export function useDriver(id: string | null | undefined) {
   return useQuery({
     queryKey: driverKeys.detail(id ?? ""),
@@ -45,9 +35,6 @@ export function useDriver(id: string | null | undefined) {
   });
 }
 
-/**
- * Returns all drivers — for business dashboards.
- */
 export function useDrivers() {
   return useQuery({
     queryKey: driverKeys.lists(),
@@ -58,12 +45,7 @@ export function useDrivers() {
   });
 }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
-
-/**
- * Toggle the driver's online/offline status.
- * Commits the server-confirmed status while retaining the profile user projection.
- */
+// PATCH omits the nested user; preserve it when merging the saved profile.
 export function useUpdateDriverStatus() {
   const qc = useQueryClient();
   return useMutation({
@@ -80,10 +62,7 @@ export function useUpdateDriverStatus() {
   });
 }
 
-/**
- * Update the driver's vehicle type and/or plate number.
- * Merges the returned record without discarding the nested user from GET /drivers/me.
- */
+// Keep the nested user from GET /drivers/me when merging the PATCH response.
 export function useUpdateVehicle() {
   const qc = useQueryClient();
   return useMutation({
@@ -105,8 +84,6 @@ export function useUpdateVehicle() {
     },
   });
 }
-
-// ─── Notification preferences ─────────────────────────────────────────────────
 
 export function useNotificationPreferences() {
   return useQuery({

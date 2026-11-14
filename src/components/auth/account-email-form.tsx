@@ -25,7 +25,7 @@ export function AccountEmailForm({ purpose }: { purpose: "forgot" | "reset" | "v
     captured.current = true;
     if (purpose !== "forgot") {
       setToken(accountEmailToken(window.location.hash));
-      // Keep proofs out of subsequent URLs/referrers/history. Never put them in query caches.
+      // Keep the proof in memory and remove it from the current history entry.
       if (window.location.hash)
         window.history.replaceState(
           window.history.state,

@@ -64,7 +64,6 @@ export function ProfileCompletionBanner({ completion }: Props) {
           </Link>
         </div>
 
-        {/* Checklist */}
         <div className="mt-3 space-y-1.5">
           {remaining.map((item) => (
             <div
