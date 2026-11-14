@@ -6,15 +6,11 @@ import { LayoutDashboard, Package, ClipboardList, Menu } from "lucide-react";
 import type { Route } from "next";
 import { cn } from "@/lib/utils";
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
-
 const NAV_ITEMS = [
   { href: "/driver", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/driver/deliveries", label: "Deliveries", icon: Package, exact: false },
   { href: "/driver/earnings", label: "Record", icon: ClipboardList, exact: false },
 ] as const;
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   onMenuOpen: () => void;
@@ -33,7 +29,6 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
     >
       <div className="border-t border-[var(--landing-border)] bg-[var(--landing-panel)] backdrop-blur-xl">
         <div className="flex items-stretch h-16">
-          {/* Main nav links */}
           {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
@@ -48,7 +43,6 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
                     : "text-[var(--landing-muted)] active:text-[var(--landing-muted)]",
                 )}
               >
-                {/* Top accent bar */}
                 {active && (
                   <span className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-amber-300" />
                 )}
@@ -71,12 +65,10 @@ export function DriverBottomNav({ onMenuOpen }: Props) {
             );
           })}
 
-          {/* Divider */}
           <div className="flex items-center py-3">
             <span className="h-full w-px bg-[var(--landing-tint)]" />
           </div>
 
-          {/* More — opens sidebar drawer */}
           <button
             onClick={onMenuOpen}
             className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[var(--landing-muted)] transition-all duration-150 active:text-[var(--landing-muted)]"

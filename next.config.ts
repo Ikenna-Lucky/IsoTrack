@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
 
   typedRoutes: true,
 
-  // Security headers
   async headers() {
     return [
       {

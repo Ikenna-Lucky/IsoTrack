@@ -12,19 +12,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-/**
- * AuthGuard — wraps each dashboard layout.
- *
- * Waits for the AuthProvider's refresh() call to finish before rendering
- * anything. This prevents child components from firing API requests while
- * getAccessToken() is still null, which caused every request to go out
- * without an Authorization header and get a 401.
- *
- * After loading:
- *  - If not authenticated → redirect to /login
- *  - If a required role is specified and the user's role doesn't match → redirect to /login
- *  - Otherwise → render children normally
- */
+// Wait for session restoration before mounting dashboard hooks.
 export function AuthGuard({ role, children }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -43,8 +31,6 @@ export function AuthGuard({ role, children }: Props) {
     }
   }, [isLoading, isAuthenticated, userRole, role, router, pathname]);
 
-  // While the refresh call is in flight, render a full-page skeleton so
-  // no child hook can fire an API request with a missing token.
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
@@ -56,8 +42,7 @@ export function AuthGuard({ role, children }: Props) {
     );
   }
 
-  // After loading: if not authenticated (or wrong role), return null while
-  // the router.replace() above navigates away.
+  // Keep protected components unmounted while the redirect runs.
   if (!isAuthenticated || (role && userRole !== role)) {
     return null;
   }

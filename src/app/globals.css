@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-/* ─── IsoTrack Design System ─────────────────────────────────────────────────
-   Dark-only. No light mode. Black is the canvas.
-   ─────────────────────────────────────────────────────────────────────────── */
-
 @theme {
   /* Brand palette */
   --color-brand-50: #f0f9ff;
@@ -17,12 +13,12 @@
   --color-brand-800: #075985;
   --color-brand-900: #0c4a6e;
 
-  /* Accent — electric teal */
+  /* Teal accents */
   --color-accent-400: #2dd4bf;
   --color-accent-500: #14b8a6;
   --color-accent-600: #0d9488;
 
-  /* Neutral surface scale (dark-first, zinc-tinted — not flat black) */
+  /* Surface colors */
   --color-surface-0: #09090b;
   --color-surface-50: #0d0d10;
   --color-surface-100: #111116;
@@ -53,7 +49,7 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
 
-  /* Shadows (glowing, dark-mode appropriate) */
+  /* Shadows */
   --shadow-brand: 0 0 20px rgb(14 165 233 / 0.15);
   --shadow-accent: 0 0 20px rgb(20 184 166 / 0.15);
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
@@ -62,7 +58,7 @@
     0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
-/* ─── Base resets ─────────────────────────────────────────────────────────── */
+/* Base resets */
 *,
 *::before,
 *::after {
@@ -85,7 +81,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ─── Custom scrollbar ────────────────────────────────────────────────────── */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -101,20 +97,20 @@ body {
   background: var(--color-surface-600);
 }
 
-/* ─── Selection ───────────────────────────────────────────────────────────── */
+/* Selection */
 ::selection {
   background-color: rgb(14 165 233 / 0.3);
   color: #fff;
 }
 
-/* ─── Focus ring ──────────────────────────────────────────────────────────── */
+/* Focus ring */
 :focus-visible {
   outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
-/* ─── Utility: gradient text ──────────────────────────────────────────────── */
+/* Utility: gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 50%, #818cf8 100%);
   -webkit-background-clip: text;
@@ -122,7 +118,7 @@ body {
   background-clip: text;
 }
 
-/* ─── Utility: glass card ─────────────────────────────────────────────────── */
+/* Utility: glass card */
 .glass {
   background: rgb(255 255 255 / 0.03);
   border: 1px solid rgb(255 255 255 / 0.07);
@@ -130,7 +126,7 @@ body {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* ─── Utility: glow effects ───────────────────────────────────────────────── */
+/* Utility: glow effects */
 .glow-brand {
   box-shadow: var(--shadow-brand);
 }
@@ -138,7 +134,7 @@ body {
   box-shadow: var(--shadow-accent);
 }
 
-/* ─── Animated gradient border ────────────────────────────────────────────── */
+/* Animated gradient border */
 .gradient-border {
   position: relative;
   background: var(--color-surface-200);
@@ -172,7 +168,7 @@ body {
   }
 }
 
-/* ─── Hero animations ─────────────────────────────────────────────────────── */
+/* Hero animations */
 @keyframes sonar {
   0% {
     transform: translate(-50%, -50%) scale(0.4);
@@ -216,12 +212,12 @@ body {
   animation: sonar 4s ease-out infinite;
 }
 
-/* ─── Anchor scroll offset (accounts for fixed navbar) ───────────────────── */
+/* Anchor scroll offset (accounts for fixed navbar) */
 [id] {
   scroll-margin-top: 80px;
 }
 
-/* ─── MapLibre GL container ───────────────────────────────────────────────── */
+/* MapLibre GL container */
 .maplibregl-map {
   border-radius: var(--radius-lg);
 }

@@ -1,5 +1,3 @@
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export type DeliveryStatus =
   | "assigned"
   | "picked_up"
@@ -32,8 +30,6 @@ export interface DailyEarning {
   earning: number;
 }
 
-// ─── Current driver profile ───────────────────────────────────────────────────
-
 export const CURRENT_DRIVER = {
   id: "d1",
   name: "Babatunde Adeleke",
@@ -46,8 +42,6 @@ export const CURRENT_DRIVER = {
   joinedAt: "2023-06-12",
   avatar: "BA",
 };
-
-// ─── Mock deliveries ──────────────────────────────────────────────────────────
 
 export const MOCK_DELIVERIES: Delivery[] = [
   {
@@ -172,8 +166,6 @@ export const MOCK_DELIVERIES: Delivery[] = [
   },
 ];
 
-// ─── Daily earnings (last 7 days) ─────────────────────────────────────────────
-
 export const DAILY_EARNINGS: DailyEarning[] = [
   { day: "Mon", deliveries: 4, earning: 6240 },
   { day: "Tue", deliveries: 6, earning: 9120 },
@@ -183,8 +175,6 @@ export const DAILY_EARNINGS: DailyEarning[] = [
   { day: "Sat", deliveries: 9, earning: 14400 },
   { day: "Sun", deliveries: 3, earning: 4560 },
 ];
-
-// ─── Status meta ──────────────────────────────────────────────────────────────
 
 export const STATUS_META: Record<
   DeliveryStatus,

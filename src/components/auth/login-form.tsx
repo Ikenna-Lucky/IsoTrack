@@ -181,6 +181,18 @@ export function LoginForm() {
           )}
         </button>
       </form>
+      <Link
+        href="/forgot-password"
+        className="mt-4 inline-flex min-h-11 items-center text-sm text-[var(--landing-accent)] underline"
+      >
+        Forgot password?
+      </Link>
+      <Link
+        href="/verify-email"
+        className="ml-5 inline-flex min-h-11 items-center text-sm text-[var(--landing-accent)] underline"
+      >
+        Verify email
+      </Link>
       <p className="mt-6 text-sm leading-7 text-[var(--landing-muted)]">
         New to IsoTrack?{" "}
         <Link

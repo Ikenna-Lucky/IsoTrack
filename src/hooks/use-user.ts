@@ -12,10 +12,7 @@ export interface UpdateProfileInput {
   emergencyContact?: string | null | undefined;
 }
 
-/**
- * PATCH /auth/me — Updates name, phone, and/or avatar URL.
- * On success, syncs the returned user into the auth store.
- */
+// Sync the saved profile into auth so account details update across the workspace.
 export function useUpdateProfile() {
   const updateUser = useAuthStore((s) => s.updateUser);
 

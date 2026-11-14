@@ -21,8 +21,6 @@ export interface ProfileCompletion {
   isLoading: boolean;
 }
 
-// ─── Business ─────────────────────────────────────────────────────────────────
-
 export function useBusinessProfileCompletion(): ProfileCompletion {
   const user = useAuthStore((s) => s.user);
   const { data: biz, isLoading } = useBusinessProfile();
@@ -62,8 +60,6 @@ export function useBusinessProfileCompletion(): ProfileCompletion {
     isLoading,
   };
 }
-
-// ─── Driver ───────────────────────────────────────────────────────────────────
 
 export function useDriverProfileCompletion(): ProfileCompletion {
   const user = useAuthStore((s) => s.user);
@@ -107,8 +103,6 @@ export function useDriverProfileCompletion(): ProfileCompletion {
     isLoading,
   };
 }
-
-// ─── Customer ─────────────────────────────────────────────────────────────────
 
 export function useCustomerProfileCompletion(): ProfileCompletion {
   const user = useAuthStore((s) => s.user);

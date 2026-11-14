@@ -1,5 +1,3 @@
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export type ShipmentStatus =
   | "pending"
   | "in_transit"
@@ -49,8 +47,6 @@ export interface DailyStats {
   revenue: number;
   delivered: number;
 }
-
-// ─── Mock Shipments ───────────────────────────────────────────────────────────
 
 export const MOCK_SHIPMENTS: Shipment[] = [
   {
@@ -214,8 +210,6 @@ export const MOCK_SHIPMENTS: Shipment[] = [
   },
 ];
 
-// ─── Mock Drivers ─────────────────────────────────────────────────────────────
-
 export const MOCK_DRIVERS: Driver[] = [
   {
     id: "d1",
@@ -335,8 +329,6 @@ export const MOCK_DRIVERS: Driver[] = [
   },
 ];
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
-
 export const DAILY_STATS: DailyStats[] = [
   { day: "Mon", shipments: 18, revenue: 74200, delivered: 15 },
   { day: "Tue", shipments: 24, revenue: 98500, delivered: 21 },
@@ -346,8 +338,6 @@ export const DAILY_STATS: DailyStats[] = [
   { day: "Sat", shipments: 45, revenue: 185200, delivered: 41 },
   { day: "Sun", shipments: 28, revenue: 115600, delivered: 25 },
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export const STATUS_META: Record<
   ShipmentStatus,

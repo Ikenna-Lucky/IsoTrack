@@ -9,8 +9,6 @@ import { useAuthStore } from "@/store/auth";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import "../../landing-theme.css";
 
-// ─── Page title resolver ──────────────────────────────────────────────────────
-
 function usePageTitle(): string {
   const pathname = usePathname();
   if (pathname === "/driver") return "Overview";
@@ -20,8 +18,6 @@ function usePageTitle(): string {
   if (pathname.startsWith("/driver/help")) return "Help & Docs";
   return "Driver";
 }
-
-// ─── Layout ───────────────────────────────────────────────────────────────────
 
 function DriverWorkspace({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

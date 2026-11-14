@@ -1,5 +1,3 @@
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export type ShipmentStatus =
   | "pending"
   | "assigned"
@@ -31,16 +29,12 @@ export interface CustomerShipment {
   timeline: TimelineEvent[];
 }
 
-// ─── Current customer ─────────────────────────────────────────────────────────
-
 export const CURRENT_CUSTOMER = {
   name: "Adunola Fashola",
   email: "adunola@gmail.com",
   phone: "+2348012345678",
   avatar: "AF",
 };
-
-// ─── Mock shipments ───────────────────────────────────────────────────────────
 
 export const CUSTOMER_SHIPMENTS: CustomerShipment[] = [
   {
@@ -159,8 +153,6 @@ export const CUSTOMER_SHIPMENTS: CustomerShipment[] = [
     ],
   },
 ];
-
-// ─── Status meta ──────────────────────────────────────────────────────────────
 
 export const STATUS_META: Record<
   ShipmentStatus,
