@@ -34,10 +34,12 @@ server keys to this repository.
 ```dotenv
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=https://isotrack-backend-preview.onrender.com
-NEXT_PUBLIC_WS_URL=https://isotrack-backend-preview.onrender.com
+NEXT_PUBLIC_MAPTILER_KEY=
 ```
 
 The API value is the origin without `/api/v1`. The HTTP client adds that prefix.
+Socket.IO uses the same API origin. The optional MapTiler key can stay blank to
+use OpenStreetMap.
 Public environment values are included at build time; rebuild after changing them.
 The preview backend must trust the exact frontend origin via its `FRONTEND_URL`.
 Do not change the live backend's origin to test the preview frontend.
